@@ -1,5 +1,7 @@
 # Grok Dev Project
 
+**Repository:** [https://github.com/sivaram311/MT5-Development-Grok](https://github.com/sivaram311/MT5-Development-Grok)
+
 Full-stack application: Spring Boot backend + Angular frontend.
 
 ## Tech Stack

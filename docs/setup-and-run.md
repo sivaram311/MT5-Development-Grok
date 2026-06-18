@@ -1,5 +1,7 @@
 # Setup & Run Instructions
 
+> Source: [https://github.com/sivaram311/MT5-Development-Grok](https://github.com/sivaram311/MT5-Development-Grok) (grok_dev folder)
+
 ## Prerequisites
 
 ### 1. Java Development Kit (JDK 21) - REQUIRED
