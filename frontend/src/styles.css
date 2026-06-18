@@ -1,0 +1,15 @@
+/* Global styles - Tailwind is loaded via CDN in index.html */
+/* Mobile-first responsive base */
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.mobile-padding {
+  padding: 1rem;
+}
+
+@media (min-width: 768px) {
+  .mobile-padding {
+    padding: 2rem;
+  }
+}

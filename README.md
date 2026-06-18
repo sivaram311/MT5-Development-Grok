@@ -1,0 +1,109 @@
+# Grok Dev Project
+
+Full-stack application: Spring Boot backend + Angular frontend.
+
+## Tech Stack
+- **Backend**: Spring Boot 3.3 + Spring Security + Spring Data JPA + PostgreSQL
+- **Frontend**: Angular 18 + Tailwind CSS (via CDN for quick start)
+- **Target Devices**: Realme P2 Pro (mobile) + Realme Pad 2 (tablet) - fully responsive
+
+## Setup Instructions
+
+### 1. Database (PostgreSQL)
+```sql
+CREATE DATABASE postgres;  -- or use existing
+-- The app will create schema `grok_dev`
+```
+
+Run the app - it will create the schema and insert `admin` / `admin123` (BCrypt encoded).
+
+### 2. Backend (Spring Boot)
+```bash
+cd backend
+mvn spring-boot:run
+```
+- Backend runs on port 8081 (or next free port auto-detected by run-dev.ps1)
+- Frontend on 4200 (update src/environments/environment.ts apiUrl if needed)
+- Auth API: POST /api/auth/login
+
+### 3. Frontend (Angular)
+First install dependencies (requires Node.js + Angular CLI):
+```bash
+cd frontend
+npm install
+ng serve
+```
+
+Then access http://localhost:4200
+
+**Demo Login:**
+- Username: `admin`
+- Password: `admin123`
+
+The admin account (and a test user) is **automatically created and password re-hashed** on every application startup via `DataSeeder.java` (using the live `PasswordEncoder` bean).
+
+This guarantees `admin / admin123` always works.
+
+If login fails:
+```sql
+DELETE FROM grok_dev.users WHERE username IN ('admin', 'user1');
+```
+Then restart the backend. The seeder will recreate them.
+
+## Features Implemented
+- **JWT + Refresh Token** authentication (access token + long-lived refresh token stored in DB)
+- Role-based users (admin/user)
+- Additional tables: roles, user_roles, projects (demo data)
+- Protected welcome screen with live data from backend
+- Responsive design optimized for Realme P2 Pro (phone) + Realme Pad 2 (tablet)
+  - Bottom navigation on mobile
+  - Adaptive layouts for phone vs tablet
+- Proper Angular HTTP interceptor + auth service
+- **Proactive refresh** on startup + before every protected request (if token expires in < 5 minutes)
+- Live token expiration countdown (updates every 10 seconds) + manual "Refresh Token" button
+- Role-based UI (Admin-only sections visible only for users with `ROLE_ADMIN`)
+- Unit tests (backend + frontend)
+- Comprehensive documentation in `/docs` (includes Mermaid sequence diagram)
+- Refresh tokens with server-side revocation support
+- Easy one-command launcher: `.\run-dev.ps1` (opens backend + frontend in separate tabs of the same window)
+
+### Key Endpoints
+- POST /api/auth/login → returns accessToken + refreshToken
+- POST /api/auth/refresh → get new access token
+- GET /api/projects → demo content
+- GET /api/welcome
+
+## SOLID & Design Patterns
+See docs/solid-and-patterns.md for details on how the project follows clean architecture.
+
+## Prerequisites (Important!)
+
+You need these tools installed:
+
+- Java 21 (JDK)
+- Maven (or Maven Wrapper `mvnw.cmd`)
+- Node.js + npm
+- Angular CLI (`npm install -g @angular/cli`)
+
+**Recommended way to run both apps:**
+
+```powershell
+cd E:\Source\grok_dev
+.\run-dev.ps1
+```
+
+This is a **minimal** script that tries to open:
+- Backend in one tab
+- Frontend in another tab
+
+(using Windows Terminal when available)
+
+Full guide + troubleshooting → **`docs/setup-and-run.md`**
+
+## Next Steps (suggested)
+- Add more entities/tables
+- Improve error handling & logging
+- Add Docker support
+- Production Postgres config + environment variables
+
+Generated for you by Grok.

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>GrokDev</title>
+  <base href="/">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <!-- Tailwind CSS via CDN for quick responsive design -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    function initTailwind() {
+      tailwind.config = {
+        theme: {
+          extend: {
+            screens: {
+              'mobile': '360px',   // realme p2 pro approx
+              'tablet': '800px',   // realme pad 2
+            }
+          }
+        }
+      };
+    }
+    window.onload = initTailwind;
+  </script>
+  <style>
+    /* Mobile first responsive tweaks */
+    @media (max-width: 480px) {
+      .mobile-padding { padding: 1rem; }
+    }
+  </style>
+</head>
+<body class="bg-gray-50">
+  <app-root></app-root>
+</body>
+</html>
