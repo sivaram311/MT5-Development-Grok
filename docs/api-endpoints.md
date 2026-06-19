@@ -29,6 +29,52 @@ Note: The admin user is automatically created on first startup by DataSeeder.jav
 ### POST `/api/auth/refresh`
 Refresh the access token using refresh token.
 
+## Market Data (MT5 XAUUSD)
+
+Data is populated by the Python MT5 downloader into the `grok_dev` schema.
+
+### GET `/api/market/xauusd/{timeframe}`
+
+Supported timeframes: `D1`, `H4`, `H1`, `M15`, `M5`, `M1`
+
+**Query Params:**
+- `from` (optional, ISO datetime)
+- `to` (optional, ISO datetime)
+- `limit` (default 500, max recommended 10000)
+
+**Example:**
+```
+GET /api/market/xauusd/D1?from=2025-01-01T00:00&limit=100
+```
+
+**Response:**
+```json
+[
+  {
+    "time": "2025-06-18T00:00:00",
+    "open": 2650.45,
+    "high": 2675.10,
+    "low": 2648.20,
+    "close": 2672.55,
+    "tickVolume": 12345,
+    "spread": 15,
+    "realVolume": 0
+  }
+]
+```
+
+### GET `/api/market/xauusd/{timeframe}/latest`
+
+Quick latest N candles (default 200).
+
+## Other Endpoints
+
+### GET `/api/welcome`
+Public demo endpoint.
+
+### GET `/api/projects/active`
+Returns active projects (demo data).
+
 **Request:**
 ```json
 {
@@ -87,3 +133,5 @@ Authorization: Bearer <token>
 
 ## Frontend Integration
 Angular uses `AuthInterceptor` to automatically attach the token to all outgoing requests after login.
+
+See root [CHANGELOG.md](../CHANGELOG.md) for application-wide change logs (maintained for every update).

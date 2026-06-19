@@ -58,6 +58,37 @@ Then restart the backend. The seeder will recreate them.
 - Additional tables: roles, user_roles, projects (demo data)
 - Protected welcome screen with live data from backend
 - Responsive design optimized for Realme P2 Pro (phone) + Realme Pad 2 (tablet)
+
+## MT5 Market Data Pipeline (Python)
+Python scripts under `python/mt5_xauusd/` connect to MT5 and pull historical XAUUSD OHLC data into the shared `grok_dev` Postgres schema.
+
+Supported timeframes:
+- XAUUSD_D1, XAUUSD_H4, XAUUSD_H1, XAUUSD_M15, XAUUSD_M5, XAUUSD_M1
+
+**Run:**
+```powershell
+cd python
+pip install -r requirements.txt
+
+# Recommended:
+python -m mt5_xauusd.main
+# or
+python run_data_downloader.py
+
+# Examples:
+python -m mt5_xauusd.main --timeframes D1 H4
+python -m mt5_xauusd.main --no-incremental
+```
+
+Data is queryable from Spring Boot via `/api/market/xauusd/{timeframe}`.
+
+See `python/mt5_xauusd/README.md` and `python/mt5_xauusd/INTEGRATION.md` for details (includes troubleshooting for import errors and "Failed to initialize MT5").
+
+**Critical:** 
+- Start and log into the MT5 terminal **before** running the Python downloader.
+- The downloader auto-detects `terminal64.exe` in common locations. If needed, set `MT5_PATH` in `python/mt5_xauusd/config.py`.
+
+**UI/UX**: The market data view prioritizes mobile & tablet users (Realme devices). Rich visuals, instant insights, thumb-friendly controls. Always test responsiveness first.
   - Bottom navigation on mobile
   - Adaptive layouts for phone vs tablet
 - Proper Angular HTTP interceptor + auth service
@@ -67,6 +98,8 @@ Then restart the backend. The seeder will recreate them.
 - Unit tests (backend + frontend)
 - Comprehensive documentation in `/docs` (includes Mermaid sequence diagram)
 - Refresh tokens with server-side revocation support
+
+See [CHANGELOG.md](CHANGELOG.md) for detailed change history (required for all future updates).
 - Easy one-command launcher: `.\run-dev.ps1` (opens backend + frontend in separate tabs of the same window)
 
 ### Key Endpoints

@@ -48,3 +48,34 @@ spring.datasource.url=jdbc:postgresql://localhost:5432/postgres
 ```
 
 `ddl-auto=update` will create tables on startup.
+
+## MT5 Market Data Tables (XAUUSD)
+
+Populated by Python downloader in `python/mt5_xauusd/`.
+
+Tables (in `grok_dev` schema):
+- `XAUUSD_D1`
+- `XAUUSD_H4`
+- `XAUUSD_H1`
+- `XAUUSD_M15`
+- `XAUUSD_M5`
+- `XAUUSD_M1`
+
+All share this structure:
+
+| Column      | Type      | Description             |
+|-------------|-----------|-------------------------|
+| time        | TIMESTAMP | Primary key (bar time)  |
+| open        | NUMERIC   |                         |
+| high        | NUMERIC   |                         |
+| low         | NUMERIC   |                         |
+| close       | NUMERIC   |                         |
+| tick_volume | BIGINT    | MT5 tick volume         |
+| spread      | INTEGER   |                         |
+| real_volume | BIGINT    | MT5 real volume         |
+
+Inserts use ON CONFLICT on `time` for safe incremental updates.
+
+Tables are created automatically by the Python downloader on first use for each timeframe (using SQLAlchemy with extend_existing to support safe re-registration).
+
+See root [CHANGELOG.md](../CHANGELOG.md) for application change logs.

@@ -118,6 +118,75 @@ If verified=false, the passwordEncoder did not match what was stored — check f
 ## Running Both Apps Easily (Minimal Script)
 Use the provided minimal launcher:
 
+## MT5 Data Pipeline (Python)
+
+A dedicated Python module pulls historical XAUUSD data from MT5 into the `grok_dev` schema.
+
+**UI/UX Focus**: The market data UI in the Welcome screen is designed from the trader's perspective:
+- Thumb-friendly timeframe pills (horizontal scroll)
+- Large, prominent latest price with instant % change
+- Interactive price chart + responsive candle cards/table
+- Quick presets and refresh for ease on mobile/tablet
+- Color coding (green/red) for direction at a glance
+
+Always prioritized mobile/tablet responsiveness.
+
+**Location:** `python/mt5_xauusd/`
+
+**Supported Tables:**
+- `XAUUSD_D1`, `XAUUSD_H4`, `XAUUSD_H1`, `XAUUSD_M15`, `XAUUSD_M5`, `XAUUSD_M1`
+
+### Setup
+```bash
+cd python
+pip install -r requirements.txt
+```
+
+Create `.env` from `.env.example` if you need custom DB credentials.
+
+### Run
+```powershell
+# Make sure MT5 is running and logged in with XAUUSD visible
+cd python
+
+# Recommended run commands (from the python directory):
+python -m mt5_xauusd.main
+# or the convenience script:
+python run_data_downloader.py
+
+# With options:
+python -m mt5_xauusd.main --timeframes D1 H4
+python -m mt5_xauusd.main --no-incremental
+```
+
+**Important:** 
+
+- Always run from the `python` folder.
+- **Start MT5 terminal first and log in** before running the Python script.
+- The script now auto-detects common MT5 paths. If it can't find it, edit `MT5_PATH` in `python/mt5_xauusd/config.py` with the full path to `terminal64.exe`.
+- If you see `ModuleNotFoundError: No module named 'config'`, use the commands above.
+
+See `python/mt5_xauusd/README.md` for full troubleshooting (including MT5 init errors).
+
+The script supports **incremental updates** by default.
+
+- First run: tables (`XAUUSD_*`) are **auto-created** (we use `extend_existing=True` to avoid "Table already defined" SQLAlchemy errors).
+- Later runs: only new bars since the last timestamp in the table.
+
+Data becomes immediately available via Spring Boot endpoints:
+- `GET /api/market/xauusd/D1?limit=500`
+- `GET /api/market/xauusd/H4?from=2025-01-01&to=2025-06-01`
+
+See `python/mt5_xauusd/README.md` and `INTEGRATION.md` for more.
+
+See root [CHANGELOG.md](../../CHANGELOG.md) for all application changes (updated with every modification).
+
+## Architecture Overview
+- Python MT5 scripts → raw OHLC data in Postgres (`grok_dev` schema)
+- Spring Boot → queries the data + exposes REST APIs
+- Angular → consumes APIs for charts, analysis, Gann theory, etc.
+
+
 ```powershell
 cd E:\Source\grok_dev
 .\run-dev.ps1

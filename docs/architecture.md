@@ -89,3 +89,34 @@ Proactive refresh and role-based features are also supported.
 - JWT secret should be moved to environment variables in production
 
 This design ensures maintainability, testability, and separation of concerns.
+
+## MT5 Data Ingestion Layer (Python)
+
+A separate Python component (`python/mt5_xauusd/`) acts as the data pipeline:
+
+- Connects to MetaTrader 5 terminal (`terminal64.exe`)
+- Downloads full + incremental OHLC data for XAUUSD
+- Writes to Postgres tables in `grok_dev` schema:
+  - `XAUUSD_D1`, `XAUUSD_H4`, `XAUUSD_H1`, `XAUUSD_M15`, `XAUUSD_M5`, `XAUUSD_M1`
+
+**Why separate?**
+- MT5 Python API (`MetaTrader5`) is Python-only
+- Allows independent scheduling (Task Scheduler / cron)
+- Keeps Java/Spring focused on API + business logic
+
+**Data Flow:**
+MT5 Terminal → Python Downloader (batched + incremental) → Postgres (grok_dev schema) → Spring Boot MarketDataService (JdbcTemplate) → REST API → Angular
+
+Spring Boot uses `JdbcTemplate` for flexible queries against the dynamic timeframe tables.
+
+### Frontend UI/UX Principles (Mobile & Tablet First)
+- Designed for **Realme P2 Pro** (phone) and **Realme Pad 2** (tablet).
+- User perspective first: Traders need fast access to latest price, direction, and recent candles.
+- Enriched experience: Big hero price card, % change, interactive Chart.js line chart, color-coded rows.
+- Ease of access: Scrollable timeframe pills, preset buttons, one-tap refresh.
+- Responsiveness: Stacked cards on mobile, full table on tablet/desktop. Large tap targets, minimal scrolling.
+- All changes consider touch, readability, and information hierarchy on small screens.
+
+See `python/mt5_xauusd/INTEGRATION.md` for entity examples.
+
+See root [CHANGELOG.md](../CHANGELOG.md) for complete history of changes across the application.
