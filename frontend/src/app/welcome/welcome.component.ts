@@ -156,28 +156,54 @@ Chart.register(...registerables);
             <div class="px-4 py-2.5 border-b flex items-center text-xs font-semibold text-gray-500 bg-gray-50/60">
               <span>RECENT CANDLES</span>
               <span class="ml-auto hidden sm:block text-[10px]">LAST 12 • OHLC + VOL</span>
+              <button (click)="exportOverviewToCsv()" 
+                      [disabled]="marketData.length === 0"
+                      class="ml-3 text-[10px] px-2 py-0.5 bg-white border text-emerald-600 hover:bg-emerald-50 rounded active:bg-emerald-100">
+                CSV
+              </button>
+            </div>
+
+            <!-- Overview column visibility (compact) -->
+            <div class="px-4 pt-2 pb-1 bg-white text-xs">
+              <div class="flex flex-wrap items-center gap-1 mb-1">
+                <span class="text-[10px] text-gray-400 mr-1">Show:</span>
+                <button *ngFor="let col of overviewColumnDefs"
+                        (click)="toggleOverviewColumn(col.key)"
+                        class="px-2 py-px text-[10px] rounded border transition active:scale-[0.98]"
+                        [class.bg-blue-600]="isOverviewColumnVisible(col.key)"
+                        [class.text-white]="isOverviewColumnVisible(col.key)"
+                        [class.border-blue-600]="isOverviewColumnVisible(col.key)"
+                        [class.bg-white]="!isOverviewColumnVisible(col.key)"
+                        [class.text-gray-500]="!isOverviewColumnVisible(col.key)"
+                        [class.border-gray-200]="!isOverviewColumnVisible(col.key)"
+                        [title]="col.title">
+                  {{ col.label }}
+                </button>
+                <button (click)="showAllOverviewColumns()" class="px-1.5 py-px text-[10px] text-emerald-600 border border-emerald-200 rounded">All</button>
+                <button (click)="hideAllOverviewColumns()" class="px-1.5 py-px text-[10px] text-rose-600 border border-rose-200 rounded">None</button>
+              </div>
             </div>
             
             <!-- Desktop Table - Modern styling -->
             <table class="hidden md:table w-full text-sm">
               <thead>
                 <tr class="border-b text-[10px] uppercase tracking-widest text-gray-400">
-                  <th class="text-left py-2 px-4 font-medium">Time</th>
-                  <th class="text-right py-2 px-2 font-medium">Open</th>
-                  <th class="text-right py-2 px-2 font-medium">High</th>
-                  <th class="text-right py-2 px-2 font-medium">Low</th>
-                  <th class="text-right py-2 px-2 font-medium">Close</th>
-                  <th class="text-right py-2 px-4 font-medium">Vol</th>
+                  <th *ngIf="isOverviewColumnVisible('time')" class="text-left py-2 px-4 font-medium">Time</th>
+                  <th *ngIf="isOverviewColumnVisible('open')" class="text-right py-2 px-2 font-medium">Open</th>
+                  <th *ngIf="isOverviewColumnVisible('high')" class="text-right py-2 px-2 font-medium">High</th>
+                  <th *ngIf="isOverviewColumnVisible('low')" class="text-right py-2 px-2 font-medium">Low</th>
+                  <th *ngIf="isOverviewColumnVisible('close')" class="text-right py-2 px-2 font-medium">Close</th>
+                  <th *ngIf="isOverviewColumnVisible('vol')" class="text-right py-2 px-4 font-medium">Vol</th>
                 </tr>
               </thead>
               <tbody>
                 <tr *ngFor="let candle of marketData.slice(0, 12)" class="border-b last:border-none hover:bg-gray-50/80 transition-colors">
-                  <td class="px-4 py-2 font-mono text-xs text-gray-600">{{ candle.time | date:'MMM dd HH:mm' }}</td>
-                  <td class="px-2 py-2 text-right font-mono" [ngClass]="getCandleColor(candle)">{{ candle.open | number:'1.2-2' }}</td>
-                  <td class="px-2 py-2 text-right font-mono text-emerald-600">{{ candle.high | number:'1.2-2' }}</td>
-                  <td class="px-2 py-2 text-right font-mono text-rose-600">{{ candle.low | number:'1.2-2' }}</td>
-                  <td class="px-2 py-2 text-right font-mono font-semibold" [ngClass]="getCandleColor(candle)">{{ candle.close | number:'1.2-2' }}</td>
-                  <td class="px-4 py-2 text-right font-mono text-xs text-gray-500">{{ (candle.tickVolume / 1000) | number:'1.0-0' }}k</td>
+                  <td *ngIf="isOverviewColumnVisible('time')" class="px-4 py-2 font-mono text-xs text-gray-600">{{ candle.time | date:'MMM dd HH:mm' }}</td>
+                  <td *ngIf="isOverviewColumnVisible('open')" class="px-2 py-2 text-right font-mono" [ngClass]="getCandleColor(candle)">{{ candle.open | number:'1.2-2' }}</td>
+                  <td *ngIf="isOverviewColumnVisible('high')" class="px-2 py-2 text-right font-mono text-emerald-600">{{ candle.high | number:'1.2-2' }}</td>
+                  <td *ngIf="isOverviewColumnVisible('low')" class="px-2 py-2 text-right font-mono text-rose-600">{{ candle.low | number:'1.2-2' }}</td>
+                  <td *ngIf="isOverviewColumnVisible('close')" class="px-2 py-2 text-right font-mono font-semibold" [ngClass]="getCandleColor(candle)">{{ candle.close | number:'1.2-2' }}</td>
+                  <td *ngIf="isOverviewColumnVisible('vol')" class="px-4 py-2 text-right font-mono text-xs text-gray-500">{{ (candle.tickVolume / 1000) | number:'1.0-0' }}k</td>
                 </tr>
               </tbody>
             </table>
@@ -187,17 +213,17 @@ Chart.register(...registerables);
               <div *ngFor="let candle of marketData.slice(0, 8)" 
                    class="p-3.5 active:bg-gray-50 flex flex-col gap-y-1">
                 <div class="flex justify-between items-baseline">
-                  <span class="font-mono text-xs text-gray-500">{{ candle.time | date:'MMM dd HH:mm' }}</span>
+                  <span *ngIf="isOverviewColumnVisible('time')" class="font-mono text-xs text-gray-500">{{ candle.time | date:'MMM dd HH:mm' }}</span>
                   <span class="font-semibold text-base tabular-nums" [ngClass]="getCandleColor(candle)">
                     {{ candle.close | number:'1.2-2' }}
                   </span>
                 </div>
-                <div class="grid grid-cols-5 gap-1 text-[11px] font-mono text-center">
-                  <div><span class="text-[9px] text-gray-400 block">O</span>{{ candle.open | number:'1.2-2' }}</div>
-                  <div><span class="text-[9px] text-emerald-400 block">H</span>{{ candle.high | number:'1.2-2' }}</div>
-                  <div><span class="text-[9px] text-rose-400 block">L</span>{{ candle.low | number:'1.2-2' }}</div>
-                  <div><span class="text-[9px] text-gray-400 block">C</span>{{ candle.close | number:'1.2-2' }}</div>
-                  <div><span class="text-[9px] text-gray-400 block">VOL</span>{{ (candle.tickVolume / 1000) | number:'1.0-0' }}k</div>
+                <div class="grid gap-1 text-[11px] font-mono text-center" [style.grid-template-columns]="'repeat(' + visibleOverviewColumnCount + ', minmax(0, 1fr))'">
+                  <div *ngIf="isOverviewColumnVisible('open')"><span class="text-[9px] text-gray-400 block">O</span>{{ candle.open | number:'1.2-2' }}</div>
+                  <div *ngIf="isOverviewColumnVisible('high')"><span class="text-[9px] text-emerald-400 block">H</span>{{ candle.high | number:'1.2-2' }}</div>
+                  <div *ngIf="isOverviewColumnVisible('low')"><span class="text-[9px] text-rose-400 block">L</span>{{ candle.low | number:'1.2-2' }}</div>
+                  <div *ngIf="isOverviewColumnVisible('close')"><span class="text-[9px] text-gray-400 block">C</span>{{ candle.close | number:'1.2-2' }}</div>
+                  <div *ngIf="isOverviewColumnVisible('vol')"><span class="text-[9px] text-gray-400 block">VOL</span>{{ (candle.tickVolume / 1000) | number:'1.0-0' }}k</div>
                 </div>
               </div>
             </div>
@@ -207,30 +233,73 @@ Chart.register(...registerables);
           <!-- Modern Data Grid Tab -->
           <div *ngIf="activeView === 'grid'" class="bg-white border border-gray-100 rounded-3xl overflow-hidden shadow-sm">
             <div class="px-5 py-3 border-b flex items-center justify-between bg-gray-50/70 text-xs font-semibold text-gray-500 tracking-wider">
-              <span>DATA GRID — TIME • OHLC • RSI(14)</span>
+              <span>DATA GRID — TIMES (Broker / NY / IST) • OHLC • RSI(14)</span>
               <span class="text-[10px] font-normal">NEWEST FIRST</span>
+            </div>
+
+            <!-- Column visibility toggles -->
+            <div class="px-5 pt-3 pb-1 bg-white border-b">
+              <div class="flex items-center justify-between mb-1.5">
+                <div class="text-[10px] uppercase tracking-[1px] text-gray-400 font-medium">Columns</div>
+                <div class="flex gap-1">
+                  <button (click)="toggleTimesGroup()"
+                          class="text-[10px] px-2 py-0.5 text-blue-600 hover:bg-blue-50 border border-blue-200 rounded active:bg-blue-100">
+                    Times
+                  </button>
+                  <button (click)="showAllGridColumns()"
+                          class="text-[10px] px-2 py-0.5 text-emerald-600 hover:bg-emerald-50 border border-emerald-200 rounded active:bg-emerald-100">
+                    Show all
+                  </button>
+                  <button (click)="hideAllGridColumns()"
+                          class="text-[10px] px-2 py-0.5 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded active:bg-rose-100">
+                    Hide all
+                  </button>
+                  <button (click)="resetGridColumns()"
+                          class="text-[10px] px-2 py-0.5 text-gray-500 hover:text-blue-600 border border-gray-200 rounded active:bg-gray-50">
+                    Reset
+                  </button>
+                </div>
+              </div>
+              <div class="flex flex-wrap gap-1">
+                <button *ngFor="let col of gridColumnDefs"
+                        (click)="toggleGridColumn(col.key)"
+                        class="px-2.5 py-0.5 text-[11px] font-medium rounded-full border transition active:scale-[0.985]"
+                        [class.bg-blue-600]="isGridColumnVisible(col.key)"
+                        [class.text-white]="isGridColumnVisible(col.key)"
+                        [class.border-blue-600]="isGridColumnVisible(col.key)"
+                        [class.bg-white]="!isGridColumnVisible(col.key)"
+                        [class.text-gray-600]="!isGridColumnVisible(col.key)"
+                        [class.border-gray-200]="!isGridColumnVisible(col.key)"
+                        [title]="col.title">
+                  {{ col.label }}
+                </button>
+              </div>
             </div>
 
             <div class="overflow-x-auto">
               <table class="min-w-full text-sm">
                 <thead>
                   <tr class="border-b text-[10px] uppercase tracking-[1px] text-gray-400 bg-gray-50">
-                    <th class="text-left py-2.5 px-5 font-medium">TIME</th>
-                    <th class="text-right py-2.5 px-3 font-medium">OPEN</th>
-                    <th class="text-right py-2.5 px-3 font-medium">HIGH</th>
-                    <th class="text-right py-2.5 px-3 font-medium">LOW</th>
-                    <th class="text-right py-2.5 px-3 font-medium">CLOSE</th>
-                    <th class="text-right py-2.5 px-5 font-medium">RSI</th>
+                    <th *ngIf="isGridColumnVisible('broker')" class="text-left py-2.5 px-2 font-medium" title="Broker / MT5 server time">BROKER</th>
+                    <th *ngIf="isGridColumnVisible('ny')" class="text-left py-2.5 px-2 font-medium" title="New York time (America/New_York)">NY</th>
+                    <th *ngIf="isGridColumnVisible('ist')" class="text-left py-2.5 px-2 font-medium" title="Indian Standard Time (Asia/Kolkata)">IST</th>
+                    <th *ngIf="isGridColumnVisible('open')" class="text-right py-2.5 px-3 font-medium">OPEN</th>
+                    <th *ngIf="isGridColumnVisible('high')" class="text-right py-2.5 px-3 font-medium">HIGH</th>
+                    <th *ngIf="isGridColumnVisible('low')" class="text-right py-2.5 px-3 font-medium">LOW</th>
+                    <th *ngIf="isGridColumnVisible('close')" class="text-right py-2.5 px-3 font-medium">CLOSE</th>
+                    <th *ngIf="isGridColumnVisible('rsi')" class="text-right py-2.5 px-4 font-medium">RSI</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y">
                   <tr *ngFor="let row of gridData" class="hover:bg-blue-50/30 transition-colors group">
-                    <td class="px-5 py-2.5 font-mono text-xs text-gray-600 group-hover:text-gray-900">{{ row.time | date:'MMM dd HH:mm' }}</td>
-                    <td class="px-3 py-2.5 text-right font-mono text-gray-700">{{ row.open | number:'1.2-2' }}</td>
-                    <td class="px-3 py-2.5 text-right font-mono text-emerald-600">{{ row.high | number:'1.2-2' }}</td>
-                    <td class="px-3 py-2.5 text-right font-mono text-rose-600">{{ row.low | number:'1.2-2' }}</td>
-                    <td class="px-3 py-2.5 text-right font-mono font-semibold text-gray-900">{{ row.close | number:'1.2-2' }}</td>
-                    <td class="px-5 py-2.5 text-right font-mono">
+                    <td *ngIf="isGridColumnVisible('broker')" class="px-2 py-2.5 font-mono text-[11px] text-gray-700 group-hover:text-gray-900">{{ row.time ? (row.time | date:'MMM dd HH:mm') : '—' }}</td>
+                    <td *ngIf="isGridColumnVisible('ny')" class="px-2 py-2.5 font-mono text-[11px] text-blue-700">{{ row.nyTime ? (row.nyTime | date:'MMM dd HH:mm') : '—' }}</td>
+                    <td *ngIf="isGridColumnVisible('ist')" class="px-2 py-2.5 font-mono text-[11px] text-emerald-700">{{ row.istTime ? (row.istTime | date:'MMM dd HH:mm') : '—' }}</td>
+                    <td *ngIf="isGridColumnVisible('open')" class="px-3 py-2.5 text-right font-mono text-gray-700">{{ row.open | number:'1.2-2' }}</td>
+                    <td *ngIf="isGridColumnVisible('high')" class="px-3 py-2.5 text-right font-mono text-emerald-600">{{ row.high | number:'1.2-2' }}</td>
+                    <td *ngIf="isGridColumnVisible('low')" class="px-3 py-2.5 text-right font-mono text-rose-600">{{ row.low | number:'1.2-2' }}</td>
+                    <td *ngIf="isGridColumnVisible('close')" class="px-3 py-2.5 text-right font-mono font-semibold text-gray-900">{{ row.close | number:'1.2-2' }}</td>
+                    <td *ngIf="isGridColumnVisible('rsi')" class="px-4 py-2.5 text-right font-mono">
                       <span *ngIf="row.rsi != null" 
                             class="inline-block min-w-[52px] px-2 py-px rounded font-medium text-xs"
                             [class.bg-emerald-100]="row.rsi > 50" [class.text-emerald-700]="row.rsi > 50"
@@ -241,7 +310,7 @@ Chart.register(...registerables);
                     </td>
                   </tr>
                   <tr *ngIf="gridData.length === 0 && !isGridLoading">
-                    <td colspan="6" class="px-5 py-8 text-center text-sm text-gray-400">No data loaded for this timeframe. Tap refresh.</td>
+                    <td [attr.colspan]="visibleGridColumnCount" class="px-5 py-8 text-center text-sm text-gray-400">No data loaded for this timeframe. Tap refresh.</td>
                   </tr>
                 </tbody>
               </table>
@@ -249,11 +318,18 @@ Chart.register(...registerables);
 
             <div class="px-4 py-3 bg-gray-50 border-t flex items-center justify-between text-xs">
               <div class="text-gray-500">{{ gridData.length }} rows</div>
-              <button (click)="loadGridData()" 
-                      [disabled]="isGridLoading"
-                      class="px-4 py-1 bg-white border text-blue-600 hover:bg-blue-50 active:bg-blue-100 rounded-2xl font-medium text-xs transition disabled:opacity-60">
-                {{ isGridLoading ? 'LOADING...' : 'REFRESH' }}
-              </button>
+              <div class="flex items-center gap-2">
+                <button (click)="exportGridToCsv()" 
+                        [disabled]="gridData.length === 0"
+                        class="px-3 py-1 bg-white border text-emerald-600 hover:bg-emerald-50 active:bg-emerald-100 rounded-2xl font-medium text-xs transition disabled:opacity-60">
+                  ⬇ CSV
+                </button>
+                <button (click)="loadGridData()" 
+                        [disabled]="isGridLoading"
+                        class="px-4 py-1 bg-white border text-blue-600 hover:bg-blue-50 active:bg-blue-100 rounded-2xl font-medium text-xs transition disabled:opacity-60">
+                  {{ isGridLoading ? 'LOADING...' : 'REFRESH' }}
+                </button>
+              </div>
             </div>
           </div>
 
@@ -391,6 +467,48 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
   gridData: any[] = [];
   isGridLoading = false;
 
+  // Column visibility toggles for Data Grid (all on by default)
+  gridColumnVisibility: { [key: string]: boolean } = {
+    broker: true,
+    ny: true,
+    ist: true,
+    open: true,
+    high: true,
+    low: true,
+    close: true,
+    rsi: true
+  };
+
+  gridColumnDefs = [
+    { key: 'broker', label: 'Broker', title: 'Broker / MT5 server time' },
+    { key: 'ny', label: 'NY', title: 'New York time' },
+    { key: 'ist', label: 'IST', title: 'Indian Standard Time' },
+    { key: 'open', label: 'O', title: 'Open' },
+    { key: 'high', label: 'H', title: 'High' },
+    { key: 'low', label: 'L', title: 'Low' },
+    { key: 'close', label: 'C', title: 'Close' },
+    { key: 'rsi', label: 'RSI', title: 'RSI (14)' }
+  ];
+
+  // Visibility for Overview recent candles table/cards
+  overviewColumnVisibility: { [key: string]: boolean } = {
+    time: true,
+    open: true,
+    high: true,
+    low: true,
+    close: true,
+    vol: true
+  };
+
+  overviewColumnDefs = [
+    { key: 'time', label: 'Time', title: 'Time' },
+    { key: 'open', label: 'O', title: 'Open' },
+    { key: 'high', label: 'H', title: 'High' },
+    { key: 'low', label: 'L', title: 'Low' },
+    { key: 'close', label: 'C', title: 'Close' },
+    { key: 'vol', label: 'Vol', title: 'Volume' }
+  ];
+
   // Grid filters
   gridFrom: string = '';
   gridTo: string = '';
@@ -438,6 +556,10 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
 
     // Load market data
     this.loadMarketData();
+
+    // Restore column visibility prefs for Data Grid + Overview
+    this.loadGridColumnVisibility();
+    this.loadOverviewColumnVisibility();
   }
 
   ngAfterViewInit() {
@@ -563,7 +685,17 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
 
   selectTimeframe(tf: string) {
     if (this.selectedTimeframe === tf) return;
+
+    // Persist current visibility before switching
+    this.saveGridVisibilityForTf(this.selectedTimeframe);
+    this.saveOverviewVisibilityForTf(this.selectedTimeframe);
+
     this.selectedTimeframe = tf;
+
+    // Load visibility for new timeframe
+    this.loadGridVisibilityForTf(tf);
+    this.loadOverviewVisibilityForTf(tf);
+
     this.marketChart?.destroy();
     this.loadMarketData();
     if (this.activeView === 'grid') {
@@ -610,6 +742,223 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
         this.isGridLoading = false;
       }
     });
+  }
+
+  // ==================== Data Grid Column Visibility ====================
+  toggleGridColumn(key: string) {
+    this.gridColumnVisibility[key] = !this.gridColumnVisibility[key];
+    this.saveGridColumnVisibility();
+  }
+
+  isGridColumnVisible(key: string): boolean {
+    return this.gridColumnVisibility[key] !== false;
+  }
+
+  get visibleGridColumnCount(): number {
+    return this.gridColumnDefs.filter(c => this.isGridColumnVisible(c.key)).length || 1;
+  }
+
+  private loadGridColumnVisibility() {
+    // Initial load uses default or global (for first TF)
+    const tf = this.selectedTimeframe;
+    this.loadGridVisibilityForTf(tf);
+  }
+
+  private loadGridVisibilityForTf(tf: string) {
+    const key = `gridColumnVisibility_${tf}`;
+    const saved = localStorage.getItem(key);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        this.gridColumnVisibility = { ...this.gridColumnVisibility, ...parsed };
+      } catch {}
+    } else {
+      // First time for this TF: start from defaults (all visible)
+      this.gridColumnVisibility = {
+        broker: true, ny: true, ist: true,
+        open: true, high: true, low: true, close: true, rsi: true
+      };
+    }
+  }
+
+  private saveGridVisibilityForTf(tf: string) {
+    const key = `gridColumnVisibility_${tf}`;
+    localStorage.setItem(key, JSON.stringify(this.gridColumnVisibility));
+  }
+
+  private saveGridColumnVisibility() {
+    // For current TF
+    this.saveGridVisibilityForTf(this.selectedTimeframe);
+  }
+
+  resetGridColumns() {
+    this.gridColumnVisibility = {
+      broker: true, ny: true, ist: true,
+      open: true, high: true, low: true, close: true, rsi: true
+    };
+    this.saveGridColumnVisibility();
+  }
+
+  exportGridToCsv() {
+    const data = this.gridData;
+    if (!data || data.length === 0) return;
+
+    const visibleCols = this.gridColumnDefs.filter(c => this.isGridColumnVisible(c.key));
+    if (visibleCols.length === 0) return;
+
+    const headers = visibleCols.map(c => c.label);
+
+    const csvRows: string[] = [];
+    csvRows.push(headers.join(','));
+
+    data.forEach((row: any) => {
+      const values = visibleCols.map(col => {
+        let val: any;
+        switch (col.key) {
+          case 'broker': val = row.time; break;
+          case 'ny': val = row.nyTime; break;
+          case 'ist': val = row.istTime; break;
+          case 'open': val = row.open; break;
+          case 'high': val = row.high; break;
+          case 'low': val = row.low; break;
+          case 'close': val = row.close; break;
+          case 'rsi': val = row.rsi; break;
+          default: val = '';
+        }
+        if (val == null) return '';
+        // Escape commas and quotes for CSV
+        const str = String(val);
+        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+          return `"${str.replace(/"/g, '""')}"`;
+        }
+        return str;
+      });
+      csvRows.push(values.join(','));
+    });
+
+    const csvContent = csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    const dateStr = new Date().toISOString().slice(0, 10);
+    link.download = `XAUUSD_${this.selectedTimeframe}_visible_${dateStr}.csv`;
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
+  showAllGridColumns() {
+    Object.keys(this.gridColumnVisibility).forEach(k => this.gridColumnVisibility[k] = true);
+    this.saveGridColumnVisibility();
+  }
+
+  hideAllGridColumns() {
+    Object.keys(this.gridColumnVisibility).forEach(k => this.gridColumnVisibility[k] = false);
+    this.saveGridColumnVisibility();
+  }
+
+  toggleTimesGroup() {
+    const times = ['broker', 'ny', 'ist'];
+    const anyVisible = times.some(k => this.isGridColumnVisible(k));
+    times.forEach(k => this.gridColumnVisibility[k] = !anyVisible);
+    this.saveGridColumnVisibility();
+  }
+
+  // Overview visibility
+  toggleOverviewColumn(key: string) {
+    this.overviewColumnVisibility[key] = !this.overviewColumnVisibility[key];
+    this.saveOverviewColumnVisibility();
+  }
+
+  isOverviewColumnVisible(key: string): boolean {
+    return this.overviewColumnVisibility[key] !== false;
+  }
+
+  get visibleOverviewColumnCount(): number {
+    return this.overviewColumnDefs.filter(c => this.isOverviewColumnVisible(c.key)).length || 1;
+  }
+
+  showAllOverviewColumns() {
+    Object.keys(this.overviewColumnVisibility).forEach(k => this.overviewColumnVisibility[k] = true);
+    this.saveOverviewColumnVisibility();
+  }
+
+  hideAllOverviewColumns() {
+    Object.keys(this.overviewColumnVisibility).forEach(k => this.overviewColumnVisibility[k] = false);
+    this.saveOverviewColumnVisibility();
+  }
+
+  private loadOverviewColumnVisibility() {
+    const tf = this.selectedTimeframe;
+    this.loadOverviewVisibilityForTf(tf);
+  }
+
+  private loadOverviewVisibilityForTf(tf: string) {
+    const key = `overviewColumnVisibility_${tf}`;
+    const saved = localStorage.getItem(key);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        this.overviewColumnVisibility = { ...this.overviewColumnVisibility, ...parsed };
+      } catch {}
+    } else {
+      this.overviewColumnVisibility = {
+        time: true, open: true, high: true, low: true, close: true, vol: true
+      };
+    }
+  }
+
+  private saveOverviewVisibilityForTf(tf: string) {
+    const key = `overviewColumnVisibility_${tf}`;
+    localStorage.setItem(key, JSON.stringify(this.overviewColumnVisibility));
+  }
+
+  private saveOverviewColumnVisibility() {
+    this.saveOverviewVisibilityForTf(this.selectedTimeframe);
+  }
+
+  exportOverviewToCsv() {
+    const data = this.marketData.slice(0, 12);
+    if (!data || data.length === 0) return;
+
+    const visibleCols = this.overviewColumnDefs.filter(c => this.isOverviewColumnVisible(c.key));
+    if (visibleCols.length === 0) return;
+
+    const headers = visibleCols.map(c => c.label);
+    const csvRows: string[] = [headers.join(',')];
+
+    data.forEach((row: any) => {
+      const values = visibleCols.map(col => {
+        let val: any;
+        if (col.key === 'time') val = row.time;
+        else if (col.key === 'open') val = row.open;
+        else if (col.key === 'high') val = row.high;
+        else if (col.key === 'low') val = row.low;
+        else if (col.key === 'close') val = row.close;
+        else if (col.key === 'vol') val = row.tickVolume ? (row.tickVolume / 1000) + 'k' : '';
+        else val = '';
+        const str = val == null ? '' : String(val);
+        if (str.includes(',') || str.includes('"')) {
+          return `"${str.replace(/"/g, '""')}"`;
+        }
+        return str;
+      });
+      csvRows.push(values.join(','));
+    });
+
+    const csvContent = csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `XAUUSD_${this.selectedTimeframe}_overview_${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   }
 
   private calculatePriceChange() {
@@ -667,8 +1016,13 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       const base = 2650 + Math.sin(i / 2.5) * 40 + (Math.random() - 0.5) * 8;
       const o = base - 3;
       const c = base + (Math.random() - 0.5) * 6;
+      const nyOffset = -4 * 3600 * 1000;      // rough NY (EDT approx)
+      const istOffset = 5.5 * 3600 * 1000;    // IST
+
       return {
         time: t.toISOString(),
+        nyTime: new Date(t.getTime() + nyOffset).toISOString(),
+        istTime: new Date(t.getTime() + istOffset).toISOString(),
         open: o,
         high: Math.max(o, c) + 4,
         low: Math.min(o, c) - 4,
@@ -754,5 +1108,8 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     if (this.marketChart) {
       this.marketChart.destroy();
     }
+    // Persist current visibility state
+    this.saveGridVisibilityForTf(this.selectedTimeframe);
+    this.saveOverviewVisibilityForTf(this.selectedTimeframe);
   }
 }

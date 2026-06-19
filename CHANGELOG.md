@@ -7,6 +7,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [Unreleased] - 2026-06-19
 
 ### Added
+- **Data Grid timezone columns** (Broker / New York / IST):
+  - Backend: `XauusdCandle` now carries `nyTime` + `istTime` (converted in `getXauusdGridData` using UTC→target zones).
+  - UI: Data Grid tab renders three time columns (BROKER | NY | IST) with the existing OHLC + RSI.
+  - Fallback data also provides demo values.
+- **Data Grid column visibility** (enhanced):
+  - Full per-column show/hide toggles (Broker, NY, IST, O, H, L, C, RSI).
+  - "Times" group toggle, Show all, Hide all, Reset.
+  - Preferences saved in localStorage.
+  - Dynamic colspan. 
+- **Overview recent candles visibility**:
+  - Same show/hide functionality added for the Overview table and mobile cards (Time, O, H, L, C, Vol).
+  - Compact controls + All/None buttons.
+  - Responsive grid layout adjusts automatically.
+  - All visibility is persistent across reloads and views.
+- **Per-timeframe column visibility**:
+  - Visibility settings (which columns are shown) are now saved separately per timeframe (D1, H4, M15 etc.).
+  - Switching timeframes restores the last used column set for that TF.
+- **CSV Export**:
+  - Data Grid: "⬇ CSV" button exports **only visible columns** (incl. Broker/NY/IST).
+  - Overview: Small CSV button in Recent Candles header (respects visibility).
+  - Both use proper escaping, include selected TF and date in filename.
+- **Per-timeframe column visibility**:
+  - Visibility settings (which columns are shown) are now saved separately per timeframe (D1, H4, M15 etc.).
+  - Switching timeframes restores the last used column set for that TF.
+  - Persisted on TF switch and component destroy.
 - **Dedicated Health Dashboard polish** (backend + Angular):
   - Backend `getMarketDataHealth()` now computes real per-TF freshness using production thresholds (M1 <2m, M5<7m, ..., D1<25h).
   - Richer response includes `freshCount`, `total`, per-TF `fresh` flag + `lastSynced`.
