@@ -72,4 +72,17 @@ public class UserService implements UserDetailsService {
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         return userRepository.save(user);
     }
+
+    public String getColumnPreferences(String username) {
+        User u = findByUsername(username);
+        return u != null ? u.getColumnPreferences() : null;
+    }
+
+    public void updateColumnPreferences(String username, String prefsJson) {
+        User u = findByUsername(username);
+        if (u != null) {
+            u.setColumnPreferences(prefsJson);
+            userRepository.save(u);
+        }
+    }
 }

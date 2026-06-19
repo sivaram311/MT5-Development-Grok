@@ -8,6 +8,8 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -66,6 +68,9 @@ public class MarketDataService {
 
         List<XauusdCandle> data = jdbcTemplate.query(sql, rowMapper, params);
 
+        // Enrich with NY / IST times (useful for Data Grid and other views)
+        enrichTimezoneFields(data);
+
         // Return DESC (newest first) so grids and recent views show latest data first
         return data;
     }
@@ -87,6 +92,9 @@ public class MarketDataService {
             calculateRSI(candles, rsiPeriod);
         }
 
+        // Add broker / NY / IST times for the Data Grid UI
+        enrichTimezoneFields(candles);
+
         // Return the most recent 'limit' candles in DESC order (newest first)
         if (candles.size() > limit) {
             List<XauusdCandle> recent = candles.subList(candles.size() - limit, candles.size());
@@ -96,6 +104,30 @@ public class MarketDataService {
         // If less than limit, reverse back to DESC
         Collections.reverse(candles);
         return candles;
+    }
+
+    /**
+     * Enrich grid candles with timezone-converted times for the Data Grid.
+     * Assumes the stored 'time' (broker time) represents a UTC instant for conversion.
+     * - time      : Broker time (unchanged)
+     * - nyTime    : New York time
+     * - istTime   : India (Kolkata) time
+     */
+    private void enrichTimezoneFields(List<XauusdCandle> candles) {
+        if (candles == null || candles.isEmpty()) return;
+
+        ZoneId baseZone = ZoneId.of("UTC");           // base assumption for stored bar times
+        ZoneId nyZone   = ZoneId.of("America/New_York");
+        ZoneId istZone  = ZoneId.of("Asia/Kolkata");
+
+        for (XauusdCandle c : candles) {
+            LocalDateTime brokerTime = c.getTime();
+            if (brokerTime != null) {
+                ZonedDateTime zdt = brokerTime.atZone(baseZone);
+                c.setNyTime( zdt.withZoneSameInstant(nyZone).toLocalDateTime() );
+                c.setIstTime( zdt.withZoneSameInstant(istZone).toLocalDateTime() );
+            }
+        }
     }
 
     private void calculateRSI(List<XauusdCandle> candles, int period) {

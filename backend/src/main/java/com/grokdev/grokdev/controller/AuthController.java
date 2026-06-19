@@ -136,6 +136,31 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Not authenticated");
     }
 
+    @GetMapping("/preferences")
+    public ResponseEntity<?> getPreferences() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getName())) {
+            String username = auth.getName();
+            String prefs = userService.getColumnPreferences(username);
+            Map<String, Object> response = new HashMap<>();
+            response.put("preferences", prefs != null ? prefs : "{}");
+            return ResponseEntity.ok(response);
+        }
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Not authenticated");
+    }
+
+    @PutMapping("/preferences")
+    public ResponseEntity<?> updatePreferences(@RequestBody Map<String, String> body) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getName())) {
+            String username = auth.getName();
+            String prefsJson = body.get("preferences");
+            userService.updateColumnPreferences(username, prefsJson);
+            return ResponseEntity.ok(Map.of("message", "Preferences saved"));
+        }
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Not authenticated");
+    }
+
     @PostMapping("/logout")
     @Transactional
     public ResponseEntity<?> logout() {

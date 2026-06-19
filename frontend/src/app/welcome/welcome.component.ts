@@ -161,6 +161,11 @@ Chart.register(...registerables);
                       class="ml-3 text-[10px] px-2 py-0.5 bg-white border text-emerald-600 hover:bg-emerald-50 rounded active:bg-emerald-100">
                 CSV
               </button>
+              <button (click)="copyVisibleToClipboard('overview')" 
+                      [disabled]="marketData.length === 0"
+                      class="ml-1 text-[10px] px-2 py-0.5 bg-white border text-blue-600 hover:bg-blue-50 rounded active:bg-blue-100">
+                Copy
+              </button>
             </div>
 
             <!-- Overview column visibility (compact) -->
@@ -168,7 +173,11 @@ Chart.register(...registerables);
               <div class="flex flex-wrap items-center gap-1 mb-1">
                 <span class="text-[10px] text-gray-400 mr-1">Show:</span>
                 <ng-container *ngFor="let col of overviewColumnDefs">
-                  <div class="flex items-center border rounded overflow-hidden text-[10px]">
+                  <div class="flex items-center border rounded overflow-hidden text-[10px]"
+                       draggable="true"
+                       (dragstart)="onOverviewDragStart($event, col.key)"
+                       (dragover)="onOverviewDragOver($event)"
+                       (drop)="onOverviewDrop($event, col.key)">
                     <button (click)="toggleOverviewColumn(col.key)"
                             class="px-1.5 py-px transition"
                             [class.bg-blue-600]="isOverviewColumnVisible(col.key)"
@@ -278,7 +287,12 @@ Chart.register(...registerables);
                        [class.bg-blue-600]="isGridColumnVisible(col.key)"
                        [class.border-blue-600]="isGridColumnVisible(col.key)"
                        [class.bg-white]="!isGridColumnVisible(col.key)"
-                       [class.border-gray-200]="!isGridColumnVisible(col.key)">
+                       [class.border-gray-200]="!isGridColumnVisible(col.key)"
+                       draggable="true"
+                       (dragstart)="onGridDragStart($event, col.key)"
+                       (dragover)="onGridDragOver($event)"
+                       (drop)="onGridDrop($event, col.key)"
+                       (dragend)="onGridDragEnd()">
                     <button (click)="toggleGridColumn(col.key)"
                             class="px-2 py-0.5 text-[10px] font-medium transition"
                             [class.text-white]="isGridColumnVisible(col.key)"
@@ -353,6 +367,11 @@ Chart.register(...registerables);
                         class="px-3 py-1 bg-white border text-emerald-600 hover:bg-emerald-50 active:bg-emerald-100 rounded-2xl font-medium text-xs transition disabled:opacity-60">
                   ⬇ CSV
                 </button>
+                <button (click)="copyVisibleToClipboard('grid')" 
+                        [disabled]="gridData.length === 0"
+                        class="px-3 py-1 bg-white border text-blue-600 hover:bg-blue-50 active:bg-blue-100 rounded-2xl font-medium text-xs transition disabled:opacity-60">
+                  Copy
+                </button>
                 <button (click)="loadGridData()" 
                         [disabled]="isGridLoading"
                         class="px-4 py-1 bg-white border text-blue-600 hover:bg-blue-50 active:bg-blue-100 rounded-2xl font-medium text-xs transition disabled:opacity-60">
@@ -392,8 +411,27 @@ Chart.register(...registerables);
             </div>
           </div>
 
+          <!-- Health TF visibility toggles -->
+          <div class="px-1 pb-1">
+            <div class="text-[10px] uppercase tracking-[1px] text-gray-400 mb-1">Health TFs</div>
+            <div class="flex flex-wrap gap-1">
+              <button *ngFor="let tf of timeframes"
+                      (click)="toggleHealthTf(tf)"
+                      class="px-2 py-0.5 text-[10px] rounded border transition"
+                      [class.bg-blue-600]="isHealthTfVisible(tf)"
+                      [class.text-white]="isHealthTfVisible(tf)"
+                      [class.border-blue-600]="isHealthTfVisible(tf)"
+                      [class.bg-white]="!isHealthTfVisible(tf)"
+                      [class.text-gray-600]="!isHealthTfVisible(tf)"
+                      [class.border-gray-200]="!isHealthTfVisible(tf)">
+                {{ tf }}
+              </button>
+            </div>
+          </div>
+
           <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
             <div *ngFor="let tf of timeframes" 
+                 *ngIf="isHealthTfVisible(tf)"
                  class="bg-white border border-gray-100 rounded-2xl px-3 py-2.5 text-sm shadow-sm flex justify-between items-center transition hover:border-gray-200"
                  [class.border-emerald-200]="isFresh(tf)"
                  [class.border-amber-200]="!isFresh(tf) && syncStatus[tf]">
@@ -544,6 +582,11 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
   // Current display order for overview columns (persisted per TF)
   overviewColumnOrder: string[] = ['time', 'open', 'high', 'low', 'close', 'vol'];
 
+  // Visibility for Health dashboard TF cards
+  healthTfVisibility: { [key: string]: boolean } = {
+    'D1': true, 'H4': true, 'H1': true, 'M15': true, 'M5': true, 'M1': true
+  };
+
   // Grid filters
   gridFrom: string = '';
   gridTo: string = '';
@@ -595,6 +638,17 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     // Restore column visibility prefs for Data Grid + Overview
     this.loadGridColumnVisibility();
     this.loadOverviewColumnVisibility();
+
+    // Health TF visibility
+    const savedHealth = localStorage.getItem('healthTfVisibility');
+    if (savedHealth) {
+      try {
+        this.healthTfVisibility = { ...this.healthTfVisibility, ...JSON.parse(savedHealth) };
+      } catch {}
+    }
+
+    // Load from backend (overrides local for current TF)
+    this.loadPreferencesFromBackend();
   }
 
   ngAfterViewInit() {
@@ -833,6 +887,7 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
 
   private saveGridColumnVisibility() {
     this.saveGridVisibilityForTf(this.selectedTimeframe);
+    this.savePreferencesToBackend();
   }
 
   toggleGridColumn(key: string) {
@@ -858,6 +913,34 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       .filter(k => this.isGridColumnVisible(k))
       .map(k => this.gridColumnDefs.find(d => d.key === k))
       .filter((d): d is any => !!d);
+  }
+
+  // Drag and drop for grid column reordering
+  onGridDragStart(event: DragEvent, key: string) {
+    event.dataTransfer?.setData('text/plain', key);
+    if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+  }
+
+  onGridDragOver(event: DragEvent) {
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+  }
+
+  onGridDrop(event: DragEvent, targetKey: string) {
+    event.preventDefault();
+    const draggedKey = event.dataTransfer?.getData('text/plain');
+    if (!draggedKey || draggedKey === targetKey) return;
+    const fromIdx = this.gridColumnOrder.indexOf(draggedKey);
+    const toIdx = this.gridColumnOrder.indexOf(targetKey);
+    if (fromIdx > -1 && toIdx > -1) {
+      const [moved] = this.gridColumnOrder.splice(fromIdx, 1);
+      this.gridColumnOrder.splice(toIdx, 0, moved);
+      this.saveGridColumnVisibility();
+    }
+  }
+
+  onGridDragEnd() {
+    // optional cleanup
   }
 
   resetGridColumns() {
@@ -992,6 +1075,40 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       .filter((d): d is any => !!d);
   }
 
+  toggleHealthTf(tf: string) {
+    this.healthTfVisibility[tf] = !this.healthTfVisibility[tf];
+    localStorage.setItem('healthTfVisibility', JSON.stringify(this.healthTfVisibility));
+    this.savePreferencesToBackend();
+  }
+
+  isHealthTfVisible(tf: string): boolean {
+    return this.healthTfVisibility[tf] !== false;
+  }
+
+  // Drag and drop for overview column reordering
+  onOverviewDragStart(event: DragEvent, key: string) {
+    event.dataTransfer?.setData('text/plain', key);
+    if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+  }
+
+  onOverviewDragOver(event: DragEvent) {
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+  }
+
+  onOverviewDrop(event: DragEvent, targetKey: string) {
+    event.preventDefault();
+    const draggedKey = event.dataTransfer?.getData('text/plain');
+    if (!draggedKey || draggedKey === targetKey) return;
+    const fromIdx = this.overviewColumnOrder.indexOf(draggedKey);
+    const toIdx = this.overviewColumnOrder.indexOf(targetKey);
+    if (fromIdx > -1 && toIdx > -1) {
+      const [moved] = this.overviewColumnOrder.splice(fromIdx, 1);
+      this.overviewColumnOrder.splice(toIdx, 0, moved);
+      this.saveOverviewColumnVisibility();
+    }
+  }
+
   get visibleOverviewColumnCount(): number {
     return this.overviewColumnDefs.filter(c => this.isOverviewColumnVisible(c.key)).length || 1;
   }
@@ -1048,6 +1165,7 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
 
   private saveOverviewColumnVisibility() {
     this.saveOverviewVisibilityForTf(this.selectedTimeframe);
+    this.savePreferencesToBackend();
   }
 
   exportOverviewToCsv() {
@@ -1089,6 +1207,113 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+  }
+
+  copyVisibleToClipboard(view: 'grid' | 'overview') {
+    let headers: string[] = [];
+    let rowsData: any[] = [];
+    const tf = this.selectedTimeframe;
+
+    if (view === 'grid') {
+      const cols = this.getOrderedVisibleGridColumns();
+      headers = cols.map(c => c.label);
+      rowsData = this.gridData.map((row: any) => {
+        return cols.map(col => {
+          let val: any;
+          switch (col.key) {
+            case 'broker': val = row.time; break;
+            case 'ny': val = row.nyTime; break;
+            case 'ist': val = row.istTime; break;
+            case 'open': val = row.open; break;
+            case 'high': val = row.high; break;
+            case 'low': val = row.low; break;
+            case 'close': val = row.close; break;
+            case 'rsi': val = row.rsi; break;
+            default: val = '';
+          }
+          return val != null ? String(val) : '';
+        });
+      });
+    } else {
+      const cols = this.getOrderedVisibleOverviewColumns();
+      headers = cols.map(c => c.label);
+      const data = this.marketData.slice(0, 12);
+      rowsData = data.map((row: any) => {
+        return cols.map(col => {
+          let val: any;
+          if (col.key === 'time') val = row.time;
+          else if (col.key === 'open') val = row.open;
+          else if (col.key === 'high') val = row.high;
+          else if (col.key === 'low') val = row.low;
+          else if (col.key === 'close') val = row.close;
+          else if (col.key === 'vol') val = row.tickVolume ? (row.tickVolume / 1000) + 'k' : '';
+          else val = '';
+          return val != null ? String(val) : '';
+        });
+      });
+    }
+
+    const tsv = [headers.join('\t'), ...rowsData.map(r => r.join('\t'))].join('\n');
+    navigator.clipboard.writeText(tsv).then(() => {
+      // Simple feedback
+      const origTitle = document.title;
+      document.title = 'Copied!';
+      setTimeout(() => document.title = origTitle, 1500);
+    }).catch(() => {
+      // fallback
+      const textarea = document.createElement('textarea');
+      textarea.value = tsv;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+    });
+  }
+
+  loadPreferencesFromBackend() {
+    this.http.get<any>(`${environment.apiUrl}/auth/preferences`).subscribe({
+      next: (res) => {
+        if (res && res.preferences) {
+          try {
+            const prefs = JSON.parse(res.preferences || '{}');
+            const tf = this.selectedTimeframe;
+            if (prefs.grid && prefs.grid[tf]) {
+              const g = prefs.grid[tf];
+              if (g.visibility) this.gridColumnVisibility = { ...this.gridColumnVisibility, ...g.visibility };
+              if (g.order && Array.isArray(g.order)) this.gridColumnOrder = g.order.filter((k: string) => this.gridColumnDefs.some(d => d.key === k)) || this.gridColumnOrder;
+            }
+            if (prefs.overview && prefs.overview[tf]) {
+              const o = prefs.overview[tf];
+              if (o.visibility) this.overviewColumnVisibility = { ...this.overviewColumnVisibility, ...o.visibility };
+              if (o.order && Array.isArray(o.order)) this.overviewColumnOrder = o.order.filter((k: string) => this.overviewColumnDefs.some(d => d.key === k)) || this.overviewColumnOrder;
+            }
+            if (prefs.health) {
+              this.healthTfVisibility = { ...this.healthTfVisibility, ...prefs.health };
+            }
+          } catch (e) { console.warn('Failed to parse backend prefs'); }
+        }
+      }
+    });
+  }
+
+  savePreferencesToBackend() {
+    const tf = this.selectedTimeframe;
+    const prefs: any = {
+      grid: {},
+      overview: {},
+      health: this.healthTfVisibility
+    };
+    prefs.grid[tf] = {
+      visibility: this.gridColumnVisibility,
+      order: this.gridColumnOrder
+    };
+    prefs.overview[tf] = {
+      visibility: this.overviewColumnVisibility,
+      order: this.overviewColumnOrder
+    };
+    this.http.put(`${environment.apiUrl}/auth/preferences`, { preferences: JSON.stringify(prefs) }).subscribe({
+      error: () => {} // fail silent for now
+    });
   }
 
   private calculatePriceChange() {
@@ -1241,5 +1466,6 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     // Persist current visibility state
     this.saveGridVisibilityForTf(this.selectedTimeframe);
     this.saveOverviewVisibilityForTf(this.selectedTimeframe);
+    this.savePreferencesToBackend();
   }
 }

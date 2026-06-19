@@ -70,11 +70,19 @@ Quick latest N candles (default 200).
 
 ### GET `/api/market/xauusd/{timeframe}/grid`
 
-Returns the most recent completed candles (DESC by time - newest first) including **RSI(14)** (calculated server-side using 14-period Wilder smoothing) for the data grid view.
+Returns the most recent completed candles (DESC by time - newest first) including:
+
+- **RSI(14)** (server-side Wilder)
+- Timezone columns for the Data Grid:
+  - `time` – Broker / MT5 server time
+  - `nyTime` – New York (America/New_York)
+  - `istTime` – Indian (Asia/Kolkata)
+
+Assumes base stored time is UTC for conversion (adjustable in service if needed).
 
 Supports `limit`.
 
-The Data Grid in the UI uses this endpoint. Data is sorted descending by time.
+The Data Grid tab uses this endpoint. Data is sorted descending by time.
 
 ### GET `/api/market/xauusd/sync-status`
 

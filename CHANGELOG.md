@@ -21,12 +21,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   - Compact controls + All/None buttons.
   - Responsive grid layout adjusts automatically.
   - All visibility is persistent across reloads and views.
-- **Column visibility enhancements**:
-  - Per-timeframe persistence for visibility + display order (D1, H4, etc. remember their own layouts).
-  - Reordering via ↑ ↓ arrows on column pills (affects table rendering order and CSV export).
-  - Quick presets: All, Times+OHLC, +RSI, Minimal.
-  - CSV exports now follow current visible order.
-  - Persisted on TF switch and destroy.
+- **Column visibility enhancements** (completed all recs):
+  - Drag & drop reordering on pills (HTML5 native) + arrows.
+  - Copy visible to clipboard (TSV) next to CSV exports.
+  - Presets as mobile-friendly chips.
+  - Backend-persisted preferences via /api/auth/preferences (per-user, includes grid/ov/health per TF).
+  - Health dashboard now supports per-TF card visibility toggles.
+  - Full sync between local and backend on load/save.
 - **Dedicated Health Dashboard polish** (backend + Angular):
   - Backend `getMarketDataHealth()` now computes real per-TF freshness using production thresholds (M1 <2m, M5<7m, ..., D1<25h).
   - Richer response includes `freshCount`, `total`, per-TF `fresh` flag + `lastSynced`.

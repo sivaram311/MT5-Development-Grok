@@ -27,4 +27,7 @@ public class User {
 
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    @Column(name = "column_preferences", columnDefinition = "TEXT")
+    private String columnPreferences;
 }
