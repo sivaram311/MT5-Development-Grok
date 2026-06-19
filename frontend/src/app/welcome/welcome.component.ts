@@ -167,20 +167,23 @@ Chart.register(...registerables);
             <div class="px-4 pt-2 pb-1 bg-white text-xs">
               <div class="flex flex-wrap items-center gap-1 mb-1">
                 <span class="text-[10px] text-gray-400 mr-1">Show:</span>
-                <button *ngFor="let col of overviewColumnDefs"
-                        (click)="toggleOverviewColumn(col.key)"
-                        class="px-2 py-px text-[10px] rounded border transition active:scale-[0.98]"
-                        [class.bg-blue-600]="isOverviewColumnVisible(col.key)"
-                        [class.text-white]="isOverviewColumnVisible(col.key)"
-                        [class.border-blue-600]="isOverviewColumnVisible(col.key)"
-                        [class.bg-white]="!isOverviewColumnVisible(col.key)"
-                        [class.text-gray-500]="!isOverviewColumnVisible(col.key)"
-                        [class.border-gray-200]="!isOverviewColumnVisible(col.key)"
-                        [title]="col.title">
-                  {{ col.label }}
-                </button>
-                <button (click)="showAllOverviewColumns()" class="px-1.5 py-px text-[10px] text-emerald-600 border border-emerald-200 rounded">All</button>
-                <button (click)="hideAllOverviewColumns()" class="px-1.5 py-px text-[10px] text-rose-600 border border-rose-200 rounded">None</button>
+                <ng-container *ngFor="let col of overviewColumnDefs">
+                  <div class="flex items-center border rounded overflow-hidden text-[10px]">
+                    <button (click)="toggleOverviewColumn(col.key)"
+                            class="px-1.5 py-px transition"
+                            [class.bg-blue-600]="isOverviewColumnVisible(col.key)"
+                            [class.text-white]="isOverviewColumnVisible(col.key)"
+                            [class.text-gray-500]="!isOverviewColumnVisible(col.key)">
+                      {{ col.label }}
+                    </button>
+                    <div *ngIf="isOverviewColumnVisible(col.key)" class="flex text-[9px] border-l">
+                      <button (click)="moveOverviewColumn(col.key, 'up'); $event.stopImmediatePropagation()" class="px-0.5">↑</button>
+                      <button (click)="moveOverviewColumn(col.key, 'down'); $event.stopImmediatePropagation()" class="px-0.5 border-l">↓</button>
+                    </div>
+                  </div>
+                </ng-container>
+                <button (click)="showAllOverviewColumns()" class="px-1.5 py-px text-emerald-600 border border-emerald-200 rounded">All</button>
+                <button (click)="hideAllOverviewColumns()" class="px-1.5 py-px text-rose-600 border border-rose-200 rounded">None</button>
               </div>
             </div>
             
@@ -188,22 +191,24 @@ Chart.register(...registerables);
             <table class="hidden md:table w-full text-sm">
               <thead>
                 <tr class="border-b text-[10px] uppercase tracking-widest text-gray-400">
-                  <th *ngIf="isOverviewColumnVisible('time')" class="text-left py-2 px-4 font-medium">Time</th>
-                  <th *ngIf="isOverviewColumnVisible('open')" class="text-right py-2 px-2 font-medium">Open</th>
-                  <th *ngIf="isOverviewColumnVisible('high')" class="text-right py-2 px-2 font-medium">High</th>
-                  <th *ngIf="isOverviewColumnVisible('low')" class="text-right py-2 px-2 font-medium">Low</th>
-                  <th *ngIf="isOverviewColumnVisible('close')" class="text-right py-2 px-2 font-medium">Close</th>
-                  <th *ngIf="isOverviewColumnVisible('vol')" class="text-right py-2 px-4 font-medium">Vol</th>
+                  <th *ngFor="let col of getOrderedVisibleOverviewColumns()" 
+                      class="text-left py-2 px-4 font-medium">{{ col.label }}</th>
                 </tr>
               </thead>
               <tbody>
                 <tr *ngFor="let candle of marketData.slice(0, 12)" class="border-b last:border-none hover:bg-gray-50/80 transition-colors">
-                  <td *ngIf="isOverviewColumnVisible('time')" class="px-4 py-2 font-mono text-xs text-gray-600">{{ candle.time | date:'MMM dd HH:mm' }}</td>
-                  <td *ngIf="isOverviewColumnVisible('open')" class="px-2 py-2 text-right font-mono" [ngClass]="getCandleColor(candle)">{{ candle.open | number:'1.2-2' }}</td>
-                  <td *ngIf="isOverviewColumnVisible('high')" class="px-2 py-2 text-right font-mono text-emerald-600">{{ candle.high | number:'1.2-2' }}</td>
-                  <td *ngIf="isOverviewColumnVisible('low')" class="px-2 py-2 text-right font-mono text-rose-600">{{ candle.low | number:'1.2-2' }}</td>
-                  <td *ngIf="isOverviewColumnVisible('close')" class="px-2 py-2 text-right font-mono font-semibold" [ngClass]="getCandleColor(candle)">{{ candle.close | number:'1.2-2' }}</td>
-                  <td *ngIf="isOverviewColumnVisible('vol')" class="px-4 py-2 text-right font-mono text-xs text-gray-500">{{ (candle.tickVolume / 1000) | number:'1.0-0' }}k</td>
+                  <td *ngFor="let col of getOrderedVisibleOverviewColumns()" 
+                      class="px-2 py-2 font-mono text-xs"
+                      [ngClass]="{'text-right': ['open','high','low','close','vol'].includes(col.key), 'text-gray-600': col.key==='time'}">
+                    <ng-container [ngSwitch]="col.key">
+                      <span *ngSwitchCase="'time'">{{ candle.time | date:'MMM dd HH:mm' }}</span>
+                      <span *ngSwitchCase="'open'">{{ candle.open | number:'1.2-2' }}</span>
+                      <span *ngSwitchCase="'high'">{{ candle.high | number:'1.2-2' }}</span>
+                      <span *ngSwitchCase="'low'">{{ candle.low | number:'1.2-2' }}</span>
+                      <span *ngSwitchCase="'close'">{{ candle.close | number:'1.2-2' }}</span>
+                      <span *ngSwitchCase="'vol'">{{ (candle.tickVolume / 1000) | number:'1.0-0' }}k</span>
+                    </ng-container>
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -260,19 +265,35 @@ Chart.register(...registerables);
                   </button>
                 </div>
               </div>
+              <!-- Presets -->
+              <div class="flex flex-wrap gap-1 mb-1">
+                <button (click)="applyGridPreset('all')" class="text-[9px] px-1.5 py-0.5 bg-gray-100 hover:bg-gray-200 rounded">All</button>
+                <button (click)="applyGridPreset('times+core')" class="text-[9px] px-1.5 py-0.5 bg-gray-100 hover:bg-gray-200 rounded">Times+OHLC</button>
+                <button (click)="applyGridPreset('rsi')" class="text-[9px] px-1.5 py-0.5 bg-gray-100 hover:bg-gray-200 rounded">+RSI</button>
+                <button (click)="applyGridPreset('minimal')" class="text-[9px] px-1.5 py-0.5 bg-gray-100 hover:bg-gray-200 rounded">Minimal</button>
+              </div>
               <div class="flex flex-wrap gap-1">
-                <button *ngFor="let col of gridColumnDefs"
-                        (click)="toggleGridColumn(col.key)"
-                        class="px-2.5 py-0.5 text-[11px] font-medium rounded-full border transition active:scale-[0.985]"
-                        [class.bg-blue-600]="isGridColumnVisible(col.key)"
-                        [class.text-white]="isGridColumnVisible(col.key)"
-                        [class.border-blue-600]="isGridColumnVisible(col.key)"
-                        [class.bg-white]="!isGridColumnVisible(col.key)"
-                        [class.text-gray-600]="!isGridColumnVisible(col.key)"
-                        [class.border-gray-200]="!isGridColumnVisible(col.key)"
-                        [title]="col.title">
-                  {{ col.label }}
-                </button>
+                <ng-container *ngFor="let col of gridColumnDefs">
+                  <div class="flex items-center border rounded-full overflow-hidden"
+                       [class.bg-blue-600]="isGridColumnVisible(col.key)"
+                       [class.border-blue-600]="isGridColumnVisible(col.key)"
+                       [class.bg-white]="!isGridColumnVisible(col.key)"
+                       [class.border-gray-200]="!isGridColumnVisible(col.key)">
+                    <button (click)="toggleGridColumn(col.key)"
+                            class="px-2 py-0.5 text-[10px] font-medium transition"
+                            [class.text-white]="isGridColumnVisible(col.key)"
+                            [class.text-gray-600]="!isGridColumnVisible(col.key)"
+                            [title]="col.title">
+                      {{ col.label }}
+                    </button>
+                    <div *ngIf="isGridColumnVisible(col.key)" class="flex border-l border-white/30">
+                      <button (click)="moveGridColumn(col.key, 'up'); $event.stopImmediatePropagation()" 
+                              class="px-1 text-white/80 hover:text-white text-[9px] leading-none">↑</button>
+                      <button (click)="moveGridColumn(col.key, 'down'); $event.stopImmediatePropagation()" 
+                              class="px-1 text-white/80 hover:text-white text-[9px] leading-none border-l border-white/30">↓</button>
+                    </div>
+                  </div>
+                </ng-container>
               </div>
             </div>
 
@@ -280,33 +301,41 @@ Chart.register(...registerables);
               <table class="min-w-full text-sm">
                 <thead>
                   <tr class="border-b text-[10px] uppercase tracking-[1px] text-gray-400 bg-gray-50">
-                    <th *ngIf="isGridColumnVisible('broker')" class="text-left py-2.5 px-2 font-medium" title="Broker / MT5 server time">BROKER</th>
-                    <th *ngIf="isGridColumnVisible('ny')" class="text-left py-2.5 px-2 font-medium" title="New York time (America/New_York)">NY</th>
-                    <th *ngIf="isGridColumnVisible('ist')" class="text-left py-2.5 px-2 font-medium" title="Indian Standard Time (Asia/Kolkata)">IST</th>
-                    <th *ngIf="isGridColumnVisible('open')" class="text-right py-2.5 px-3 font-medium">OPEN</th>
-                    <th *ngIf="isGridColumnVisible('high')" class="text-right py-2.5 px-3 font-medium">HIGH</th>
-                    <th *ngIf="isGridColumnVisible('low')" class="text-right py-2.5 px-3 font-medium">LOW</th>
-                    <th *ngIf="isGridColumnVisible('close')" class="text-right py-2.5 px-3 font-medium">CLOSE</th>
-                    <th *ngIf="isGridColumnVisible('rsi')" class="text-right py-2.5 px-4 font-medium">RSI</th>
+                    <th *ngFor="let col of getOrderedVisibleGridColumns()" 
+                        class="text-left py-2.5 px-2 font-medium" 
+                        [title]="col.title">
+                      {{ col.label.toUpperCase() }}
+                    </th>
                   </tr>
                 </thead>
                 <tbody class="divide-y">
                   <tr *ngFor="let row of gridData" class="hover:bg-blue-50/30 transition-colors group">
-                    <td *ngIf="isGridColumnVisible('broker')" class="px-2 py-2.5 font-mono text-[11px] text-gray-700 group-hover:text-gray-900">{{ row.time ? (row.time | date:'MMM dd HH:mm') : '—' }}</td>
-                    <td *ngIf="isGridColumnVisible('ny')" class="px-2 py-2.5 font-mono text-[11px] text-blue-700">{{ row.nyTime ? (row.nyTime | date:'MMM dd HH:mm') : '—' }}</td>
-                    <td *ngIf="isGridColumnVisible('ist')" class="px-2 py-2.5 font-mono text-[11px] text-emerald-700">{{ row.istTime ? (row.istTime | date:'MMM dd HH:mm') : '—' }}</td>
-                    <td *ngIf="isGridColumnVisible('open')" class="px-3 py-2.5 text-right font-mono text-gray-700">{{ row.open | number:'1.2-2' }}</td>
-                    <td *ngIf="isGridColumnVisible('high')" class="px-3 py-2.5 text-right font-mono text-emerald-600">{{ row.high | number:'1.2-2' }}</td>
-                    <td *ngIf="isGridColumnVisible('low')" class="px-3 py-2.5 text-right font-mono text-rose-600">{{ row.low | number:'1.2-2' }}</td>
-                    <td *ngIf="isGridColumnVisible('close')" class="px-3 py-2.5 text-right font-mono font-semibold text-gray-900">{{ row.close | number:'1.2-2' }}</td>
-                    <td *ngIf="isGridColumnVisible('rsi')" class="px-4 py-2.5 text-right font-mono">
-                      <span *ngIf="row.rsi != null" 
-                            class="inline-block min-w-[52px] px-2 py-px rounded font-medium text-xs"
-                            [class.bg-emerald-100]="row.rsi > 50" [class.text-emerald-700]="row.rsi > 50"
-                            [class.bg-rose-100]="row.rsi <= 50" [class.text-rose-700]="row.rsi <= 50">
-                        {{ row.rsi | number:'1.1-1' }}
-                      </span>
-                      <span *ngIf="row.rsi == null" class="text-gray-300">—</span>
+                    <td *ngFor="let col of getOrderedVisibleGridColumns()" 
+                        class="px-2 py-2.5 font-mono text-[11px]"
+                        [ngClass]="{
+                          'text-gray-700 group-hover:text-gray-900': col.key === 'broker',
+                          'text-blue-700': col.key === 'ny',
+                          'text-emerald-700': col.key === 'ist',
+                          'text-right': ['open','high','low','close','rsi'].includes(col.key)
+                        }">
+                      <ng-container [ngSwitch]="col.key">
+                        <span *ngSwitchCase="'broker'">{{ row.time ? (row.time | date:'MMM dd HH:mm') : '—' }}</span>
+                        <span *ngSwitchCase="'ny'">{{ row.nyTime ? (row.nyTime | date:'MMM dd HH:mm') : '—' }}</span>
+                        <span *ngSwitchCase="'ist'">{{ row.istTime ? (row.istTime | date:'MMM dd HH:mm') : '—' }}</span>
+                        <span *ngSwitchCase="'open'">{{ row.open | number:'1.2-2' }}</span>
+                        <span *ngSwitchCase="'high'">{{ row.high | number:'1.2-2' }}</span>
+                        <span *ngSwitchCase="'low'">{{ row.low | number:'1.2-2' }}</span>
+                        <span *ngSwitchCase="'close'">{{ row.close | number:'1.2-2' }}</span>
+                        <span *ngSwitchCase="'rsi'">
+                          <span *ngIf="row.rsi != null" 
+                                class="inline-block min-w-[52px] px-2 py-px rounded font-medium text-xs"
+                                [class.bg-emerald-100]="row.rsi > 50" [class.text-emerald-700]="row.rsi > 50"
+                                [class.bg-rose-100]="row.rsi <= 50" [class.text-rose-700]="row.rsi <= 50">
+                            {{ row.rsi | number:'1.1-1' }}
+                          </span>
+                          <span *ngIf="row.rsi == null" class="text-gray-300">—</span>
+                        </span>
+                      </ng-container>
                     </td>
                   </tr>
                   <tr *ngIf="gridData.length === 0 && !isGridLoading">
@@ -490,6 +519,9 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     { key: 'rsi', label: 'RSI', title: 'RSI (14)' }
   ];
 
+  // Current display order for grid columns (persisted per TF)
+  gridColumnOrder: string[] = ['broker', 'ny', 'ist', 'open', 'high', 'low', 'close', 'rsi'];
+
   // Visibility for Overview recent candles table/cards
   overviewColumnVisibility: { [key: string]: boolean } = {
     time: true,
@@ -508,6 +540,9 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     { key: 'close', label: 'C', title: 'Close' },
     { key: 'vol', label: 'Vol', title: 'Volume' }
   ];
+
+  // Current display order for overview columns (persisted per TF)
+  overviewColumnOrder: string[] = ['time', 'open', 'high', 'low', 'close', 'vol'];
 
   // Grid filters
   gridFrom: string = '';
@@ -745,11 +780,6 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   // ==================== Data Grid Column Visibility ====================
-  toggleGridColumn(key: string) {
-    this.gridColumnVisibility[key] = !this.gridColumnVisibility[key];
-    this.saveGridColumnVisibility();
-  }
-
   isGridColumnVisible(key: string): boolean {
     return this.gridColumnVisibility[key] !== false;
   }
@@ -765,30 +795,69 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   private loadGridVisibilityForTf(tf: string) {
-    const key = `gridColumnVisibility_${tf}`;
-    const saved = localStorage.getItem(key);
-    if (saved) {
+    const visKey = `gridColumnVisibility_${tf}`;
+    const orderKey = `gridColumnOrder_${tf}`;
+    const savedVis = localStorage.getItem(visKey);
+    const savedOrder = localStorage.getItem(orderKey);
+
+    if (savedVis) {
       try {
-        const parsed = JSON.parse(saved);
+        const parsed = JSON.parse(savedVis);
         this.gridColumnVisibility = { ...this.gridColumnVisibility, ...parsed };
       } catch {}
     } else {
-      // First time for this TF: start from defaults (all visible)
       this.gridColumnVisibility = {
         broker: true, ny: true, ist: true,
         open: true, high: true, low: true, close: true, rsi: true
       };
     }
+
+    if (savedOrder) {
+      try {
+        const parsedOrder: string[] = JSON.parse(savedOrder);
+        // Filter to valid keys only
+        this.gridColumnOrder = parsedOrder.filter(k => this.gridColumnDefs.some(d => d.key === k));
+        // Append any missing
+        const missing = this.gridColumnDefs.map(d => d.key).filter(k => !this.gridColumnOrder.includes(k));
+        this.gridColumnOrder.push(...missing);
+      } catch {}
+    }
   }
 
   private saveGridVisibilityForTf(tf: string) {
-    const key = `gridColumnVisibility_${tf}`;
-    localStorage.setItem(key, JSON.stringify(this.gridColumnVisibility));
+    const visKey = `gridColumnVisibility_${tf}`;
+    const orderKey = `gridColumnOrder_${tf}`;
+    localStorage.setItem(visKey, JSON.stringify(this.gridColumnVisibility));
+    localStorage.setItem(orderKey, JSON.stringify(this.gridColumnOrder));
   }
 
   private saveGridColumnVisibility() {
-    // For current TF
     this.saveGridVisibilityForTf(this.selectedTimeframe);
+  }
+
+  toggleGridColumn(key: string) {
+    const wasVisible = this.isGridColumnVisible(key);
+    this.gridColumnVisibility[key] = !wasVisible;
+    if (!wasVisible && !this.gridColumnOrder.includes(key)) {
+      this.gridColumnOrder.push(key);
+    }
+    this.saveGridColumnVisibility();
+  }
+
+  moveGridColumn(key: string, direction: 'up' | 'down') {
+    const idx = this.gridColumnOrder.indexOf(key);
+    if (idx < 0) return;
+    const newIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (newIdx < 0 || newIdx >= this.gridColumnOrder.length) return;
+    [this.gridColumnOrder[idx], this.gridColumnOrder[newIdx]] = [this.gridColumnOrder[newIdx], this.gridColumnOrder[idx]];
+    this.saveGridColumnVisibility();
+  }
+
+  getOrderedVisibleGridColumns() {
+    return this.gridColumnOrder
+      .filter(k => this.isGridColumnVisible(k))
+      .map(k => this.gridColumnDefs.find(d => d.key === k))
+      .filter((d): d is any => !!d);
   }
 
   resetGridColumns() {
@@ -803,7 +872,7 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     const data = this.gridData;
     if (!data || data.length === 0) return;
 
-    const visibleCols = this.gridColumnDefs.filter(c => this.isGridColumnVisible(c.key));
+    const visibleCols = this.getOrderedVisibleGridColumns();
     if (visibleCols.length === 0) return;
 
     const headers = visibleCols.map(c => c.label);
@@ -852,6 +921,7 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
 
   showAllGridColumns() {
     Object.keys(this.gridColumnVisibility).forEach(k => this.gridColumnVisibility[k] = true);
+    this.gridColumnOrder = this.gridColumnDefs.map(d => d.key);
     this.saveGridColumnVisibility();
   }
 
@@ -867,14 +937,59 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     this.saveGridColumnVisibility();
   }
 
+  applyGridPreset(preset: string) {
+    const all = this.gridColumnDefs.map(d => d.key);
+    switch (preset) {
+      case 'all':
+        all.forEach(k => this.gridColumnVisibility[k] = true);
+        this.gridColumnOrder = [...all];
+        break;
+      case 'times+core':
+        ['broker','ny','ist','open','high','low','close'].forEach(k => this.gridColumnVisibility[k] = true);
+        ['rsi'].forEach(k => this.gridColumnVisibility[k] = false);
+        this.gridColumnOrder = ['broker','ny','ist','open','high','low','close','rsi'];
+        break;
+      case 'rsi':
+        all.forEach(k => this.gridColumnVisibility[k] = true);
+        this.gridColumnOrder = ['broker','ny','ist','open','high','low','close','rsi'];
+        break;
+      case 'minimal':
+        ['open','high','low','close'].forEach(k => this.gridColumnVisibility[k] = true);
+        ['broker','ny','ist','rsi'].forEach(k => this.gridColumnVisibility[k] = false);
+        this.gridColumnOrder = ['open','high','low','close'];
+        break;
+    }
+    this.saveGridColumnVisibility();
+  }
+
   // Overview visibility
   toggleOverviewColumn(key: string) {
-    this.overviewColumnVisibility[key] = !this.overviewColumnVisibility[key];
+    const wasVisible = this.isOverviewColumnVisible(key);
+    this.overviewColumnVisibility[key] = !wasVisible;
+    if (!wasVisible && !this.overviewColumnOrder.includes(key)) {
+      this.overviewColumnOrder.push(key);
+    }
     this.saveOverviewColumnVisibility();
   }
 
   isOverviewColumnVisible(key: string): boolean {
     return this.overviewColumnVisibility[key] !== false;
+  }
+
+  moveOverviewColumn(key: string, direction: 'up' | 'down') {
+    const idx = this.overviewColumnOrder.indexOf(key);
+    if (idx < 0) return;
+    const newIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (newIdx < 0 || newIdx >= this.overviewColumnOrder.length) return;
+    [this.overviewColumnOrder[idx], this.overviewColumnOrder[newIdx]] = [this.overviewColumnOrder[newIdx], this.overviewColumnOrder[idx]];
+    this.saveOverviewColumnVisibility();
+  }
+
+  getOrderedVisibleOverviewColumns() {
+    return this.overviewColumnOrder
+      .filter(k => this.isOverviewColumnVisible(k))
+      .map(k => this.overviewColumnDefs.find(d => d.key === k))
+      .filter((d): d is any => !!d);
   }
 
   get visibleOverviewColumnCount(): number {
@@ -883,6 +998,7 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
 
   showAllOverviewColumns() {
     Object.keys(this.overviewColumnVisibility).forEach(k => this.overviewColumnVisibility[k] = true);
+    this.overviewColumnOrder = this.overviewColumnDefs.map(d => d.key);
     this.saveOverviewColumnVisibility();
   }
 
@@ -897,11 +1013,14 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   private loadOverviewVisibilityForTf(tf: string) {
-    const key = `overviewColumnVisibility_${tf}`;
-    const saved = localStorage.getItem(key);
-    if (saved) {
+    const visKey = `overviewColumnVisibility_${tf}`;
+    const orderKey = `overviewColumnOrder_${tf}`;
+    const savedVis = localStorage.getItem(visKey);
+    const savedOrder = localStorage.getItem(orderKey);
+
+    if (savedVis) {
       try {
-        const parsed = JSON.parse(saved);
+        const parsed = JSON.parse(savedVis);
         this.overviewColumnVisibility = { ...this.overviewColumnVisibility, ...parsed };
       } catch {}
     } else {
@@ -909,11 +1028,22 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
         time: true, open: true, high: true, low: true, close: true, vol: true
       };
     }
+
+    if (savedOrder) {
+      try {
+        const parsedOrder: string[] = JSON.parse(savedOrder);
+        this.overviewColumnOrder = parsedOrder.filter(k => this.overviewColumnDefs.some(d => d.key === k));
+        const missing = this.overviewColumnDefs.map(d => d.key).filter(k => !this.overviewColumnOrder.includes(k));
+        this.overviewColumnOrder.push(...missing);
+      } catch {}
+    }
   }
 
   private saveOverviewVisibilityForTf(tf: string) {
-    const key = `overviewColumnVisibility_${tf}`;
-    localStorage.setItem(key, JSON.stringify(this.overviewColumnVisibility));
+    const visKey = `overviewColumnVisibility_${tf}`;
+    const orderKey = `overviewColumnOrder_${tf}`;
+    localStorage.setItem(visKey, JSON.stringify(this.overviewColumnVisibility));
+    localStorage.setItem(orderKey, JSON.stringify(this.overviewColumnOrder));
   }
 
   private saveOverviewColumnVisibility() {
@@ -924,7 +1054,7 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     const data = this.marketData.slice(0, 12);
     if (!data || data.length === 0) return;
 
-    const visibleCols = this.overviewColumnDefs.filter(c => this.isOverviewColumnVisible(c.key));
+    const visibleCols = this.getOrderedVisibleOverviewColumns();
     if (visibleCols.length === 0) return;
 
     const headers = visibleCols.map(c => c.label);

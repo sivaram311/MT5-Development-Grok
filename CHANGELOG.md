@@ -21,17 +21,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   - Compact controls + All/None buttons.
   - Responsive grid layout adjusts automatically.
   - All visibility is persistent across reloads and views.
-- **Per-timeframe column visibility**:
-  - Visibility settings (which columns are shown) are now saved separately per timeframe (D1, H4, M15 etc.).
-  - Switching timeframes restores the last used column set for that TF.
-- **CSV Export**:
-  - Data Grid: "⬇ CSV" button exports **only visible columns** (incl. Broker/NY/IST).
-  - Overview: Small CSV button in Recent Candles header (respects visibility).
-  - Both use proper escaping, include selected TF and date in filename.
-- **Per-timeframe column visibility**:
-  - Visibility settings (which columns are shown) are now saved separately per timeframe (D1, H4, M15 etc.).
-  - Switching timeframes restores the last used column set for that TF.
-  - Persisted on TF switch and component destroy.
+- **Column visibility enhancements**:
+  - Per-timeframe persistence for visibility + display order (D1, H4, etc. remember their own layouts).
+  - Reordering via ↑ ↓ arrows on column pills (affects table rendering order and CSV export).
+  - Quick presets: All, Times+OHLC, +RSI, Minimal.
+  - CSV exports now follow current visible order.
+  - Persisted on TF switch and destroy.
 - **Dedicated Health Dashboard polish** (backend + Angular):
   - Backend `getMarketDataHealth()` now computes real per-TF freshness using production thresholds (M1 <2m, M5<7m, ..., D1<25h).
   - Richer response includes `freshCount`, `total`, per-TF `fresh` flag + `lastSynced`.
