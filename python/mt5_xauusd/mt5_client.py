@@ -5,6 +5,7 @@ MT5 Client - Handles connection to MetaTrader 5 terminal
 import MetaTrader5 as mt5
 import pandas as pd
 import os
+import time
 from datetime import datetime
 from typing import Optional
 import logging
@@ -29,7 +30,9 @@ class MT5Client:
         self.initialized = False
 
     def initialize(self) -> bool:
-        """Initialize connection to MT5 terminal."""
+        """Initialize connection to MT5 terminal.
+        Returns True on success. Caller should handle retries.
+        """
         path_to_try = MT5_PATH
 
         # If no path configured, try to auto-detect
@@ -46,6 +49,7 @@ class MT5Client:
             logger.error("Common locations searched: " + ", ".join(COMMON_MT5_PATHS))
             return False
 
+        # Attempt to initialize (this can also start the terminal)
         if not mt5.initialize(path=path_to_try):
             err = mt5.last_error()
             logger.error(f"Failed to initialize MT5 at {path_to_try}: {err}")
@@ -62,6 +66,28 @@ class MT5Client:
         self.initialized = True
         logger.info(f"MT5 initialized successfully at {path_to_try}. Connected to: {mt5.account_info().server if mt5.account_info() else 'Unknown'}")
         return True
+
+    def ensure_connected(self, max_attempts: int = 5) -> bool:
+        """Try to (re)connect to MT5. Returns True if connected."""
+        if self.initialized:
+            # Quick test - try a lightweight call
+            try:
+                _ = mt5.account_info()
+                if _ is not None:
+                    return True
+            except Exception:
+                pass
+            # If test failed, shutdown and reconnect
+            self.shutdown()
+
+        for attempt in range(1, max_attempts + 1):
+            logger.info(f"Attempting MT5 connection (attempt {attempt}/{max_attempts})...")
+            if self.initialize():
+                return True
+            if attempt < max_attempts:
+                time.sleep(5 * attempt)  # backoff
+        logger.error("Failed to connect to MT5 after multiple attempts.")
+        return False
 
     def shutdown(self):
         """Shutdown MT5 connection."""
@@ -172,3 +198,41 @@ class MT5Client:
         if df is not None and len(df) > 0:
             return df['time'].iloc[0]
         return None
+
+    def fetch_recent_completed_rates(self, timeframe: int, since: Optional[pd.Timestamp] = None, count: int = 100) -> pd.DataFrame:
+        """
+        Fetch the most recent rates and return only **completed** candles.
+
+        The very last bar returned by MT5 (position 0 in from_pos) is the one currently forming.
+        We drop it to ensure we only ever sync completed candles.
+
+        Then filter to those after 'since' (for incremental).
+        """
+        if not self.initialized:
+            logger.error("MT5 not initialized")
+            return pd.DataFrame()
+
+        if since is not None:
+            # For larger gaps or catch-up, use copy_rates_from
+            from_time = int(since.timestamp())
+            rates = mt5.copy_rates_from(SYMBOL, timeframe, from_time, 100000)
+        else:
+            rates = mt5.copy_rates_from_pos(SYMBOL, timeframe, 0, count)
+
+        if rates is None or len(rates) == 0:
+            return pd.DataFrame()
+
+        df = pd.DataFrame(rates)
+        df['time'] = pd.to_datetime(df['time'], unit='s')
+
+        columns = ['time', 'open', 'high', 'low', 'close', 'tick_volume', 'spread', 'real_volume']
+        df = df[columns]
+
+        # Drop the current (incomplete) candle - this is the key for "only completed candles"
+        if len(df) > 1:
+            df = df.iloc[:-1]
+
+        if since is not None:
+            df = df[df['time'] > since].reset_index(drop=True)
+
+        return df

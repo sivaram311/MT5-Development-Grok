@@ -61,7 +61,10 @@ Tables (in `grok_dev` schema):
 - `XAUUSD_M5`
 - `XAUUSD_M1`
 
-All share this structure:
+Plus observability:
+- `sync_status` (timeframe PK, last_candle_time, last_synced)
+
+All XAUUSD_* share this structure:
 
 | Column      | Type      | Description             |
 |-------------|-----------|-------------------------|
@@ -77,5 +80,12 @@ All share this structure:
 Inserts use ON CONFLICT on `time` for safe incremental updates.
 
 Tables are created automatically by the Python downloader on first use for each timeframe (using SQLAlchemy with extend_existing to support safe re-registration).
+
+### sync_status
+| Column         | Type      | Notes                     |
+|----------------|-----------|---------------------------|
+| timeframe      | VARCHAR   | PK (D1, H4, ...)          |
+| last_candle_time | TIMESTAMP | Latest completed bar time |
+| last_synced    | TIMESTAMP | When Python last updated  |
 
 See root [CHANGELOG.md](../CHANGELOG.md) for application change logs.

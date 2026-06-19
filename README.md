@@ -78,6 +78,12 @@ python run_data_downloader.py
 # Examples:
 python -m mt5_xauusd.main --timeframes D1 H4
 python -m mt5_xauusd.main --no-incremental
+
+# Live continuous sync - defaults to ALL timeframes + smart per-TF intervals
+# (only updates completed candles). Override with --poll-seconds for uniform.
+python run_data_downloader.py
+# or
+python -m mt5_xauusd.main --daemon
 ```
 
 Data is queryable from Spring Boot via `/api/market/xauusd/{timeframe}`.
@@ -87,17 +93,11 @@ See `python/mt5_xauusd/README.md` and `python/mt5_xauusd/INTEGRATION.md` for det
 **Critical:** 
 - Start and log into the MT5 terminal **before** running the Python downloader.
 - The downloader auto-detects `terminal64.exe` in common locations. If needed, set `MT5_PATH` in `python/mt5_xauusd/config.py`.
+- For ongoing sync of new completed candles: run with `--daemon` or just `python run_data_downloader.py` (smart per-TF intervals by default).
 
-**UI/UX**: The market data view prioritizes mobile & tablet users (Realme devices). Rich visuals, instant insights, thumb-friendly controls. Always test responsiveness first.
-  - Bottom navigation on mobile
-  - Adaptive layouts for phone vs tablet
-- Proper Angular HTTP interceptor + auth service
-- **Proactive refresh** on startup + before every protected request (if token expires in < 5 minutes)
-- Live token expiration countdown (updates every 10 seconds) + manual "Refresh Token" button
-- Role-based UI (Admin-only sections visible only for users with `ROLE_ADMIN`)
-- Unit tests (backend + frontend)
-- Comprehensive documentation in `/docs` (includes Mermaid sequence diagram)
-- Refresh tokens with server-side revocation support
+**UI/UX**: Modern trading dashboard experience. Clean cards, premium typography, segmented controls, and excellent mobile/tablet responsiveness (Realme P2 Pro + Pad 2 priority). 
+
+The interface is focused on fast access to XAUUSD market data, health monitoring, and trader-centric details.
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed change history (required for all future updates).
 - Easy one-command launcher: `.\run-dev.ps1` (opens backend + frontend in separate tabs of the same window)

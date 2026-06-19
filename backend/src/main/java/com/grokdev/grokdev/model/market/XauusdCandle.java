@@ -22,4 +22,5 @@ public class XauusdCandle {
     private Long tickVolume;
     private Integer spread;
     private Long realVolume;
+    private Double rsi;
 }

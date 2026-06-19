@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/market")
@@ -50,5 +51,28 @@ public class MarketDataController {
         }
 
         return ResponseEntity.ok(marketDataService.getLatestXauusdData(tf, limit));
+    }
+
+    @GetMapping("/xauusd/{timeframe}/grid")
+    public ResponseEntity<List<XauusdCandle>> getGridData(
+            @PathVariable String timeframe,
+            @RequestParam(defaultValue = "200") int limit) {
+
+        String tf = timeframe.toUpperCase();
+        if (!List.of("D1", "H4", "H1", "M15", "M5", "M1").contains(tf)) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        return ResponseEntity.ok(marketDataService.getXauusdGridData(tf, limit));
+    }
+
+    @GetMapping("/xauusd/sync-status")
+    public ResponseEntity<Map<String, Object>> getSyncStatus() {
+        return ResponseEntity.ok(marketDataService.getSyncStatus());
+    }
+
+    @GetMapping("/xauusd/health")
+    public ResponseEntity<Map<String, Object>> getMarketDataHealth() {
+        return ResponseEntity.ok(marketDataService.getMarketDataHealth());
     }
 }

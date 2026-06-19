@@ -6,9 +6,10 @@ Python module to download complete historical OHLC data for **XAUUSD** from Meta
 - Downloads all available candles for multiple timeframes
 - Stores data in the same `grok_dev` schema used by the Spring Boot application
 - Table naming: `XAUUSD_D1`, `XAUUSD_H4`, `XAUUSD_H1`, `XAUUSD_M15`, `XAUUSD_M5`, `XAUUSD_M1`
-- Incremental updates using upsert (ON CONFLICT DO NOTHING)
-- Batch fetching to handle large historical data
-- Clean separation: MT5 client + Postgres client
+- **Live continuous sync mode** (`--daemon`): Automatically updates the database with **only completed candles** as they form
+- Smart incremental updates (upsert on `time`)
+- Auto table creation
+- Batch fetching + auto-detection of MT5 terminal
 
 ## Timeframes Supported
 | Key | Timeframe |
@@ -46,20 +47,60 @@ From the `python` directory:
 ```powershell
 cd E:\Source\grok_dev\python
 
-# Recommended:
+# One-time historical + catch-up (recommended first run)
 python -m mt5_xauusd.main
 
-# Or using the convenience script:
+# Continuous sync: keep updating DB with every newly *completed* candle
+# Defaults: all timeframes + 45s interval
+python -m mt5_xauusd.main --daemon
+
+# Using the convenience wrapper (same defaults)
 python run_data_downloader.py
-
-# Specific timeframes only:
-python -m mt5_xauusd.main --timeframes D1 H4
-
-# Force complete re-download:
-python -m mt5_xauusd.main --no-incremental
 ```
 
 Run `python -m mt5_xauusd.main --help` for all options.
+
+### Continuous / Live Sync Logic (Recommended)
+
+**Goal**: Automatically keep the database updated with **only completed candles** as soon as a new one forms.
+
+#### Core Rule We Follow
+MT5 always returns the **currently forming candle as the last bar**.
+
+We therefore always drop the last bar before saving anything:
+
+```python
+df = df.iloc[:-1]                    # remove the incomplete candle
+df = df[df['time'] > last_db_time]   # only new completed candles
+```
+
+This is implemented in `fetch_recent_completed_rates()`.
+
+#### How the Daemon Works (smart per-TF)
+1. Query latest per TF from DB.
+2. Fetch recent completed bars from MT5 (drop last forming bar).
+3. Upsert newer bars only + update sync_status.
+4. Smart schedule loop (5s check) using per-TF intervals from config (M1 every 15s, M5 30s, M15 60s, H1 3m, H4 10m, D1 30m).
+5. Auto-reconnect + file logging.
+6. Repeat.
+
+This guarantees `grok_dev.XAUUSD_*` contain **only completed** candles.
+
+#### Recommended Way to Run (Production)
+```powershell
+# Smart per-TF default (recommended for efficiency)
+python run_data_downloader.py
+
+# or
+python -m mt5_xauusd.main --daemon
+
+# Force uniform 45s for all TFs
+python run_data_downloader.py --daemon --poll-seconds 45
+```
+
+Run 24/7 via Windows Task Scheduler (see below).
+
+See the "Recommendations & Best Practices" section.
 
 ### Troubleshooting
 
@@ -85,6 +126,81 @@ If it can't find it:
 - In MT5: Tools > Options > Expert Advisors → enable "Allow DLL imports".
 
 The error message now lists searched paths to help you.
+
+## Recommendations & Best Practices
+
+Here are my current recommendations for the live sync:
+
+### 1. Running Mode (Strongly Recommended)
+- Use the **daemon mode** for production:
+  ```powershell
+  python run_data_downloader.py
+  ```
+  (defaults to all timeframes, **smart per-TF intervals**, only completed candles)
+
+- Run it **24/7** using Windows Task Scheduler ("Run whether user is logged on or not").
+
+### 2. Polling Interval (Smart per-timeframe)
+The code now uses **per-timeframe intervals** by default (from config):
+
+- M1: 15s
+- M5: 30s
+- M15: 60s
+- H1: 3 minutes
+- H4: 10 minutes
+- D1: 30 minutes
+
+This is much more efficient than polling everything every 45s.
+
+You can still override with a single value using `--poll-seconds`.
+
+### 3. Smarter Polling
+We now use per-timeframe intervals by default (see above). This was implemented as recommended.
+
+You can still force uniform polling if desired.
+
+### 4. Monitoring & Observability (Implemented)
+- `sync_status` table with last_candle_time per timeframe.
+- Spring Boot: `GET /api/market/xauusd/sync-status` and `GET /api/market/xauusd/health`
+- Health returns "UP" or "DEGRADED" + per-TF details.
+- Dedicated **Health Dashboard** in Angular Welcome page with color-coded cards per timeframe, freshness, and age.
+- Shows how long since last completed candle.
+
+Run the health check:
+```powershell
+# From Spring Boot
+curl http://localhost:8081/api/market/xauusd/health
+```
+
+### 5. Robustness (Implemented)
+- Automatic reconnection logic (`ensure_connected` with exponential backoff).
+- The daemon recovers from temporary MT5 disconnects.
+
+### 6. Running 24/7 with Windows Task Scheduler (Recommended)
+
+We provide a helper script:
+
+```powershell
+# Run as Administrator
+cd E:\Source\grok_dev\python
+.\setup_task_scheduler.ps1
+```
+
+This creates a task named `GrokDev-MT5-XAUUSD-Sync` that:
+- Starts on computer boot
+- Runs whether user is logged on or not
+- Runs hidden
+- Uses the recommended defaults
+
+You can also create it manually (see the script for details).
+
+**Tip**: Also set up MT5 to auto-start on login.
+
+### 7. Integration with the Rest of the App (Implemented)
+- Spring Boot exposes `/api/market/xauusd/sync-status` and `/api/market/xauusd/health`
+- Angular market data section shows last update time for the selected timeframe.
+
+---
 
 ## Database Schema
 

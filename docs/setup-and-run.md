@@ -149,14 +149,20 @@ Create `.env` from `.env.example` if you need custom DB credentials.
 # Make sure MT5 is running and logged in with XAUUSD visible
 cd python
 
-# Recommended run commands (from the python directory):
+# One-time / catch-up:
 python -m mt5_xauusd.main
-# or the convenience script:
-python run_data_downloader.py
 
-# With options:
-python -m mt5_xauusd.main --timeframes D1 H4
-python -m mt5_xauusd.main --no-incremental
+# Continuous live sync (recommended):
+# Defaults to ALL timeframes with smart per-TF intervals (M1:15s, M5:30s, M15:60s, H1:3m, H4:10m, D1:30m)
+python run_data_downloader.py
+# or
+python -m mt5_xauusd.main --daemon
+
+# Force uniform interval (e.g. every 45s for all):
+python run_data_downloader.py --daemon --poll-seconds 45
+
+# Custom:
+python -m mt5_xauusd.main --daemon --poll-seconds 20 --timeframes M1 M5 M15 H1
 ```
 
 **Important:** 
@@ -170,14 +176,32 @@ See `python/mt5_xauusd/README.md` for full troubleshooting (including MT5 init e
 
 The script supports **incremental updates** by default.
 
-- First run: tables (`XAUUSD_*`) are **auto-created** (we use `extend_existing=True` to avoid "Table already defined" SQLAlchemy errors).
-- Later runs: only new bars since the last timestamp in the table.
+- First run: tables are auto-created, full history downloaded.
+- `--daemon` mode: keeps the DB in sync with **only completed candles**.
+
+**Important completed-candle logic**:
+- MT5 always returns the *currently forming* bar as the last row in recent fetches.
+- We always drop `df.iloc[:-1]` (last bar) before upsert.
+- Only insert/update bars where time > last in DB.
+- Default: all 6 timeframes using smart per-TF intervals (M1:15s, M5:30s, M15:60s, H1:3m, H4:10m, D1:30m). Use --poll-seconds for uniform.
 
 Data becomes immediately available via Spring Boot endpoints:
 - `GET /api/market/xauusd/D1?limit=500`
 - `GET /api/market/xauusd/H4?from=2025-01-01&to=2025-06-01`
+- `GET /api/market/xauusd/D1/grid?limit=200` (includes RSI(14))
 
-See `python/mt5_xauusd/README.md` and `INTEGRATION.md` for more.
+The `/grid` endpoint (and the Data Grid tab) now correctly returns the most recent candles by using `ORDER BY time DESC LIMIT` + reverse in the service (previously it was fetching oldest data).
+
+See `python/mt5_xauusd/README.md` and `INTEGRATION.md` for more (including detailed recommendations for live syncing, Task Scheduler setup, and health monitoring).
+
+### Health & Monitoring
+- Python daemon updates `grok_dev.sync_status` (last_candle_time + last_synced) and writes rotating logs to `python/logs/xauusd_sync.log`.
+- Spring Boot:
+  - `GET /api/market/xauusd/health` → {status: "UP"/"DEGRADED"/"DOWN", freshCount, total, details per TF with fresh flag, checkedAt}
+  - `GET /api/market/xauusd/sync-status`
+- Dedicated **Health Dashboard** (in Welcome page): overall status badge + X/6 fresh summary + 6 per-TF cards (FRESH or age). Uses backend thresholds for accuracy.
+- Windows Task Scheduler: `python/setup_task_scheduler.ps1` (Run as Administrator). Auto-detects Python, startup+logon triggers, robust restarts.
+- File logging enabled automatically in daemon.
 
 See root [CHANGELOG.md](../../CHANGELOG.md) for all application changes (updated with every modification).
 

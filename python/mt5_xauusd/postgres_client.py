@@ -60,6 +60,38 @@ class PostgresClient:
         table.create(self.engine, checkfirst=True)
         logger.info(f"Table {SCHEMA}.{table_name} ready.")
 
+    def ensure_sync_status_table(self):
+        """Create sync_status table if it doesn't exist."""
+        query = text(f'''
+            CREATE TABLE IF NOT EXISTS "{SCHEMA}".sync_status (
+                timeframe VARCHAR(10) PRIMARY KEY,
+                last_synced TIMESTAMP,
+                last_candle_time TIMESTAMP
+            )
+        ''')
+        with self.engine.connect() as conn:
+            conn.execute(query)
+            conn.commit()
+
+    def update_sync_status(self, timeframe: str, last_candle_time):
+        """Update the last sync info for a timeframe."""
+        query = text(f'''
+            INSERT INTO "{SCHEMA}".sync_status (timeframe, last_synced, last_candle_time)
+            VALUES (:tf, NOW(), :last_candle)
+            ON CONFLICT (timeframe) DO UPDATE
+            SET last_synced = NOW(), last_candle_time = :last_candle
+        ''')
+        with self.engine.connect() as conn:
+            conn.execute(query, {"tf": timeframe, "last_candle": last_candle_time})
+            conn.commit()
+
+    def get_sync_status(self):
+        """Return dict of timeframe -> last_candle_time."""
+        query = text(f'SELECT timeframe, last_candle_time FROM "{SCHEMA}".sync_status')
+        with self.engine.connect() as conn:
+            result = conn.execute(query).fetchall()
+            return {row[0]: row[1] for row in result}
+
     def get_last_timestamp(self, table_name: str) -> pd.Timestamp:
         """Get the latest timestamp already stored in the table.
         Returns None if the table does not exist yet (first run).

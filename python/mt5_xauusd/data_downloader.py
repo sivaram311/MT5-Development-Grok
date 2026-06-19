@@ -6,9 +6,12 @@ Coordinates MT5 data fetching and Postgres storage for XAUUSD across timeframes.
 import MetaTrader5 as mt5
 import pandas as pd
 import logging
+import time
+from logging.handlers import RotatingFileHandler
 from typing import List
+import os
 
-from .config import TIMEFRAMES, DEBUG
+from .config import TIMEFRAMES, DEBUG, CONTINUOUS_POLL_SECONDS, TIMEFRAME_POLL_INTERVALS
 from .mt5_client import MT5Client
 from .postgres_client import PostgresClient
 
@@ -18,6 +21,28 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+def setup_logging(log_to_file: bool = True, log_level: int = logging.INFO):
+    """Setup logging for the downloader. Console + optional rotating file."""
+    logger.setLevel(log_level)
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+
+    # Console handler
+    ch = logging.StreamHandler()
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
+
+    if log_to_file:
+        log_dir = "logs"
+        os.makedirs(log_dir, exist_ok=True)
+        fh = RotatingFileHandler(
+            os.path.join(log_dir, "xauusd_sync.log"),
+            maxBytes=5*1024*1024,  # 5 MB
+            backupCount=3
+        )
+        fh.setFormatter(formatter)
+        logger.addHandler(fh)
+        logger.info("File logging enabled: logs/xauusd_sync.log")
 
 
 class XAUUSDDownloader:
@@ -107,6 +132,79 @@ class XAUUSDDownloader:
         finally:
             self.mt5_client.shutdown()
             logger.info("Download process finished.")
+
+    def run_continuous_sync(self, timeframes: List[str] = None, poll_seconds: int = None):
+        """
+        Continuously sync **only completed candles** as they form.
+
+        Uses per-timeframe poll intervals (from config) for efficiency.
+        Falls back to a single interval if provided.
+
+        Always drops the last (forming) bar from MT5.
+        Only upserts bars newer than what is already in the DB.
+        """
+        if timeframes is None:
+            timeframes = list(TIMEFRAMES)
+
+        # Use per-TF intervals from config, or fallback
+        if poll_seconds is not None:
+            poll_intervals = {tf: poll_seconds for tf in timeframes}
+        else:
+            poll_intervals = {tf: TIMEFRAME_POLL_INTERVALS.get(tf, CONTINUOUS_POLL_SECONDS) 
+                              for tf in timeframes}
+
+        setup_logging(log_to_file=True)
+        logger.info(f"Starting CONTINUOUS completed-candle sync for {timeframes}")
+        for tf, interval in poll_intervals.items():
+            logger.info(f"  - {tf}: every {interval}s")
+
+        self.pg_client.ensure_schema_exists()
+        self.pg_client.ensure_sync_status_table()
+        for tf in timeframes:
+            self.pg_client.create_table_if_not_exists(f"XAUUSD_{tf}")
+
+        # Track last poll time per timeframe for smart scheduling
+        last_poll = {tf: 0 for tf in timeframes}
+
+        try:
+            while True:
+                now = time.time()
+
+                # Ensure MT5 connection (with automatic reconnection)
+                if not self.mt5_client.ensure_connected(max_attempts=3):
+                    logger.warning("MT5 connection lost. Will retry in next cycle.")
+                    time.sleep(10)
+                    continue
+
+                for tf_key in timeframes:
+                    interval = poll_intervals[tf_key]
+                    if now - last_poll[tf_key] < interval:
+                        continue  # not time yet for this TF
+
+                    try:
+                        mt5_tf = self._get_mt5_timeframe_constant(tf_key)
+                        last_ts = self.pg_client.get_last_timestamp(f"XAUUSD_{tf_key}")
+
+                        df = self.mt5_client.fetch_recent_completed_rates(
+                            mt5_tf, since=last_ts, count=200
+                        )
+
+                        if df is not None and not df.empty:
+                            df['time'] = pd.to_datetime(df['time']).dt.tz_localize(None)
+                            self.pg_client.save_data(df, tf_key)
+                            latest_time = df['time'].max()
+                            self.pg_client.update_sync_status(tf_key, latest_time)
+                            logger.info(f"Synced {len(df)} new completed {tf_key} candles")
+
+                        last_poll[tf_key] = now
+                    except Exception as e:
+                        logger.exception(f"Error syncing completed candles for {tf_key}: {e}")
+                        last_poll[tf_key] = now  # avoid hammering on error
+
+                time.sleep(5)  # small sleep to check schedule frequently
+        finally:
+            self.mt5_client.shutdown()
+            logger.info("Continuous sync stopped.")
 
 
 if __name__ == "__main__":

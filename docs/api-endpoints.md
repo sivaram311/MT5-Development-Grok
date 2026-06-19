@@ -47,7 +47,7 @@ Supported timeframes: `D1`, `H4`, `H1`, `M15`, `M5`, `M1`
 GET /api/market/xauusd/D1?from=2025-01-01T00:00&limit=100
 ```
 
-**Response:**
+**Response:** Data is returned in descending order by time (newest first).
 ```json
 [
   {
@@ -58,7 +58,8 @@ GET /api/market/xauusd/D1?from=2025-01-01T00:00&limit=100
     "close": 2672.55,
     "tickVolume": 12345,
     "spread": 15,
-    "realVolume": 0
+    "realVolume": 0,
+    "rsi": 62.5
   }
 ]
 ```
@@ -66,6 +67,40 @@ GET /api/market/xauusd/D1?from=2025-01-01T00:00&limit=100
 ### GET `/api/market/xauusd/{timeframe}/latest`
 
 Quick latest N candles (default 200).
+
+### GET `/api/market/xauusd/{timeframe}/grid`
+
+Returns the most recent completed candles (DESC by time - newest first) including **RSI(14)** (calculated server-side using 14-period Wilder smoothing) for the data grid view.
+
+Supports `limit`.
+
+The Data Grid in the UI uses this endpoint. Data is sorted descending by time.
+
+### GET `/api/market/xauusd/sync-status`
+
+Returns map of timeframe → {timeframe, lastCandleTime, lastSynced} (from Python daemon's `sync_status`).
+
+Useful for observability / custom clients. UI primarily uses `/health`.
+
+### GET `/api/market/xauusd/health`
+
+Returns:
+```json
+{
+  "status": "UP" | "DEGRADED" | "DOWN",
+  "freshCount": 5,
+  "total": 6,
+  "details": {
+    "D1": { "lastCandleTime": "...", "lastSynced": "...", "fresh": true },
+    ...
+  },
+  "checkedAt": "2026-06-19T..."
+}
+```
+
+Uses real per-TF freshness thresholds (see MarketDataService).
+
+Powers the dedicated Angular Health Dashboard.
 
 ## Other Endpoints
 

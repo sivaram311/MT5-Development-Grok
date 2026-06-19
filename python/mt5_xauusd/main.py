@@ -12,12 +12,11 @@ Tables created/updated:
   - XAUUSD_M5
   - XAUUSD_M1
 
-Usage:
-    cd E:\Source\grok_dev\python
+Usage examples:
     python -m mt5_xauusd.main
-
-    # Or for testing just one timeframe:
-    # Edit the timeframes list below
+    python -m mt5_xauusd.main --timeframes D1 H4 --no-incremental
+    python -m mt5_xauusd.main --daemon --poll-seconds 5
+    python run_data_downloader.py --daemon
 """
 
 import sys
@@ -34,9 +33,12 @@ if __package__ is None or __package__ == "":
 else:
     # Running as module (-m), use relative import
     from .data_downloader import XAUUSDDownloader
+from .config import CONTINUOUS_POLL_SECONDS, TIMEFRAMES
 
 def main():
-    parser = argparse.ArgumentParser(description="Download XAUUSD historical data from MT5 to Postgres")
+    parser = argparse.ArgumentParser(
+        description="Download/sync XAUUSD historical + completed candles from MT5 into Postgres (grok_dev schema)"
+    )
     parser.add_argument(
         "--timeframes", "-t",
         nargs="+",
@@ -49,6 +51,17 @@ def main():
         action="store_true",
         help="Force full download instead of incremental"
     )
+    parser.add_argument(
+        "--daemon", "-d",
+        action="store_true",
+        help="Run in continuous mode: keep syncing only newly completed candles forever"
+    )
+    parser.add_argument(
+        "--poll-seconds", type=int, default=CONTINUOUS_POLL_SECONDS,
+        help="Override poll interval (seconds) for all timeframes in --daemon mode. "
+             "By default each timeframe uses its own efficient interval from config "
+             "(M1:15s, M5:30s, M15:60s, H1:180s, H4:600s, D1:1800s)."
+    )
     args = parser.parse_args()
 
     print("=== XAUUSD MT5 → PostgreSQL Data Downloader ===")
@@ -58,10 +71,16 @@ def main():
 
     downloader = XAUUSDDownloader()
 
-    downloader.download_all(
-        timeframes=args.timeframes,
-        incremental=not args.no_incremental
-    )
+    if args.daemon:
+        downloader.run_continuous_sync(
+            timeframes=args.timeframes,
+            poll_seconds=args.poll_seconds
+        )
+    else:
+        downloader.download_all(
+            timeframes=args.timeframes,
+            incremental=not args.no_incremental
+        )
 
 if __name__ == "__main__":
     main()

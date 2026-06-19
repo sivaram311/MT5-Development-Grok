@@ -105,17 +105,23 @@ A separate Python component (`python/mt5_xauusd/`) acts as the data pipeline:
 - Keeps Java/Spring focused on API + business logic
 
 **Data Flow:**
-MT5 Terminal → Python Downloader (batched + incremental) → Postgres (grok_dev schema) → Spring Boot MarketDataService (JdbcTemplate) → REST API → Angular
+MT5 Terminal → Python Downloader (batched + incremental + only completed candles) → Postgres (grok_dev schema) → Spring Boot MarketDataService (JdbcTemplate) → REST API → Angular
+
+- Uses smart per-timeframe polling intervals for efficiency.
+- A `sync_status` table (maintained by the Python daemon) tracks the last completed candle time per timeframe.
+
+Health endpoint: `/api/market/xauusd/health` (status: UP/DEGRADED/DOWN, freshCount, per-TF details with real freshness computed from candle age + thresholds, checkedAt).
+
+Dedicated Health Dashboard in Angular: overall status + "X/6 fresh" summary + responsive per-TF cards (uses backend fresh flag). Fully mobile/tablet optimized.
 
 Spring Boot uses `JdbcTemplate` for flexible queries against the dynamic timeframe tables.
 
-### Frontend UI/UX Principles (Mobile & Tablet First)
-- Designed for **Realme P2 Pro** (phone) and **Realme Pad 2** (tablet).
-- User perspective first: Traders need fast access to latest price, direction, and recent candles.
-- Enriched experience: Big hero price card, % change, interactive Chart.js line chart, color-coded rows.
-- Ease of access: Scrollable timeframe pills, preset buttons, one-tap refresh.
-- Responsiveness: Stacked cards on mobile, full table on tablet/desktop. Large tap targets, minimal scrolling.
-- All changes consider touch, readability, and information hierarchy on small screens.
+### Frontend UI/UX (Modern Trading Dashboard)
+- Evolved into a clean, premium-feeling dashboard focused on XAUUSD market data.
+- Modern patterns: segmented tabs, refined cards, excellent typography, and micro-interactions.
+- Strong emphasis on mobile & tablet (Realme P2 Pro / Pad 2): thumb-friendly pills, stacked layouts, large targets.
+- Health Dashboard and Data Grid provide at-a-glance status and deep data access.
+- All new features follow the same "enrich + ease of access" philosophy.
 
 See `python/mt5_xauusd/INTEGRATION.md` for entity examples.
 

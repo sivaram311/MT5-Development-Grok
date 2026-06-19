@@ -29,17 +29,23 @@
 - Add loading states globally
 - Use Angular Signals (Angular 17+)
 
-## New: Market Data (UI/UX Senior Design)
-The MT5 Python pipeline feeds XAUUSD data into a rich, trader-focused section.
+## Modern UI (Ongoing)
 
-**Key UX Decisions** (mobile/tablet priority):
-- Horizontal scrolling timeframe pills for easy thumb navigation.
-- Hero price card with large font and instant % change.
-- Chart.js line chart (responsive, clean).
-- Dual view: Desktop table + Mobile stacked cards (high contrast, large text).
-- Presets + refresh for quick access.
-- Color system (emerald/red) for bullish/bearish at a glance.
-- Loading states and fallback data.
+The Welcome page has been evolved into a clean, modern trading dashboard:
+
+- Segmented control tabs (Overview ↔ Data Grid)
+- Premium price hero card with refined typography
+- Dedicated Health Dashboard with status cards
+- Modern data tables with excellent hover and responsive behavior
+- Consistent use of rounded-3xl, subtle shadows, and good visual hierarchy
+
+**Design principles**:
+- Always design for Realme P2 Pro + Realme Pad 2 first
+- Large, comfortable interactive areas
+- Fast information scanning for traders
+- Subtle but delightful interactions
+
+Continue building new features with the same modern, user-first mindset.
 
 See welcome.component.ts for implementation. Follow the same patterns for any new trading UI.
 

@@ -7,53 +7,49 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [Unreleased] - 2026-06-19
 
 ### Added
-- **MT5 Market Data Pipeline (Python)**: New `python/mt5_xauusd/` module to connect to MetaTrader 5, download XAUUSD OHLC + time data for D1, H4, H1, M15, M5, M1 timeframes.
-  - Stores data in shared `grok_dev` Postgres schema with tables `XAUUSD_D1`, `XAUUSD_H4`, etc.
-  - Features: Auto-detection of MT5 `terminal64.exe`, incremental updates (only new bars after first full load), batch fetching for large histories, auto table creation on first run, CLI arguments (`--timeframes`, `--no-incremental`).
-  - Convenience script `run_data_downloader.py`.
-  - Robust error handling, logging, and first-run full historical download support.
-- **Spring Boot Market Data Integration**:
-  - New `MarketDataService` using `JdbcTemplate` for dynamic timeframe queries.
-  - New `MarketDataController` with endpoints:
-    - `GET /api/market/xauusd/{timeframe}?from=...&to=...&limit=...`
-    - `GET /api/market/xauusd/{timeframe}/latest?limit=...`
-  - New DTO `XauusdCandle` (in `model/market/`).
-- **Angular Frontend UI/UX Enhancements** (Senior UI/UX focus on mobile & tablet):
-  - Enriched XAUUSD Market Data section in `WelcomeComponent`.
-  - Timeframe selector pills (horizontal scroll for mobile thumb access).
-  - Large hero price card with % change (color-coded green/red).
-  - Interactive Chart.js line chart for close prices.
-  - Responsive data view: Full table on desktop/tablet, stacked cards on mobile (Realme P2 Pro / Pad 2 optimized).
-  - Quick presets (1D, 1W, 1M, All), refresh button, limit control.
-  - Fallback demo data when backend unavailable.
-  - Added `chart.js` and `date-fns` dependencies.
-  - Strict mobile-first: Large tap targets, adaptive layouts, minimal scrolling.
-- **Documentation Updates**:
-  - Comprehensive CHANGELOG.md at root.
-  - Enhanced `README.md`, `docs/setup-and-run.md`, `docs/architecture.md`, `docs/api-endpoints.md`, `docs/database-schema.md`, `docs/frontend-guidelines.md`.
-  - Python module READMEs and INTEGRATION.md with troubleshooting (MT5 init, imports, first-run table creation).
-- New Python files for better UX: `run_data_downloader.py`, improved CLI in `main.py`, auto MT5 path detection in `config.py` / `mt5_client.py`.
-- SQLAlchemy fix: `extend_existing=True` for table re-registration to prevent "already defined" errors on first runs.
+- **Dedicated Health Dashboard polish** (backend + Angular):
+  - Backend `getMarketDataHealth()` now computes real per-TF freshness using production thresholds (M1 <2m, M5<7m, ..., D1<25h).
+  - Richer response includes `freshCount`, `total`, per-TF `fresh` flag + `lastSynced`.
+  - Enhanced Angular health cards + summary header ("X/6 fresh"), prefers backend `fresh` flag.
+  - Improved overall status (UP / DEGRADED / DOWN).
+- **Improved Task Scheduler helper** (`python/setup_task_scheduler.ps1`):
+  - Auto-detects python.exe / py.exe across common locations.
+  - Triggers on startup + logon.
+  - Robust restart policy + better UX + clear admin guidance.
+- **Smart per-TF polling as default** for continuous daemon:
+  - `run_data_downloader.py` now defaults to `--daemon` (uses `TIMEFRAME_POLL_INTERVALS`).
+  - Uniform `--poll-seconds` override remains available (e.g. for 45s all TFs).
+- File logging (rotating) and `ensure_connected` reconnection already active in daemon loop.
+
+- **MT5 Market Data Pipeline (Python)**: `python/mt5_xauusd/` module for XAUUSD OHLC (D1/H4/H1/M15/M5/M1) into grok_dev schema.
+  - Always drop forming bar (`iloc[:-1]`) for completed candles only.
+  - Per-TF smart intervals + smart scheduler loop, sync_status table, auto tables, reconnection, file logs.
+- **Spring Boot**:
+  - `MarketDataService` + `MarketDataController`: `/xauusd/{tf}`, `/grid` (with server RSI), `/sync-status`, `/health`.
+  - DESC ordering + RSI calc (Wilder) for recent grid data.
+- **Angular**:
+  - Full responsive market UI (pills, hero price + %, Chart.js, segmented Overview/Grid tabs).
+  - Mobile-first (Realme phone/tablet), bottom nav, dark mode, fallback data, health dashboard.
+- **Docs & Changelog**: Full updates on every change (this file + setup, architecture, api, python READMEs, etc.).
 
 ### Changed
-- Python package now uses relative imports (`from .config import ...`) for proper `python -m mt5_xauusd.main` execution.
-- `postgres_client.py`: Safe `get_last_timestamp` handling and upfront table creation in downloader.
-- Frontend `welcome.component.ts`: Major UI additions for market data + Chart.js integration; fixed TS issues (TooltipItem, missing fallback method).
-- Package updates: Frontend `package.json` includes chart.js and date-fns.
-- Backend now scans and serves market data alongside existing auth/projects features.
+- Python daemon default now prefers smart per-TF intervals (M1:15s ... D1:30m) over fixed 45s.
+- `getSyncStatus()` now returns richer map (includes lastSynced).
+- Health dashboard UI updated to surface backend freshness + summary count.
+- Task scheduler script significantly hardened (detection + multiple triggers).
+- `run_data_downloader.py` default changed to smart intervals.
 
 ### Fixed
-- Import errors (`No module named 'config'`) via relative imports and convenience runner.
-- MT5 path detection and initialization (better error messages, auto-detect).
-- Database table creation race conditions on first data pull.
-- TypeScript compilation errors for chart tooltips and missing methods after npm install.
-- Various path/quoting issues in Windows PowerShell runs.
+- Duplicate `import java.util.Map` in MarketDataController.
+- Backend health was naive (always fresh if data present); now threshold-based.
+- Default runner was forcing uniform 45s (now smart by default).
 
 ### Notes
-- UI/UX Principle: All frontend changes prioritize Realme P2 Pro (mobile) and Realme Pad 2 (tablet) responsiveness, ease of access (thumb-friendly controls, instant insights), and trader perspective (quick price view, direction cues, recent candles).
-- Data flows: MT5 → Python (incremental/batched) → Postgres (grok_dev) → Spring Boot (JdbcTemplate) → Angular (responsive UI + charts).
-- Requires: MT5 running + logged in before Python downloader; Postgres schema `grok_dev`; npm install in frontend for charts.
-- Future: Angular candlestick enhancements, Gann analysis integration, scheduled Python runs, more symbols.
+- **UI/UX**: Mobile/tablet first, trader perspective (big price, fast TF switch, color freshness, RSI in grid).
+- Data flow: MT5 (daemon) → completed candles only → Postgres grok_dev.XAUUSD_* + sync_status → Spring / Angular.
+- To run live: `cd python; python run_data_downloader.py` (or Task Scheduler).
+- For uniform poll: `python run_data_downloader.py --daemon --poll-seconds 45`.
+- See `python/mt5_xauusd/README.md` and `docs/setup-and-run.md`.
 
 ## [Previous] - Pre-Market Data (Auth + Basic UI)
 - Initial JWT + refresh token auth system (Spring Security stateless, Angular interceptors/guards).

@@ -33,6 +33,21 @@ TIMEFRAME_MAP = {
 # Number of bars to fetch per request (MT5 has limits)
 BATCH_SIZE = 10000
 
+# Default poll interval in seconds for continuous --daemon mode (used if not using per-TF)
+# 45s is a good default to check all timeframes without excessive load
+CONTINUOUS_POLL_SECONDS = 45
+
+# Recommended poll intervals per timeframe (in seconds) for efficient live sync
+# These are used in run_continuous_sync for per-TF scheduling
+TIMEFRAME_POLL_INTERVALS = {
+    "M1": 15,    # every 15 seconds
+    "M5": 30,    # every 30 seconds
+    "M15": 60,   # every minute
+    "H1": 180,   # every 3 minutes
+    "H4": 600,   # every 10 minutes
+    "D1": 1800,  # every 30 minutes
+}
+
 # ====================== PostgreSQL Configuration ======================
 # Using same database as Spring Boot application
 # Recommended: Use the same credentials from backend/application.properties

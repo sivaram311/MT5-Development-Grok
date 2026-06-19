@@ -5,6 +5,9 @@ Convenience runner for the XAUUSD MT5 Data Downloader.
 Run from the `python` directory:
     python run_data_downloader.py
 
+Defaults to continuous daemon using smart per-TF poll intervals (see config).
+Pass --poll-seconds=45 to force a single uniform interval for all timeframes.
+
 This avoids the need to remember `python -m mt5_xauusd.main`
 """
 import sys
@@ -16,4 +19,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from mt5_xauusd.main import main
 
 if __name__ == "__main__":
+    # Default to daemon mode (all TFs, smart per-TF poll intervals from config)
+    # Use --poll-seconds=45 (or any) to force uniform interval for all TFs
+    if len(sys.argv) == 1:
+        sys.argv += ['--daemon']
+
     main()
