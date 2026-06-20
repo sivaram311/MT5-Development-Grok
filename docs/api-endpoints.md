@@ -133,6 +133,14 @@ Returns active projects (demo data).
 }
 ```
 
+### GET `/api/auth/preferences`
+Get saved column visibility/order + health TF visibility (JSON).
+
+Requires Bearer.
+
+### PUT `/api/auth/preferences`
+Save preferences: `{ "preferences": "{\"grid\": {...}, \"overview\": {...}, \"health\": {...}}" }`
+
 ### GET `/api/auth/me`
 Requires Bearer access token.
 
