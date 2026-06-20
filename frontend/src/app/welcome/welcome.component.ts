@@ -430,26 +430,27 @@ Chart.register(...registerables);
           </div>
 
           <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
-            <div *ngFor="let tf of timeframes" 
-                 *ngIf="isHealthTfVisible(tf)"
-                 class="bg-white border border-gray-100 rounded-2xl px-3 py-2.5 text-sm shadow-sm flex justify-between items-center transition hover:border-gray-200"
-                 [class.border-emerald-200]="isFresh(tf)"
-                 [class.border-amber-200]="!isFresh(tf) && syncStatus[tf]">
-              <div>
-                <div class="font-semibold text-gray-900">{{ tf }}</div>
-                <div class="font-mono text-xs text-gray-500">
-                  {{ syncStatus[tf]?.lastCandleTime ? (syncStatus[tf].lastCandleTime | date:'HH:mm') : '—' }}
+            <ng-container *ngFor="let tf of timeframes">
+              <div *ngIf="isHealthTfVisible(tf)"
+                   class="bg-white border border-gray-100 rounded-2xl px-3 py-2.5 text-sm shadow-sm flex justify-between items-center transition hover:border-gray-200"
+                   [class.border-emerald-200]="isFresh(tf)"
+                   [class.border-amber-200]="!isFresh(tf) && syncStatus[tf]">
+                <div>
+                  <div class="font-semibold text-gray-900">{{ tf }}</div>
+                  <div class="font-mono text-xs text-gray-500">
+                    {{ syncStatus[tf]?.lastCandleTime ? (syncStatus[tf].lastCandleTime | date:'HH:mm') : '—' }}
+                  </div>
+                </div>
+                <div class="text-right">
+                  <div class="text-[10px] font-medium" 
+                       [class.text-emerald-600]="isFresh(tf)"
+                       [class.text-amber-600]="!isFresh(tf) && syncStatus[tf]"
+                       [class.text-gray-400]="!syncStatus[tf]">
+                    {{ isFresh(tf) ? 'FRESH' : (syncStatus[tf] ? timeSince(syncStatus[tf].lastCandleTime) : '—') }}
+                  </div>
                 </div>
               </div>
-              <div class="text-right">
-                <div class="text-[10px] font-medium" 
-                     [class.text-emerald-600]="isFresh(tf)"
-                     [class.text-amber-600]="!isFresh(tf) && syncStatus[tf]"
-                     [class.text-gray-400]="!syncStatus[tf]">
-                  {{ isFresh(tf) ? 'FRESH' : (syncStatus[tf] ? timeSince(syncStatus[tf].lastCandleTime) : '—') }}
-                </div>
-              </div>
-            </div>
+            </ng-container>
           </div>
         </div>
 
@@ -646,6 +647,7 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
         this.healthTfVisibility = { ...this.healthTfVisibility, ...JSON.parse(savedHealth) };
       } catch {}
     }
+    this.ensureHealthVisibility();
 
     // Load from backend (overrides local for current TF)
     this.loadPreferencesFromBackend();
@@ -1079,6 +1081,15 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     this.healthTfVisibility[tf] = !this.healthTfVisibility[tf];
     localStorage.setItem('healthTfVisibility', JSON.stringify(this.healthTfVisibility));
     this.savePreferencesToBackend();
+  }
+
+  // Ensure health visibility is always an object (defensive)
+  private ensureHealthVisibility() {
+    if (!this.healthTfVisibility || typeof this.healthTfVisibility !== 'object') {
+      this.healthTfVisibility = {
+        'D1': true, 'H4': true, 'H1': true, 'M15': true, 'M5': true, 'M1': true
+      };
+    }
   }
 
   isHealthTfVisible(tf: string): boolean {

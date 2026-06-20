@@ -197,3 +197,8 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+
+# Temporary launcher scripts (user-created tab runners)
+python/run_tab1.ps1
+python/run_tab2.ps1
+python/run_tab3.ps1
