@@ -2,6 +2,7 @@ package com.grokdev.grokdev.service;
 
 import com.grokdev.grokdev.model.market.XauusdCandle;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
@@ -26,6 +27,9 @@ public class MarketDataService {
     private final JdbcTemplate jdbcTemplate;
 
     private static final String SCHEMA = "grok_dev";
+
+    @Value("${grok.market.broker-server-zone:UTC}")
+    private String brokerServerZoneId;
 
     @Autowired
     public MarketDataService(JdbcTemplate jdbcTemplate) {
@@ -94,8 +98,9 @@ public class MarketDataService {
         if (nySessionOnly) {
             if ("D1".equalsIgnoreCase(timeframe)) {
                 // For D1 + NY session: fetch finer TF (M15), filter to NY session, aggregate per NY day
-                int aggExtra = (limit + extra) * 50; // enough M15 bars to cover recent days
-                List<XauusdCandle> fine = getXauusdData("M15", null, null, aggExtra);
+                // Pull enough recent M15 (~100 per calendar day) to synthesize up to 'limit' NY-session days.
+                int m15Limit = Math.max((limit + extra) * 100, 20000);
+                List<XauusdCandle> fine = getXauusdData("M15", null, null, m15Limit);
                 Collections.reverse(fine); // ASC
                 List<XauusdCandle> nyFine = filterToNySession(fine);
                 candles = aggregateNySessionToDaily(nyFine);
@@ -174,24 +179,36 @@ public class MarketDataService {
 
     /**
      * Enrich grid candles with timezone-converted times for the Data Grid.
-     * Assumes the stored 'time' (broker time) represents a UTC instant for conversion.
-     * - time      : Broker time (unchanged)
-     * - nyTime    : New York time
-     * - istTime   : India (Kolkata) time
+     * The stored 'time' is the wall-clock time according to the MT5 broker server clock
+     * (see grok.market.broker-server-zone).
+     *
+     * We treat the stored LocalDateTime as wall time in the broker's server zone to recover
+     * the true instant, then convert that instant to NY / IST wall times.
+     *
+     * This ensures:
+     *   - Correct nyTime for NY session filtering (08:00-17:00 NY) and D1 aggregation.
+     *   - ny 08:00 EDT == IST 17:30 (5:30 PM) on summer dates (9.5h delta).
+     *   - Zone rules handle DST automatically (EDT vs EST).
+     *
+     * - time      : Raw broker / MT5 server time (wall time, unchanged)
+     * - nyTime    : Wall time in New York (America/New_York)
+     * - istTime   : Wall time in India (Asia/Kolkata)
      */
     private void enrichTimezoneFields(List<XauusdCandle> candles) {
         if (candles == null || candles.isEmpty()) return;
 
-        ZoneId baseZone = ZoneId.of("UTC");           // base assumption for stored bar times
+        ZoneId serverZone = ZoneId.of(brokerServerZoneId != null ? brokerServerZoneId : "UTC");
         ZoneId nyZone   = ZoneId.of("America/New_York");
         ZoneId istZone  = ZoneId.of("Asia/Kolkata");
 
         for (XauusdCandle c : candles) {
-            LocalDateTime brokerTime = c.getTime();
-            if (brokerTime != null) {
-                ZonedDateTime zdt = brokerTime.atZone(baseZone);
-                c.setNyTime( zdt.withZoneSameInstant(nyZone).toLocalDateTime() );
-                c.setIstTime( zdt.withZoneSameInstant(istZone).toLocalDateTime() );
+            LocalDateTime brokerWallTime = c.getTime();
+            if (brokerWallTime != null) {
+                // Broker wall time -> true instant (using server zone)
+                ZonedDateTime serverZdt = brokerWallTime.atZone(serverZone);
+                // True instant -> wall time in target zones
+                c.setNyTime( serverZdt.withZoneSameInstant(nyZone).toLocalDateTime() );
+                c.setIstTime( serverZdt.withZoneSameInstant(istZone).toLocalDateTime() );
             }
         }
     }

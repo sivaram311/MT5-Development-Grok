@@ -57,7 +57,7 @@ public class MarketDataController {
     public ResponseEntity<List<XauusdCandle>> getGridData(
             @PathVariable String timeframe,
             @RequestParam(defaultValue = "200") int limit,
-            @RequestParam(defaultValue = "false") boolean nySessionOnly) {
+            @RequestParam(name = "ny_session_only", defaultValue = "false") boolean nySessionOnly) {
 
         String tf = timeframe.toUpperCase();
         if (!List.of("D1", "H4", "H1", "M15", "M5", "M1").contains(tf)) {

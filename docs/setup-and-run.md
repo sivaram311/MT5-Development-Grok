@@ -194,6 +194,29 @@ The `/grid` endpoint (and the Data Grid tab) now correctly returns the most rece
 
 See `python/mt5_xauusd/README.md` and `INTEGRATION.md` for more (including detailed recommendations for live syncing, Task Scheduler setup, and health monitoring).
 
+### Market Data Timezone Configuration (NY Session + IST/NY columns)
+The stored `time` values from MT5 are broker **server wall times** (not necessarily UTC).
+
+To get correct `nyTime` / `istTime` (and correct filtering/aggregation when "NY Session Only" is enabled):
+
+Edit `backend/src/main/resources/application.properties`:
+```properties
+grok.market.broker-server-zone=UTC          # default; change if needed
+# Common alternatives:
+# grok.market.broker-server-zone=GMT+2
+# grok.market.broker-server-zone=GMT+3
+```
+
+- Restart the backend after changing.
+- This affects:
+  - "NY Session Only" toggle (08:00–17:00 NY wall time).
+  - D1 re-aggregation from M15 NY-session bars only.
+  - Displayed NY and IST columns (e.g. NY 08:00 EDT → IST 17:30 / 5:30 PM).
+- The zone is used as: `brokerWall.atZone(serverZone)` → true instant → `.withZoneSameInstant(...)` for NY/IST.
+- The frontend now formats NY/IST wall times safely (independent of your browser's local timezone) so the numbers you see match the server-computed wall clock.
+
+If your MT5 terminal shows a different server time (check Market Watch), set the matching offset and re-validate with `/api/market/xauusd/D1/grid?ny_session_only=true`.
+
 ### Health & Monitoring
 - Python daemon updates `grok_dev.sync_status` (last_candle_time + last_synced) and writes rotating logs to `python/logs/xauusd_sync.log`.
 - Spring Boot:

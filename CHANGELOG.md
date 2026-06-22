@@ -26,6 +26,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   - RSI is calculated only on the filtered NY-session data.
   - Affects only the Data Grid tab (existing full data behavior preserved when off).
   - Not persisted (manual toggle).
+- Bugfix: ensured the ny_session_only param is always sent (as string true/false) and correctly bound in backend with explicit name, so toggle now affects the returned data.
+- Validation of real /D1/grid?ny_session_only=true output: recent NY-D1 rows (08:00 nyTime, null spread/realVolume) match expected M15-filter+agg behavior; older rows with 20:00 ny + populated spread do not (indicate pre-agg or non-filtered D1 data). Increased M15 fetch depth (x100) in aggregation path to support larger requested limits for NY D1.
+- Deep timezone audit for IST/NY correctness: Confirmed 08:00 NY (EDT) produces 17:30 IST (exactly 5:30 PM IST) under correct base. Root cause for "wrong Indian time" can be (a) broker server zone != UTC (common GMT+2/+3), causing all conversions + NY filter to shift, or (b) Angular date pipe treating no-offset ISO wall-time strings as browser-local (shifts display). 
+- Fix: Made broker server zone configurable (`grok.market.broker-server-zone=UTC|GMT+3|...` in application.properties). Enrich now correctly does serverWall.atZone(serverZone) → instant → target zones. 
+- Frontend: nyTime/istTime now use safe string formatter (formatWallTime) to display exact computed wall-clock digits independent of viewer's browser TZ. Broker time column keeps prior pipe.
 - Overall: Scalable, delightful, trader-focused experience.
 
 ### Added
@@ -35,10 +40,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Proper child routed pages with layout component.
 - Real data fetching in Market page with large limit.
 - NY session only filter for data grid.
+- **Configurable broker server timezone** (`grok.market.broker-server-zone`) + safe wall-time display for accurate NY/IST.
 
-### Added
+### Added (earlier in iteration)
 - **Data Grid timezone columns** (Broker / New York / IST):
-  - Backend: `XauusdCandle` now carries `nyTime` + `istTime` (converted in `getXauusdGridData` using UTC→target zones).
+  - Backend: `XauusdCandle` now carries `nyTime` + `istTime` (converted using broker server zone → instant → target zones).
   - UI: Data Grid tab renders three time columns (BROKER | NY | IST) with the existing OHLC + RSI.
   - Fallback data also provides demo values.
 - **Data Grid column visibility** (enhanced):

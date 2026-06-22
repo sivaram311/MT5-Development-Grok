@@ -16,7 +16,7 @@ import { FormsModule } from '@angular/forms';
           <option *ngFor="let tf of timeframes" [value]="tf">{{ tf }}</option>
         </select>
         <label class="flex items-center gap-1 text-xs ml-2 cursor-pointer">
-          <input type="checkbox" [(ngModel)]="nySessionOnly" (change)="loadData()">
+          <input type="checkbox" [ngModel]="nySessionOnly" (ngModelChange)="onNySessionOnlyChange($event)">
           NY Session Only
         </label>
         <button (click)="columnDrawerOpen = !columnDrawerOpen" class="text-xs px-3 py-1.5 rounded-2xl border border-zinc-700 hover:bg-zinc-900">
@@ -66,8 +66,8 @@ import { FormsModule } from '@angular/forms';
               <td *ngFor="let col of getVisibleColumns()" class="px-3 py-2.5 font-mono text-xs">
                 <ng-container [ngSwitch]="col.key">
                   <span *ngSwitchCase="'time'">{{ row.time | date:'MMM dd HH:mm' }}</span>
-                  <span *ngSwitchCase="'nyTime'">{{ row.nyTime | date:'MMM dd HH:mm' }}</span>
-                  <span *ngSwitchCase="'istTime'">{{ row.istTime | date:'MMM dd HH:mm' }}</span>
+                  <span *ngSwitchCase="'nyTime'">{{ formatWallTime(row.nyTime) }}</span>
+                  <span *ngSwitchCase="'istTime'">{{ formatWallTime(row.istTime) }}</span>
                   <span *ngSwitchCase="'open'">{{ row.open | number:'1.2-2' }}</span>
                   <span *ngSwitchCase="'high'">{{ row.high | number:'1.2-2' }}</span>
                   <span *ngSwitchCase="'low'">{{ row.low | number:'1.2-2' }}</span>
@@ -81,7 +81,7 @@ import { FormsModule } from '@angular/forms';
               </td>
             </tr>
             <tr *ngIf="gridData.length === 0">
-              <td colspan="8" class="px-5 py-8 text-center text-sm text-zinc-400">No data loaded. Make sure the Python downloader has run and backend is serving data.</td>
+              <td [attr.colspan]="getVisibleColumns().length || 8" class="px-5 py-8 text-center text-sm text-zinc-400">No data loaded. Make sure the Python downloader has run and backend is serving data.</td>
             </tr>
           </tbody>
         </table>
@@ -122,10 +122,7 @@ export class MarketComponent implements OnInit {
 
   loadData() {
     const limit = 500;
-    let url = `${environment.apiUrl}/market/xauusd/${this.selectedTimeframe}/grid?limit=${limit}`;
-    if (this.nySessionOnly) {
-      url += '&ny_session_only=true';
-    }
+    let url = `${environment.apiUrl}/market/xauusd/${this.selectedTimeframe}/grid?limit=${limit}&ny_session_only=${this.nySessionOnly}`;
     this.http.get<any[]>(url)
       .subscribe({
         next: (data) => {
@@ -141,5 +138,31 @@ export class MarketComponent implements OnInit {
 
   getVisibleColumns() {
     return this.columnDefs.filter(c => c.visible);
+  }
+
+  // Format a backend wall-time string (e.g. "2026-06-18T17:30:00") as display time
+  // without going through JS Date (which interprets no-offset ISO as browser local TZ
+  // and can shift the displayed IST/NY digits depending on viewer's timezone).
+  // Keeps the exact wall-clock numbers the backend computed for that zone.
+  formatWallTime(dt: string | null | undefined): string {
+    if (!dt) return '—';
+    // Expect ISO local like 2026-06-18T17:30:00 or with millis; take date + HH:mm
+    const s = dt.toString();
+    const m = s.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})/);
+    if (m) {
+      // Convert to short like previous pipe: "Jun 18 17:30" (approx; full date pipe used MMM dd HH:mm)
+      const d = new Date(m[1] + 'T00:00:00Z'); // only for month name, UTC safe
+      const mon = d.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' });
+      const day = m[1].slice(8, 10);
+      return `${mon} ${day} ${m[2]}`;
+    }
+    // Fallback: return time portion if possible
+    const t = s.split('T')[1] || s.split(' ')[1] || s;
+    return t.substring(0, 5);
+  }
+
+  onNySessionOnlyChange(value: boolean) {
+    this.nySessionOnly = value;
+    this.loadData();
   }
 }

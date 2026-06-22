@@ -46,6 +46,8 @@ The admin account (and a test user) is **automatically created and password re-h
 
 This guarantees `admin / admin123` always works.
 
+**Timezone note for market data**: Set `grok.market.broker-server-zone` in `backend/src/main/resources/application.properties` (e.g. `GMT+3`) for correct NY/IST conversions and the "NY Session Only" feature. See `docs/setup-and-run.md`.
+
 If login fails:
 ```sql
 DELETE FROM grok_dev.users WHERE username IN ('admin', 'user1');

@@ -78,6 +78,14 @@ We extracted `PasswordEncoder` into a dedicated `PasswordEncoderConfig` class to
 
 ### Data Flow
 
+Market data time handling:
+- MT5 Python downloader stores bar `time` as broker server wall time (naive timestamp).
+- Spring `MarketDataService.enrichTimezoneFields()` converts using configurable `grok.market.broker-server-zone` (default `UTC`):
+  `wallTime.atZone(serverZone)` → instant → target `America/New_York` / `Asia/Kolkata` wall times.
+- This powers accurate "NY Session Only" filtering (hours 8–16 NY), D1 aggregation from M15 NY bars, and the three time columns (Broker / NY / IST).
+- Example: A bar at broker 12:00 during NY summer open yields `nyTime=08:00`, `istTime=17:30` (5:30 PM IST).
+- Frontend uses a safe string formatter for zone wall times to avoid browser-local Date parsing shifts.
+
 Login → JWT generation (access + refresh) → Token stored → Interceptor adds header → Backend filter validates → Protected resources accessible
 
 Proactive refresh and role-based features are also supported.

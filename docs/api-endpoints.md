@@ -78,11 +78,11 @@ Returns the most recent completed candles (DESC by time - newest first) includin
   - `nyTime` – New York (America/New_York)
   - `istTime` – Indian (Asia/Kolkata)
 
-Assumes base stored time is UTC for conversion (adjustable in service if needed).
+The stored 'time' is broker/MT5 server wall time. Converted using configured `grok.market.broker-server-zone` (default UTC) via server zone → instant → target zones. This makes NY session filtering and IST/NY wall times accurate regardless of broker offset (e.g. GMT+2 / GMT+3 common). For a NY 08:00 (EDT) open, IST is 17:30 (5:30 PM) same day in summer.
 
 Query params:
 - `limit` (default 200)
-- `ny_session_only` (default false): when true, only NY session bars (common 08:00-17:00 NY time) are returned; non-NY omitted. For D1, OHLC is aggregated from NY session only. RSI calculated only on the filtered data. Affects Data Grid tab only.
+- `ny_session_only` (default false): when true, only NY session bars (common 08:00-17:00 NY time) are returned; non-NY omitted. For D1, OHLC is aggregated from NY session only (synthetic daily using M15 bars with nyTime in session window; representative time = first session bar's broker time). RSI calculated only on the filtered/aggregated series. Affects Data Grid tab only. Note: D1 ny results are limited by available recent M15 history (deeper history requires sufficient M15 rows stored).
 
 Supports `limit`.
 
