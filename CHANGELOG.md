@@ -4,7 +4,22 @@ All notable changes to the Grok Dev full-stack application (Spring Boot + Angula
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - 2026-06-19
+## [Unreleased] - 2026-06-23
+
+### UI/UX Redesign (Senior Modern Dashboard)
+- Login page completely redefined with premium dark trading aesthetic, clean form, and professional branding.
+- Welcome/Dashboard page fully redefined:
+  - Modern dark zinc trading UI.
+  - Proper collapsible sidebar navigation (desktop) with icons and mobile bottom nav.
+  - Section-based pages: Overview, Market Data, Health — feel like distinct pages.
+  - Clean KPI row for instant insights.
+  - Elegant "Customize Columns" **modal** with visibility toggles and reordering (much better UX than inline panel).
+  - Preserved all advanced features (3 timezones, per-TF persistence, CSV, copy, drag & drop, health toggles).
+- Overall: Less clutter, better hierarchy, more professional and delightful for traders on mobile/tablet.
+
+### Added
+- Column customization modal with drag support simulation.
+- Collapsible sidebar.
 
 ### Added
 - **Data Grid timezone columns** (Broker / New York / IST):

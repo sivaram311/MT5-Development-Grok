@@ -14,372 +14,420 @@ Chart.register(...registerables);
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="min-h-screen bg-gradient-to-b from-blue-50 to-white dark:from-gray-950 dark:to-gray-900 pb-20 md:pb-0 text-gray-900 dark:text-gray-100">
-      <!-- Modern Top Navigation -->
-      <nav class="bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 sticky top-0 z-50 hidden md:block">
-        <div class="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
-          <div class="flex items-center gap-3">
-            <div class="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-inner">
-              <span class="text-white font-bold text-lg tracking-tighter">G</span>
+    <div class="min-h-screen bg-zinc-950 text-zinc-200 flex flex-col">
+      <!-- Top Bar -->
+      <header class="sticky top-0 z-50 border-b border-zinc-800 bg-zinc-950/95 backdrop-blur-xl">
+        <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+          <div class="flex items-center gap-4">
+            <!-- Logo + Sidebar Toggle -->
+            <div class="flex items-center gap-3">
+              <button (click)="sidebarCollapsed = !sidebarCollapsed" class="md:hidden p-2 -ml-2 text-xl">☰</button>
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-white rounded-xl flex items-center justify-center">
+                  <span class="text-zinc-950 font-bold text-xl tracking-[-1.5px]">G</span>
+                </div>
+                <div>
+                  <span class="font-semibold text-xl tracking-tight">Grok Dev</span>
+                  <span class="ml-1.5 text-[10px] px-1.5 py-px rounded bg-zinc-800 text-zinc-400 font-medium">PRO</span>
+                </div>
+              </div>
             </div>
-            <span class="font-semibold text-xl tracking-tight">Grok Dev</span>
-            <span class="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-600 font-medium">BETA</span>
+
+            <!-- Desktop Nav (top for simplicity, or can move to sidebar) -->
+            <div class="hidden md:flex items-center gap-1 ml-6 text-sm">
+              <button (click)="setSection('overview')"
+                      class="px-4 py-1.5 rounded-2xl text-sm font-medium transition-colors"
+                      [class.bg-white]="currentSection === 'overview'"
+                      [class.text-zinc-950]="currentSection === 'overview'"
+                      [class.text-zinc-300]="currentSection !== 'overview'">
+                Overview
+              </button>
+              <button (click)="setSection('market')"
+                      class="px-4 py-1.5 rounded-2xl text-sm font-medium transition-colors"
+                      [class.bg-white]="currentSection === 'market'"
+                      [class.text-zinc-950]="currentSection === 'market'"
+                      [class.text-zinc-300]="currentSection !== 'market'">
+                Market Data
+              </button>
+              <button (click)="setSection('health')"
+                      class="px-4 py-1.5 rounded-2xl text-sm font-medium transition-colors"
+                      [class.bg-white]="currentSection === 'health'"
+                      [class.text-zinc-950]="currentSection === 'health'"
+                      [class.text-zinc-300]="currentSection !== 'health'">
+                Health
+              </button>
+            </div>
           </div>
-          
-          <div class="flex items-center gap-3 text-sm">
-            <button (click)="toggleDarkMode()" 
-                    class="px-3 py-1 text-xs font-medium border border-gray-200 hover:bg-gray-50 active:bg-gray-100 rounded-2xl transition">
-              {{ darkMode ? '☀️ Light' : '🌙 Dark' }}
-            </button>
-            <div class="text-right leading-none">
-              <div class="text-xs text-gray-500">Signed in as</div>
-              <div class="font-medium">{{ currentUser?.username || 'User' }}</div>
+
+          <div class="flex items-center gap-3">
+            <!-- Timeframe mini selector -->
+            <div class="hidden sm:flex items-center bg-zinc-900 rounded-2xl p-0.5 text-xs">
+              <button *ngFor="let tf of timeframes" 
+                      (click)="selectTimeframe(tf)"
+                      class="px-3 py-1 rounded-[14px] font-medium transition"
+                      [class.bg-white]="selectedTimeframe === tf"
+                      [class.text-zinc-900]="selectedTimeframe === tf"
+                      [class.text-zinc-400]="selectedTimeframe !== tf">
+                {{ tf }}
+              </button>
             </div>
-            <button (click)="logout()" 
-                    class="px-4 py-1.5 text-xs font-medium border border-gray-200 hover:bg-gray-50 active:bg-gray-100 rounded-2xl transition">
-              Log out
+
+            <!-- User -->
+            <div class="flex items-center gap-2 pl-3 border-l border-zinc-800">
+              <div class="text-right hidden md:block">
+                <div class="text-sm font-medium">{{ currentUser?.username }}</div>
+                <div class="text-[10px] text-emerald-400 -mt-0.5">online</div>
+              </div>
+              <div class="w-8 h-8 bg-zinc-800 rounded-full flex items-center justify-center text-xs font-semibold border border-zinc-700">
+                {{ (currentUser?.username || 'U')[0].toUpperCase() }}
+              </div>
+              <button (click)="logout()" 
+                      class="text-xs px-3 py-1.5 border border-zinc-700 hover:bg-zinc-900 rounded-2xl transition">
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div class="flex flex-1 max-w-7xl mx-auto w-full">
+        <!-- Sidebar -->
+        <aside class="hidden md:flex flex-col w-60 border-r border-zinc-800 bg-zinc-950 p-4 text-sm transition-all"
+               [class.w-16]="sidebarCollapsed">
+          <div class="mb-6">
+            <button (click)="sidebarCollapsed = !sidebarCollapsed" class="text-zinc-400 hover:text-white text-xs">
+              {{ sidebarCollapsed ? '→' : '← Collapse' }}
+            </button>
+          </div>
+
+          <nav class="space-y-1">
+            <button (click)="setSection('overview')" 
+                    class="w-full text-left px-3 py-2 rounded-2xl flex items-center gap-2 hover:bg-zinc-900"
+                    [class.bg-zinc-900]="currentSection === 'overview'">
+              <span>📊</span> <span *ngIf="!sidebarCollapsed">Overview</span>
+            </button>
+            <button (click)="setSection('market')" 
+                    class="w-full text-left px-3 py-2 rounded-2xl flex items-center gap-2 hover:bg-zinc-900"
+                    [class.bg-zinc-900]="currentSection === 'market'">
+              <span>📈</span> <span *ngIf="!sidebarCollapsed">Market Data</span>
+            </button>
+            <button (click)="setSection('health')" 
+                    class="w-full text-left px-3 py-2 rounded-2xl flex items-center gap-2 hover:bg-zinc-900"
+                    [class.bg-zinc-900]="currentSection === 'health'">
+              <span>❤️</span> <span *ngIf="!sidebarCollapsed">Health</span>
+            </button>
+          </nav>
+
+          <div class="mt-auto pt-8 text-[10px] text-zinc-500" *ngIf="!sidebarCollapsed">
+            <div>Realme optimized</div>
+            <div>Modern trading UX</div>
+          </div>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="flex-1 p-6 overflow-auto">
+
+      <!-- Main Container -->
+      <div class="max-w-7xl mx-auto px-6 pt-8 pb-12">
+        
+        <!-- Header -->
+        <div class="flex items-end justify-between mb-6">
+          <div>
+            <div class="flex items-center gap-3">
+              <h1 class="text-3xl font-semibold tracking-tight">XAUUSD Live</h1>
+              <div class="px-2.5 py-0.5 text-xs font-medium bg-emerald-900/50 text-emerald-400 rounded-full border border-emerald-800">
+                {{ selectedTimeframe }}
+              </div>
+            </div>
+            <p class="text-sm text-zinc-500 mt-0.5">Real-time data from MetaTrader 5 • All timeframes</p>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button (click)="refreshMarket()" 
+                    class="flex items-center gap-2 px-4 py-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 active:bg-zinc-950 rounded-2xl text-sm font-medium transition">
+              <span>↻</span> <span>Refresh</span>
+            </button>
+            <button (click)="toggleDarkMode()" 
+                    class="px-3 py-2 text-sm border border-zinc-700 hover:bg-zinc-900 rounded-2xl">
+              {{ darkMode ? '☀' : '🌙' }}
             </button>
           </div>
         </div>
-      </nav>
 
-      <!-- Main Content (Market Data focused) -->
-      <div class="max-w-6xl mx-auto px-5 pt-8 pb-8">
+        <!-- Timeframe Pills (Mobile friendly) -->
+        <div class="flex gap-1.5 overflow-x-auto pb-4 -mx-1 px-1 snap-x scrollbar-hide md:hidden">
+          <button *ngFor="let tf of timeframes"
+                  (click)="selectTimeframe(tf)"
+                  class="px-4 py-1.5 text-sm font-medium rounded-2xl border whitespace-nowrap snap-start"
+                  [class.bg-white]="selectedTimeframe === tf"
+                  [class.text-zinc-950]="selectedTimeframe === tf"
+                  [class.border-white]="selectedTimeframe === tf"
+                  [class.bg-zinc-900]="selectedTimeframe !== tf"
+                  [class.border-zinc-700]="selectedTimeframe !== tf">
+            {{ tf }}
+          </button>
+        </div>
 
-        <!-- XAUUSD Market Data - Senior UI/UX: Trader-centric, mobile-first, enriched -->
-        <div class="mb-10">
-          <div class="flex items-center justify-between mb-4 px-1">
+        <!-- Quick KPI Row -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+          <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-4">
+            <div class="text-xs text-zinc-500">LATEST CLOSE</div>
+            <div class="text-3xl font-semibold tabular-nums mt-1 tracking-tighter" [class.text-emerald-400]="priceChange >= 0" [class.text-red-400]="priceChange < 0">
+              {{ latestCandle?.close | number:'1.2-2' || '—' }}
+            </div>
+            <div class="text-sm" [class.text-emerald-400]="priceChange >= 0" [class.text-red-400]="priceChange < 0">
+              {{ priceChange >= 0 ? '+' : '' }}{{ priceChange | number:'1.2-2' }}%
+            </div>
+          </div>
+          <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-4">
+            <div class="text-xs text-zinc-500">TIMEFRAME</div>
+            <div class="mt-1 text-2xl font-semibold">{{ selectedTimeframe }}</div>
+            <div class="text-xs text-zinc-500">{{ marketData.length }} candles loaded</div>
+          </div>
+          <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-4">
+            <div class="text-xs text-zinc-500">LAST UPDATE</div>
+            <div class="mt-1 font-mono text-lg">{{ latestCandle?.time | date:'HH:mm:ss' || '—' }}</div>
+            <div class="text-xs text-zinc-400">Broker time</div>
+          </div>
+          <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-4 flex items-center justify-between">
             <div>
-              <h2 class="text-2xl font-semibold text-gray-800">XAUUSD Market Data</h2>
-              <p class="text-xs text-gray-500">Live from MT5 • All timeframes</p>
-            </div>
-            <button (click)="refreshMarket()" 
-                    class="px-4 py-2 text-sm bg-blue-600 text-white rounded-2xl font-medium flex items-center gap-1.5 active:scale-95 transition shadow">
-              <span>↻</span> <span class="hidden sm:inline">Refresh</span>
-            </button>
-          </div>
-
-          <!-- Modern Timeframe Pills -->
-          <div class="flex gap-2 overflow-x-auto pb-3 mb-4 -mx-1 px-1 snap-x scrollbar-hide">
-            <button *ngFor="let tf of timeframes"
-                    (click)="selectTimeframe(tf)"
-                    class="px-6 py-2 text-sm font-semibold rounded-3xl border transition-all active:scale-[0.98] snap-start whitespace-nowrap"
-                    [class.bg-blue-600]="selectedTimeframe === tf"
-                    [class.text-white]="selectedTimeframe === tf"
-                    [class.shadow-md]="selectedTimeframe === tf"
-                    [class.border-blue-600]="selectedTimeframe === tf"
-                    [class.bg-white]="selectedTimeframe !== tf"
-                    [class.text-gray-700]="selectedTimeframe !== tf"
-                    [class.border-gray-200]="selectedTimeframe !== tf"
-                    [class.hover:bg-blue-50]="selectedTimeframe !== tf">
-              {{ tf }}
-            </button>
-          </div>
-
-          <!-- Quick Presets for ease -->
-          <div class="flex gap-2 mb-4 flex-wrap">
-            <button *ngFor="let p of ['1D','1W','1M','All']" 
-                    (click)="applyPreset(p)"
-                    class="px-3.5 py-1 text-xs font-medium bg-white border rounded-xl active:bg-gray-100">
-              {{ p }}
-            </button>
-            <div class="flex-1"></div>
-            <div class="text-xs text-gray-500 self-center">Showing {{ marketData.length }} candles</div>
-          </div>
-
-          <!-- Modern Segmented Tabs for Overview / Data Grid -->
-          <div class="inline-flex p-1 bg-gray-100 rounded-2xl mb-4 text-sm font-semibold">
-            <button (click)="setView('overview')"
-                    class="px-5 py-1.5 rounded-xl transition-all"
-                    [class.bg-white]="activeView === 'overview'"
-                    [class.shadow-sm]="activeView === 'overview'"
-                    [class.text-blue-700]="activeView === 'overview'"
-                    [class.text-gray-600]="activeView !== 'overview'">
-              Overview
-            </button>
-            <button (click)="setView('grid')"
-                    class="px-5 py-1.5 rounded-xl transition-all"
-                    [class.bg-white]="activeView === 'grid'"
-                    [class.shadow-sm]="activeView === 'grid'"
-                    [class.text-blue-700]="activeView === 'grid'"
-                    [class.text-gray-600]="activeView !== 'grid'">
-              Data Grid
-            </button>
-          </div>
-
-          <div *ngIf="activeView === 'overview'">
-            <!-- Modern Price Hero Card -->
-            <div *ngIf="latestCandle" class="bg-white border border-gray-100 rounded-3xl p-6 mb-5 shadow-sm hover:shadow-md transition-all">
-              <div class="flex justify-between items-start">
-                <div>
-                  <div class="uppercase tracking-[1.5px] text-[10px] font-medium text-gray-500">LATEST CLOSE • {{ selectedTimeframe }}</div>
-                  <div class="text-[42px] sm:text-6xl font-semibold tracking-[-1.25px] mt-0.5 tabular-nums leading-none" [class.text-emerald-600]="priceChange >= 0" [class.text-rose-600]="priceChange < 0">
-                    {{ latestCandle.close | number:'1.2-2' }}
-                  </div>
-                </div>
-                <div class="text-right">
-                  <div class="inline-flex items-center px-3.5 py-1 rounded-full text-sm font-semibold"
-                       [class.bg-emerald-100]="priceChange >= 0" [class.text-emerald-700]="priceChange >= 0"
-                       [class.bg-rose-100]="priceChange < 0" [class.text-rose-700]="priceChange < 0">
-                    {{ priceChange >= 0 ? '▲' : '▼' }} {{ priceChange | number:'1.2-2' }}%
-                  </div>
-                  <div class="text-xs text-gray-500 mt-1.5 font-mono">{{ latestCandle.time | date:'MMM dd HH:mm' }}</div>
-                  <div *ngIf="syncStatus[selectedTimeframe]" class="text-[10px] text-gray-400 font-mono">
-                    {{ timeSince(syncStatus[selectedTimeframe].lastCandleTime) }}
-                  </div>
-                </div>
-              </div>
-              <div class="mt-4 pt-4 border-t grid grid-cols-4 gap-3 text-sm">
-                <div class="flex flex-col"><span class="text-[10px] uppercase tracking-widest text-gray-400">Open</span> <span class="font-mono">{{ latestCandle.open | number:'1.2-2' }}</span></div>
-                <div class="flex flex-col"><span class="text-[10px] uppercase tracking-widest text-gray-400">High</span> <span class="font-mono text-emerald-600">{{ latestCandle.high | number:'1.2-2' }}</span></div>
-                <div class="flex flex-col"><span class="text-[10px] uppercase tracking-widest text-gray-400">Low</span> <span class="font-mono text-rose-600">{{ latestCandle.low | number:'1.2-2' }}</span></div>
-                <div class="flex flex-col"><span class="text-[10px] uppercase tracking-widest text-gray-400">Close</span> <span class="font-mono font-semibold">{{ latestCandle.close | number:'1.2-2' }}</span></div>
+              <div class="text-xs text-zinc-500">PIPELINE</div>
+              <div class="text-lg font-medium" [class.text-emerald-400]="healthStatus.status === 'UP'" [class.text-amber-400]="healthStatus.status === 'DEGRADED'">
+                {{ healthStatus.status || '—' }}
               </div>
             </div>
-
-          <!-- Chart Container - Modern & clean -->
-          <div class="bg-white border border-gray-100 rounded-3xl p-4 mb-5 shadow-sm">
-            <div class="flex items-center justify-between text-xs text-gray-500 mb-2 px-1">
-              <span>PRICE CHART</span>
-              <span class="font-mono">CLOSE</span>
-            </div>
-            <div class="h-48 sm:h-56 relative">
-              <canvas #marketChartCanvas></canvas>
-              <div *ngIf="isMarketLoading" class="absolute inset-0 flex items-center justify-center bg-white/80 rounded-3xl text-sm">
-                Loading...
-              </div>
-            </div>
+            <button (click)="setSection('health')" class="text-xs px-3 py-1 bg-zinc-800 rounded-2xl">View</button>
           </div>
+        </div>
 
-          <!-- Modern Recent Candles Table / Cards -->
-          <div class="bg-white border border-gray-100 rounded-3xl overflow-hidden shadow-sm">
-            <div class="px-4 py-2.5 border-b flex items-center text-xs font-semibold text-gray-500 bg-gray-50/60">
-              <span>RECENT CANDLES</span>
-              <span class="ml-auto hidden sm:block text-[10px]">LAST 12 • OHLC + VOL</span>
-              <button (click)="exportOverviewToCsv()" 
-                      [disabled]="marketData.length === 0"
-                      class="ml-3 text-[10px] px-2 py-0.5 bg-white border text-emerald-600 hover:bg-emerald-50 rounded active:bg-emerald-100">
-                CSV
-              </button>
-              <button (click)="copyVisibleToClipboard('overview')" 
-                      [disabled]="marketData.length === 0"
-                      class="ml-1 text-[10px] px-2 py-0.5 bg-white border text-blue-600 hover:bg-blue-50 rounded active:bg-blue-100">
-                Copy
-              </button>
-            </div>
-
-            <!-- Overview column visibility (compact) -->
-            <div class="px-4 pt-2 pb-1 bg-white text-xs">
-              <div class="flex flex-wrap items-center gap-1 mb-1">
-                <span class="text-[10px] text-gray-400 mr-1">Show:</span>
-                <ng-container *ngFor="let col of overviewColumnDefs">
-                  <div class="flex items-center border rounded overflow-hidden text-[10px]"
-                       draggable="true"
-                       (dragstart)="onOverviewDragStart($event, col.key)"
-                       (dragover)="onOverviewDragOver($event)"
-                       (drop)="onOverviewDrop($event, col.key)">
-                    <button (click)="toggleOverviewColumn(col.key)"
-                            class="px-1.5 py-px transition"
-                            [class.bg-blue-600]="isOverviewColumnVisible(col.key)"
-                            [class.text-white]="isOverviewColumnVisible(col.key)"
-                            [class.text-gray-500]="!isOverviewColumnVisible(col.key)">
-                      {{ col.label }}
-                    </button>
-                    <div *ngIf="isOverviewColumnVisible(col.key)" class="flex text-[9px] border-l">
-                      <button (click)="moveOverviewColumn(col.key, 'up'); $event.stopImmediatePropagation()" class="px-0.5">↑</button>
-                      <button (click)="moveOverviewColumn(col.key, 'down'); $event.stopImmediatePropagation()" class="px-0.5 border-l">↓</button>
-                    </div>
-                  </div>
-                </ng-container>
-                <button (click)="showAllOverviewColumns()" class="px-1.5 py-px text-emerald-600 border border-emerald-200 rounded">All</button>
-                <button (click)="hideAllOverviewColumns()" class="px-1.5 py-px text-rose-600 border border-rose-200 rounded">None</button>
-              </div>
+        <!-- Section Content -->
+        <div *ngIf="currentSection === 'overview'">
+          <!-- Overview Content -->
+          <div class="mb-6">
+            <div class="flex items-center justify-between mb-3 px-1">
+              <div class="font-semibold">Recent Candles</div>
+              <div class="text-xs text-zinc-500">Last 12 • {{ selectedTimeframe }}</div>
             </div>
             
-            <!-- Desktop Table - Modern styling -->
-            <table class="hidden md:table w-full text-sm">
-              <thead>
-                <tr class="border-b text-[10px] uppercase tracking-widest text-gray-400">
-                  <th *ngFor="let col of getOrderedVisibleOverviewColumns()" 
-                      class="text-left py-2 px-4 font-medium">{{ col.label }}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr *ngFor="let candle of marketData.slice(0, 12)" class="border-b last:border-none hover:bg-gray-50/80 transition-colors">
-                  <td *ngFor="let col of getOrderedVisibleOverviewColumns()" 
-                      class="px-2 py-2 font-mono text-xs"
-                      [ngClass]="{'text-right': ['open','high','low','close','vol'].includes(col.key), 'text-gray-600': col.key==='time'}">
-                    <ng-container [ngSwitch]="col.key">
-                      <span *ngSwitchCase="'time'">{{ candle.time | date:'MMM dd HH:mm' }}</span>
-                      <span *ngSwitchCase="'open'">{{ candle.open | number:'1.2-2' }}</span>
-                      <span *ngSwitchCase="'high'">{{ candle.high | number:'1.2-2' }}</span>
-                      <span *ngSwitchCase="'low'">{{ candle.low | number:'1.2-2' }}</span>
-                      <span *ngSwitchCase="'close'">{{ candle.close | number:'1.2-2' }}</span>
-                      <span *ngSwitchCase="'vol'">{{ (candle.tickVolume / 1000) | number:'1.0-0' }}k</span>
-                    </ng-container>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-
-            <!-- Mobile Cards -->
-            <div class="md:hidden divide-y text-sm">
-              <div *ngFor="let candle of marketData.slice(0, 8)" 
-                   class="p-3.5 active:bg-gray-50 flex flex-col gap-y-1">
-                <div class="flex justify-between items-baseline">
-                  <span *ngIf="isOverviewColumnVisible('time')" class="font-mono text-xs text-gray-500">{{ candle.time | date:'MMM dd HH:mm' }}</span>
-                  <span class="font-semibold text-base tabular-nums" [ngClass]="getCandleColor(candle)">
-                    {{ candle.close | number:'1.2-2' }}
-                  </span>
-                </div>
-                <div class="grid gap-1 text-[11px] font-mono text-center" [style.grid-template-columns]="'repeat(' + visibleOverviewColumnCount + ', minmax(0, 1fr))'">
-                  <div *ngIf="isOverviewColumnVisible('open')"><span class="text-[9px] text-gray-400 block">O</span>{{ candle.open | number:'1.2-2' }}</div>
-                  <div *ngIf="isOverviewColumnVisible('high')"><span class="text-[9px] text-emerald-400 block">H</span>{{ candle.high | number:'1.2-2' }}</div>
-                  <div *ngIf="isOverviewColumnVisible('low')"><span class="text-[9px] text-rose-400 block">L</span>{{ candle.low | number:'1.2-2' }}</div>
-                  <div *ngIf="isOverviewColumnVisible('close')"><span class="text-[9px] text-gray-400 block">C</span>{{ candle.close | number:'1.2-2' }}</div>
-                  <div *ngIf="isOverviewColumnVisible('vol')"><span class="text-[9px] text-gray-400 block">VOL</span>{{ (candle.tickVolume / 1000) | number:'1.0-0' }}k</div>
-                </div>
-              </div>
-            </div>
-          </div>
-          </div> <!-- end overview -->
-
-          <!-- Modern Data Grid Tab -->
-          <div *ngIf="activeView === 'grid'" class="bg-white border border-gray-100 rounded-3xl overflow-hidden shadow-sm">
-            <div class="px-5 py-3 border-b flex items-center justify-between bg-gray-50/70 text-xs font-semibold text-gray-500 tracking-wider">
-              <span>DATA GRID — TIMES (Broker / NY / IST) • OHLC • RSI(14)</span>
-              <span class="text-[10px] font-normal">NEWEST FIRST</span>
-            </div>
-
-            <!-- Column visibility toggles -->
-            <div class="px-5 pt-3 pb-1 bg-white border-b">
-              <div class="flex items-center justify-between mb-1.5">
-                <div class="text-[10px] uppercase tracking-[1px] text-gray-400 font-medium">Columns</div>
-                <div class="flex gap-1">
-                  <button (click)="toggleTimesGroup()"
-                          class="text-[10px] px-2 py-0.5 text-blue-600 hover:bg-blue-50 border border-blue-200 rounded active:bg-blue-100">
-                    Times
-                  </button>
-                  <button (click)="showAllGridColumns()"
-                          class="text-[10px] px-2 py-0.5 text-emerald-600 hover:bg-emerald-50 border border-emerald-200 rounded active:bg-emerald-100">
-                    Show all
-                  </button>
-                  <button (click)="hideAllGridColumns()"
-                          class="text-[10px] px-2 py-0.5 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded active:bg-rose-100">
-                    Hide all
-                  </button>
-                  <button (click)="resetGridColumns()"
-                          class="text-[10px] px-2 py-0.5 text-gray-500 hover:text-blue-600 border border-gray-200 rounded active:bg-gray-50">
-                    Reset
-                  </button>
-                </div>
-              </div>
-              <!-- Presets -->
-              <div class="flex flex-wrap gap-1 mb-1">
-                <button (click)="applyGridPreset('all')" class="text-[9px] px-1.5 py-0.5 bg-gray-100 hover:bg-gray-200 rounded">All</button>
-                <button (click)="applyGridPreset('times+core')" class="text-[9px] px-1.5 py-0.5 bg-gray-100 hover:bg-gray-200 rounded">Times+OHLC</button>
-                <button (click)="applyGridPreset('rsi')" class="text-[9px] px-1.5 py-0.5 bg-gray-100 hover:bg-gray-200 rounded">+RSI</button>
-                <button (click)="applyGridPreset('minimal')" class="text-[9px] px-1.5 py-0.5 bg-gray-100 hover:bg-gray-200 rounded">Minimal</button>
-              </div>
-              <div class="flex flex-wrap gap-1">
-                <ng-container *ngFor="let col of gridColumnDefs">
-                  <div class="flex items-center border rounded-full overflow-hidden"
-                       [class.bg-blue-600]="isGridColumnVisible(col.key)"
-                       [class.border-blue-600]="isGridColumnVisible(col.key)"
-                       [class.bg-white]="!isGridColumnVisible(col.key)"
-                       [class.border-gray-200]="!isGridColumnVisible(col.key)"
-                       draggable="true"
-                       (dragstart)="onGridDragStart($event, col.key)"
-                       (dragover)="onGridDragOver($event)"
-                       (drop)="onGridDrop($event, col.key)"
-                       (dragend)="onGridDragEnd()">
-                    <button (click)="toggleGridColumn(col.key)"
-                            class="px-2 py-0.5 text-[10px] font-medium transition"
-                            [class.text-white]="isGridColumnVisible(col.key)"
-                            [class.text-gray-600]="!isGridColumnVisible(col.key)"
-                            [title]="col.title">
-                      {{ col.label }}
-                    </button>
-                    <div *ngIf="isGridColumnVisible(col.key)" class="flex border-l border-white/30">
-                      <button (click)="moveGridColumn(col.key, 'up'); $event.stopImmediatePropagation()" 
-                              class="px-1 text-white/80 hover:text-white text-[9px] leading-none">↑</button>
-                      <button (click)="moveGridColumn(col.key, 'down'); $event.stopImmediatePropagation()" 
-                              class="px-1 text-white/80 hover:text-white text-[9px] leading-none border-l border-white/30">↓</button>
-                    </div>
-                  </div>
-                </ng-container>
-              </div>
-            </div>
-
-            <div class="overflow-x-auto">
-              <table class="min-w-full text-sm">
+            <!-- Desktop table -->
+            <div class="hidden md:block bg-zinc-900 border border-zinc-800 rounded-3xl overflow-hidden">
+              <table class="w-full text-sm">
                 <thead>
-                  <tr class="border-b text-[10px] uppercase tracking-[1px] text-gray-400 bg-gray-50">
-                    <th *ngFor="let col of getOrderedVisibleGridColumns()" 
-                        class="text-left py-2.5 px-2 font-medium" 
-                        [title]="col.title">
-                      {{ col.label.toUpperCase() }}
-                    </th>
+                  <tr class="border-b border-zinc-800 text-xs text-zinc-400">
+                    <th class="text-left py-3 px-5 font-medium">Time</th>
+                    <th class="text-right py-3 px-4 font-medium">Open</th>
+                    <th class="text-right py-3 px-4 font-medium">High</th>
+                    <th class="text-right py-3 px-4 font-medium">Low</th>
+                    <th class="text-right py-3 px-4 font-medium">Close</th>
+                    <th class="text-right py-3 px-5 font-medium">Vol (k)</th>
                   </tr>
                 </thead>
-                <tbody class="divide-y">
-                  <tr *ngFor="let row of gridData" class="hover:bg-blue-50/30 transition-colors group">
-                    <td *ngFor="let col of getOrderedVisibleGridColumns()" 
-                        class="px-2 py-2.5 font-mono text-[11px]"
-                        [ngClass]="{
-                          'text-gray-700 group-hover:text-gray-900': col.key === 'broker',
-                          'text-blue-700': col.key === 'ny',
-                          'text-emerald-700': col.key === 'ist',
-                          'text-right': ['open','high','low','close','rsi'].includes(col.key)
-                        }">
-                      <ng-container [ngSwitch]="col.key">
-                        <span *ngSwitchCase="'broker'">{{ row.time ? (row.time | date:'MMM dd HH:mm') : '—' }}</span>
-                        <span *ngSwitchCase="'ny'">{{ row.nyTime ? (row.nyTime | date:'MMM dd HH:mm') : '—' }}</span>
-                        <span *ngSwitchCase="'ist'">{{ row.istTime ? (row.istTime | date:'MMM dd HH:mm') : '—' }}</span>
-                        <span *ngSwitchCase="'open'">{{ row.open | number:'1.2-2' }}</span>
-                        <span *ngSwitchCase="'high'">{{ row.high | number:'1.2-2' }}</span>
-                        <span *ngSwitchCase="'low'">{{ row.low | number:'1.2-2' }}</span>
-                        <span *ngSwitchCase="'close'">{{ row.close | number:'1.2-2' }}</span>
-                        <span *ngSwitchCase="'rsi'">
-                          <span *ngIf="row.rsi != null" 
-                                class="inline-block min-w-[52px] px-2 py-px rounded font-medium text-xs"
-                                [class.bg-emerald-100]="row.rsi > 50" [class.text-emerald-700]="row.rsi > 50"
-                                [class.bg-rose-100]="row.rsi <= 50" [class.text-rose-700]="row.rsi <= 50">
-                            {{ row.rsi | number:'1.1-1' }}
-                          </span>
-                          <span *ngIf="row.rsi == null" class="text-gray-300">—</span>
-                        </span>
-                      </ng-container>
-                    </td>
-                  </tr>
-                  <tr *ngIf="gridData.length === 0 && !isGridLoading">
-                    <td [attr.colspan]="visibleGridColumnCount" class="px-5 py-8 text-center text-sm text-gray-400">No data loaded for this timeframe. Tap refresh.</td>
+                <tbody>
+                  <tr *ngFor="let candle of marketData.slice(0, 12)" class="border-b border-zinc-800 last:border-none hover:bg-zinc-800/50 transition-colors">
+                    <td class="px-5 py-3 font-mono text-xs text-zinc-400">{{ candle.time | date:'MMM dd HH:mm' }}</td>
+                    <td class="px-4 py-3 text-right font-mono" [ngClass]="getCandleColor(candle)">{{ candle.open | number:'1.2-2' }}</td>
+                    <td class="px-4 py-3 text-right font-mono text-emerald-400">{{ candle.high | number:'1.2-2' }}</td>
+                    <td class="px-4 py-3 text-right font-mono text-red-400">{{ candle.low | number:'1.2-2' }}</td>
+                    <td class="px-4 py-3 text-right font-mono font-medium" [ngClass]="getCandleColor(candle)">{{ candle.close | number:'1.2-2' }}</td>
+                    <td class="px-5 py-3 text-right font-mono text-xs text-zinc-400">{{ (candle.tickVolume / 1000) | number:'1.0-0' }}k</td>
                   </tr>
                 </tbody>
               </table>
             </div>
 
-            <div class="px-4 py-3 bg-gray-50 border-t flex items-center justify-between text-xs">
-              <div class="text-gray-500">{{ gridData.length }} rows</div>
-              <div class="flex items-center gap-2">
-                <button (click)="exportGridToCsv()" 
-                        [disabled]="gridData.length === 0"
-                        class="px-3 py-1 bg-white border text-emerald-600 hover:bg-emerald-50 active:bg-emerald-100 rounded-2xl font-medium text-xs transition disabled:opacity-60">
-                  ⬇ CSV
-                </button>
-                <button (click)="copyVisibleToClipboard('grid')" 
-                        [disabled]="gridData.length === 0"
-                        class="px-3 py-1 bg-white border text-blue-600 hover:bg-blue-50 active:bg-blue-100 rounded-2xl font-medium text-xs transition disabled:opacity-60">
-                  Copy
-                </button>
-                <button (click)="loadGridData()" 
-                        [disabled]="isGridLoading"
-                        class="px-4 py-1 bg-white border text-blue-600 hover:bg-blue-50 active:bg-blue-100 rounded-2xl font-medium text-xs transition disabled:opacity-60">
-                  {{ isGridLoading ? 'LOADING...' : 'REFRESH' }}
-                </button>
+            <!-- Mobile cards -->
+            <div class="md:hidden space-y-2">
+              <div *ngFor="let candle of marketData.slice(0, 6)" class="bg-zinc-900 border border-zinc-800 rounded-3xl p-4">
+                <div class="flex justify-between items-baseline">
+                  <div class="font-mono text-xs text-zinc-400">{{ candle.time | date:'MMM dd HH:mm' }}</div>
+                  <div class="font-semibold text-lg tabular-nums" [ngClass]="getCandleColor(candle)">
+                    {{ candle.close | number:'1.2-2' }}
+                  </div>
+                </div>
+                <div class="grid grid-cols-5 gap-2 mt-3 text-center text-xs">
+                  <div><div class="text-zinc-500 text-[10px]">O</div>{{ candle.open | number:'1.1-1' }}</div>
+                  <div><div class="text-emerald-500 text-[10px]">H</div>{{ candle.high | number:'1.1-1' }}</div>
+                  <div><div class="text-red-500 text-[10px]">L</div>{{ candle.low | number:'1.1-1' }}</div>
+                  <div><div class="text-zinc-500 text-[10px]">C</div>{{ candle.close | number:'1.1-1' }}</div>
+                  <div><div class="text-zinc-500 text-[10px]">VOL</div>{{ (candle.tickVolume / 1000) | number:'1.0-0' }}k</div>
+                </div>
               </div>
             </div>
           </div>
+        </div>
+
+        <!-- Market Data Section (Data Grid + Controls) -->
+        <div *ngIf="currentSection === 'market'">
+          <div class="mb-4 flex items-center justify-between">
+            <div class="font-semibold">Data Explorer</div>
+            <button (click)="showCustomizeModal = true" 
+                    class="text-xs px-3 py-1.5 rounded-2xl border border-zinc-700 hover:bg-zinc-900">
+              Customize columns
+            </button>
+          </div>
+
+          <!-- Column panel (modern) -->
+          <div *ngIf="showColumnPanel" class="mb-4 p-4 bg-zinc-900 border border-zinc-800 rounded-3xl">
+            <div class="flex items-center justify-between mb-3">
+              <div class="text-sm font-medium">Visible Columns</div>
+              <div class="flex gap-2 text-xs">
+                <button (click)="showAllGridColumns()" class="px-2 py-0.5 bg-emerald-900 text-emerald-300 rounded">Show all</button>
+                <button (click)="hideAllGridColumns()" class="px-2 py-0.5 bg-red-900 text-red-300 rounded">Hide all</button>
+                <button (click)="applyGridPreset('all')" class="px-2 py-0.5 border border-zinc-600 rounded">Reset</button>
+              </div>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <div *ngFor="let col of gridColumnDefs" 
+                   (click)="toggleGridColumn(col.key)"
+                   class="px-3 py-1 text-xs rounded-2xl border cursor-pointer transition"
+                   [class.bg-white]="isGridColumnVisible(col.key)"
+                   [class.text-zinc-950]="isGridColumnVisible(col.key)"
+                   [class.border-white]="isGridColumnVisible(col.key)"
+                   [class.bg-zinc-800]="!isGridColumnVisible(col.key)"
+                   [class.border-zinc-700]="!isGridColumnVisible(col.key)">
+                {{ col.label }}
+              </div>
+            </div>
+            <div class="text-[10px] mt-3 text-zinc-400">Drag & drop support available on desktop. Presets coming soon.</div>
+          </div>
+
+          <!-- Data Grid Table -->
+          <div class="bg-zinc-900 border border-zinc-800 rounded-3xl overflow-hidden">
+            <div class="px-5 py-3 border-b border-zinc-800 text-xs text-zinc-400 flex items-center">
+              <span>DATA GRID — {{ selectedTimeframe }}</span>
+              <span class="ml-auto">NEWEST FIRST</span>
+            </div>
+            
+            <div class="overflow-x-auto">
+              <table class="min-w-full text-sm">
+                <thead>
+                  <tr class="border-b border-zinc-800 text-[10px] text-zinc-400 bg-zinc-950">
+                    <th *ngFor="let col of getOrderedVisibleGridColumns()" class="py-3 px-3 font-medium text-left">
+                      {{ col.label }}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-zinc-800">
+                  <tr *ngFor="let row of gridData" class="hover:bg-zinc-800/40">
+                    <td *ngFor="let col of getOrderedVisibleGridColumns()" class="px-3 py-2.5 font-mono text-xs">
+                      <ng-container [ngSwitch]="col.key">
+                        <span *ngSwitchCase="'broker'">{{ row.time | date:'MMM dd HH:mm' }}</span>
+                        <span *ngSwitchCase="'ny'">{{ row.nyTime | date:'MMM dd HH:mm' }}</span>
+                        <span *ngSwitchCase="'ist'">{{ row.istTime | date:'MMM dd HH:mm' }}</span>
+                        <span *ngSwitchCase="'open'">{{ row.open | number:'1.2-2' }}</span>
+                        <span *ngSwitchCase="'high'">{{ row.high | number:'1.2-2' }}</span>
+                        <span *ngSwitchCase="'low'">{{ row.low | number:'1.2-2' }}</span>
+                        <span *ngSwitchCase="'close'">{{ row.close | number:'1.2-2' }}</span>
+                        <span *ngSwitchCase="'rsi'">
+                          <span *ngIf="row.rsi != null" class="px-1.5 py-px rounded text-xs" 
+                                [class.bg-emerald-900]="row.rsi > 50" [class.text-emerald-400]="row.rsi > 50"
+                                [class.bg-red-900]="row.rsi <= 50" [class.text-red-400]="row.rsi <= 50">
+                            {{ row.rsi | number:'1.1-1' }}
+                          </span>
+                          <span *ngIf="row.rsi == null" class="text-zinc-600">—</span>
+                        </span>
+                      </ng-container>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            
+            <div class="px-4 py-3 bg-zinc-950 border-t border-zinc-800 flex justify-between text-xs">
+              <div>{{ gridData.length }} rows</div>
+              <button (click)="loadGridData()" class="text-emerald-400 hover:text-emerald-300">Refresh Grid</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Health Section -->
+        <div *ngIf="currentSection === 'health'">
+          <div class="mb-4">
+            <div class="font-semibold mb-1">Pipeline Health</div>
+            <div class="text-xs text-zinc-400">Per-timeframe freshness based on completed candles</div>
+          </div>
+
+          <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
+            <div *ngFor="let tf of timeframes" 
+                 class="bg-zinc-900 border border-zinc-800 rounded-3xl px-4 py-4 text-sm"
+                 [class.border-emerald-700]="isFresh(tf)"
+                 [class.border-amber-700]="!isFresh(tf)">
+              <div class="flex justify-between">
+                <div class="font-semibold">{{ tf }}</div>
+                <div class="text-xs" [class.text-emerald-400]="isFresh(tf)" [class.text-amber-400]="!isFresh(tf)">
+                  {{ isFresh(tf) ? 'FRESH' : timeSince(syncStatus[tf]?.lastCandleTime) }}
+                </div>
+              </div>
+              <div class="font-mono text-lg mt-2 text-zinc-100">
+                {{ syncStatus[tf]?.lastCandleTime | date:'HH:mm' || '—' }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Column Customization Modal -->
+      <div *ngIf="showCustomizeModal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/70" (click)="showCustomizeModal = false">
+        <div class="bg-zinc-900 border border-zinc-700 rounded-3xl p-6 w-full max-w-md mx-4" (click)="$event.stopPropagation()">
+          <div class="flex justify-between items-center mb-4">
+            <div class="font-semibold">Customize Columns</div>
+            <button (click)="showCustomizeModal = false" class="text-xl leading-none">×</button>
+          </div>
+
+          <div class="space-y-2 max-h-[50vh] overflow-auto pr-2">
+            <div *ngFor="let col of gridColumnDefs" 
+                 class="flex items-center justify-between px-3 py-2 bg-zinc-800 rounded-2xl">
+              <div class="flex items-center gap-2">
+                <button (click)="toggleGridColumn(col.key)" 
+                        class="px-2 py-0.5 text-xs rounded border"
+                        [class.bg-white]="isGridColumnVisible(col.key)"
+                        [class.text-zinc-900]="isGridColumnVisible(col.key)">
+                  {{ isGridColumnVisible(col.key) ? 'Visible' : 'Hidden' }}
+                </button>
+                <span>{{ col.label }} ({{ col.title }})</span>
+              </div>
+              <div class="flex gap-1">
+                <button (click)="moveGridColumn(col.key, 'up')" class="px-1 text-sm">↑</button>
+                <button (click)="moveGridColumn(col.key, 'down')" class="px-1 text-sm">↓</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex gap-2 mt-4">
+            <button (click)="showAllGridColumns(); showCustomizeModal = false" class="flex-1 py-2 bg-emerald-900 text-sm rounded-2xl">Show All</button>
+            <button (click)="hideAllGridColumns(); showCustomizeModal = false" class="flex-1 py-2 bg-red-900 text-sm rounded-2xl">Hide All</button>
+            <button (click)="showCustomizeModal = false" class="flex-1 py-2 border border-zinc-600 rounded-2xl">Close</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mobile bottom nav -->
+      <div class="md:hidden fixed bottom-0 inset-x-0 bg-zinc-900 border-t border-zinc-800 px-2 py-1 flex justify-around text-xs">
+        <div (click)="setSection('overview')" class="flex-1 py-2 text-center" [class.text-white]="currentSection === 'overview'">
+          Overview
+        </div>
+        <div (click)="setSection('market')" class="flex-1 py-2 text-center" [class.text-white]="currentSection === 'market'">
+          Market
+        </div>
+        <div (click)="setSection('health')" class="flex-1 py-2 text-center" [class.text-white]="currentSection === 'health'">
+          Health
+        </div>
+      </div>
+    </div>
+  `
+
+
+
+
+
+
+
+
+
+
+
+
 
         </div>
 
@@ -508,333 +556,6 @@ Chart.register(...registerables);
       </div>
     </div>
   `
-})
-export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
-  currentUser: any = null;
-  expirationInfo: string = '';
-  isAdminUser = false;
-  private expirationInterval?: ReturnType<typeof setInterval>;
-
-  // Market Data - Enriched UX for traders on mobile/tablet
-  timeframes = ['D1', 'H4', 'H1', 'M15', 'M5', 'M1'];
-  selectedTimeframe = 'D1';
-  marketData: any[] = [];
-  latestCandle: any = null;
-  priceChange = 0;
-  isMarketLoading = false;
-  marketLimit = 100;
-  healthStatus: any = {};
-  syncStatus: any = {};
-  private marketChart?: Chart;
-
-  // Dark mode toggle
-  darkMode = false;
-
-  // Data Grid tab
-  activeView: 'overview' | 'grid' = 'overview';
-  gridData: any[] = [];
-  isGridLoading = false;
-
-  // Column visibility toggles for Data Grid (all on by default)
-  gridColumnVisibility: { [key: string]: boolean } = {
-    broker: true,
-    ny: true,
-    ist: true,
-    open: true,
-    high: true,
-    low: true,
-    close: true,
-    rsi: true
-  };
-
-  gridColumnDefs = [
-    { key: 'broker', label: 'Broker', title: 'Broker / MT5 server time' },
-    { key: 'ny', label: 'NY', title: 'New York time' },
-    { key: 'ist', label: 'IST', title: 'Indian Standard Time' },
-    { key: 'open', label: 'O', title: 'Open' },
-    { key: 'high', label: 'H', title: 'High' },
-    { key: 'low', label: 'L', title: 'Low' },
-    { key: 'close', label: 'C', title: 'Close' },
-    { key: 'rsi', label: 'RSI', title: 'RSI (14)' }
-  ];
-
-  // Current display order for grid columns (persisted per TF)
-  gridColumnOrder: string[] = ['broker', 'ny', 'ist', 'open', 'high', 'low', 'close', 'rsi'];
-
-  // Visibility for Overview recent candles table/cards
-  overviewColumnVisibility: { [key: string]: boolean } = {
-    time: true,
-    open: true,
-    high: true,
-    low: true,
-    close: true,
-    vol: true
-  };
-
-  overviewColumnDefs = [
-    { key: 'time', label: 'Time', title: 'Time' },
-    { key: 'open', label: 'O', title: 'Open' },
-    { key: 'high', label: 'H', title: 'High' },
-    { key: 'low', label: 'L', title: 'Low' },
-    { key: 'close', label: 'C', title: 'Close' },
-    { key: 'vol', label: 'Vol', title: 'Volume' }
-  ];
-
-  // Current display order for overview columns (persisted per TF)
-  overviewColumnOrder: string[] = ['time', 'open', 'high', 'low', 'close', 'vol'];
-
-  // Visibility for Health dashboard TF cards
-  healthTfVisibility: { [key: string]: boolean } = {
-    'D1': true, 'H4': true, 'H1': true, 'M15': true, 'M5': true, 'M1': true
-  };
-
-  // Grid filters
-  gridFrom: string = '';
-  gridTo: string = '';
-  gridRsiMin: number | null = null;
-  gridRsiMax: number | null = null;
-  gridSort: 'time-desc' | 'time-asc' | 'close-desc' | 'rsi-desc' = 'time-desc';
-
-  @ViewChild('marketChartCanvas') marketChartCanvas!: ElementRef<HTMLCanvasElement>;
-
-  constructor(
-    private authService: AuthService,
-    private router: Router,
-    private http: HttpClient
-  ) {}
-
-  ngOnInit() {
-    this.currentUser = this.authService.getCurrentUser();
-    
-    // Proactively ensure valid session
-    this.authService.ensureValidSession();
-
-    // Role-based UI
-    this.isAdminUser = this.authService.hasRole('ROLE_ADMIN');
-
-    // Refresh roles
-    this.http.get<any>(`${environment.apiUrl}/auth/me`).subscribe({
-      next: (me) => {
-        const u = this.authService.getCurrentUser() || { username: me.username };
-        localStorage.setItem('currentUser', JSON.stringify({ username: u.username, roles: me.roles || [] }));
-        this.currentUser = this.authService.getCurrentUser();
-        this.isAdminUser = this.authService.hasRole('ROLE_ADMIN');
-      },
-      error: () => {}
-    });
-
-    // Dark mode init
-    const savedDark = localStorage.getItem('darkMode') === 'true';
-    this.darkMode = savedDark;
-    if (savedDark) {
-      document.documentElement.classList.add('dark');
-    }
-
-    // Start live countdown
-    this.startLiveCountdown();
-
-    // Load market data
-    this.loadMarketData();
-
-    // Restore column visibility prefs for Data Grid + Overview
-    this.loadGridColumnVisibility();
-    this.loadOverviewColumnVisibility();
-
-    // Health TF visibility
-    const savedHealth = localStorage.getItem('healthTfVisibility');
-    if (savedHealth) {
-      try {
-        this.healthTfVisibility = { ...this.healthTfVisibility, ...JSON.parse(savedHealth) };
-      } catch {}
-    }
-    this.ensureHealthVisibility();
-
-    // Load from backend (overrides local for current TF)
-    this.loadPreferencesFromBackend();
-  }
-
-  ngAfterViewInit() {
-    // Chart will render after data loads
-  }
-
-
-
-  logout() {
-    this.authService.logout().subscribe({
-      next: () => {
-        this.router.navigate(['/login']);
-      },
-      error: () => {
-        this.router.navigate(['/login']);
-      }
-    });
-  }
-
-  toggleDarkMode() {
-    this.darkMode = !this.darkMode;
-    if (this.darkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-    localStorage.setItem('darkMode', this.darkMode.toString());
-  }
-
-  refreshManually() {
-    this.authService.refreshToken().subscribe({
-      next: () => {
-        this.updateExpirationDisplay();
-        alert('Access token refreshed successfully!');
-      },
-      error: () => {
-        alert('Failed to refresh token. Please log in again.');
-        this.logout();
-      }
-    });
-  }
-
-  private startLiveCountdown() {
-    this.updateExpirationDisplay();
-
-    // Update every 10 seconds for a responsive live countdown
-    this.expirationInterval = setInterval(() => {
-      this.updateExpirationDisplay();
-    }, 10000);
-  }
-
-  private updateExpirationDisplay() {
-    const exp = this.authService.getTokenExpiration();
-    if (!exp) {
-      this.expirationInfo = '';
-      return;
-    }
-
-    const now = new Date();
-    const diffMs = exp.getTime() - now.getTime();
-
-    if (diffMs <= 0) {
-      this.expirationInfo = 'Access token expired — auto-refreshing on next request';
-      return;
-    }
-
-    const totalSeconds = Math.floor(diffMs / 1000);
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-
-    if (minutes >= 1) {
-      this.expirationInfo = `Access token expires in ${minutes}m ${seconds}s`;
-    } else {
-      this.expirationInfo = `Access token expires in ${seconds}s (refreshing soon)`;
-    }
-  }
-
-  isAdmin(): boolean {
-    return this.isAdminUser;
-  }
-
-  // ==================== Market Data - Senior UI/UX Design ====================
-  // User perspective: Trader needs instant access to latest price, easy TF switch on thumb,
-  // visual cues for direction, clean data table on phone/tablet.
-  // Enrich: Big price, % change, color coded rows, interactive chart.
-  // Responsive: Pills scroll on mobile, cards/table stack, large tap areas.
-
-  loadMarketData() {
-    this.isMarketLoading = true;
-    const params = `limit=${this.marketLimit}`;
-    this.http.get<any[]>(`${environment.apiUrl}/market/xauusd/${this.selectedTimeframe}?${params}`).subscribe({
-      next: (data) => {
-        this.marketData = data || [];
-        this.latestCandle = this.marketData.length > 0 ? this.marketData[this.marketData.length - 1] : null;
-        this.calculatePriceChange();
-        this.isMarketLoading = false;
-        // Render chart after data + DOM ready
-        setTimeout(() => this.renderMarketChart(), 100);
-      },
-      error: (err) => {
-        console.error('Market data error:', err);
-        this.marketData = this.getFallbackMarketData();
-        this.latestCandle = this.marketData[this.marketData.length - 1];
-        this.calculatePriceChange();
-        this.isMarketLoading = false;
-        setTimeout(() => this.renderMarketChart(), 100);
-      }
-    });
-
-    // Fetch health for dedicated dashboard
-    this.loadHealthStatus();
-  }
-
-  loadHealthStatus() {
-    this.http.get<any>(`${environment.apiUrl}/market/xauusd/health`).subscribe({
-      next: (health) => {
-        this.healthStatus = health || {};
-        this.syncStatus = this.healthStatus.details || {};
-      },
-      error: () => {}
-    });
-  }
-
-  selectTimeframe(tf: string) {
-    if (this.selectedTimeframe === tf) return;
-
-    // Persist current visibility before switching
-    this.saveGridVisibilityForTf(this.selectedTimeframe);
-    this.saveOverviewVisibilityForTf(this.selectedTimeframe);
-
-    this.selectedTimeframe = tf;
-
-    // Load visibility for new timeframe
-    this.loadGridVisibilityForTf(tf);
-    this.loadOverviewVisibilityForTf(tf);
-
-    this.marketChart?.destroy();
-    this.loadMarketData();
-    if (this.activeView === 'grid') {
-      this.gridData = [];
-      this.loadGridData();
-    }
-  }
-
-  applyPreset(preset: string) {
-    // For future: could pass from/to to API, for now adjust limit for "recent" feel
-    const limits: { [key: string]: number } = {
-      '1D': 50,
-      '1W': 200,
-      '1M': 500,
-      'All': 1000
-    };
-    this.marketLimit = limits[preset] || 100;
-    this.loadMarketData();
-  }
-
-  refreshMarket() {
-    this.marketChart?.destroy();
-    this.loadMarketData();
-    this.loadHealthStatus();
-  }
-
-  setView(view: 'overview' | 'grid') {
-    this.activeView = view;
-    if (view === 'grid' && this.gridData.length === 0) {
-      this.loadGridData();
-    }
-  }
-
-  loadGridData() {
-    this.isGridLoading = true;
-    this.http.get<any[]>(`${environment.apiUrl}/market/xauusd/${this.selectedTimeframe}/grid?limit=${this.marketLimit}`).subscribe({
-      next: (data) => {
-        this.gridData = data || [];
-        this.isGridLoading = false;
-      },
-      error: (err) => {
-        console.error('Grid data error:', err);
-        this.gridData = this.getFallbackMarketData(); // reuse for demo
-        this.isGridLoading = false;
-      }
-    });
-  }
-
   // ==================== Data Grid Column Visibility ====================
   isGridColumnVisible(key: string): boolean {
     return this.gridColumnVisibility[key] !== false;
