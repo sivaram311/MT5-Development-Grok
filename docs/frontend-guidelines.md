@@ -38,8 +38,9 @@ The Welcome page has been evolved into a clean, modern trading dashboard:
 - Dedicated Health Dashboard with status cards
 - Modern data tables with excellent hover and responsive behavior
 - Full per-column visibility toggles with slide-over drawer
-- Modern dashboard layout with collapsible sidebar
-- Sectioned pages (Overview, Market, Health, Analysis) with KPI bar
+- Modern dashboard layout with collapsible sidebar (DashboardLayoutComponent)
+- Routed child pages (Overview, Market, Health, Analysis) for scalability
+- Slide-over drawer for column customization
 - Consistent use of rounded-3xl, subtle shadows, and good visual hierarchy
 
 **Design principles**:

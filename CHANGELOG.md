@@ -17,12 +17,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   - Sidebar + top nav for modern dashboard feel.
   - Preserved and enhanced all features (timezones, visibility, per-TF, exports, health).
 - Login: Premium dark form.
+- **Routed Pages**: Introduced proper DashboardLayout with child routes for Overview, Market, Health, Analysis for better architecture and scalability.
 - Overall: Scalable, delightful, trader-focused experience.
 
 ### Added
 - Analysis section.
 - Slide-over column drawer.
 - Collapsible sidebar.
+- Proper child routed pages with layout component.
 
 ### Added
 - **Data Grid timezone columns** (Broker / New York / IST):
