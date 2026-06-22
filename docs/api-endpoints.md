@@ -80,9 +80,13 @@ Returns the most recent completed candles (DESC by time - newest first) includin
 
 Assumes base stored time is UTC for conversion (adjustable in service if needed).
 
+Query params:
+- `limit` (default 200)
+- `ny_session_only` (default false): when true, only NY session bars (common 08:00-17:00 NY time) are returned; non-NY omitted. For D1, OHLC is aggregated from NY session only. RSI calculated only on the filtered data. Affects Data Grid tab only.
+
 Supports `limit`.
 
-The Data Grid tab uses this endpoint. Data is sorted descending by time.
+The Data Grid tab uses this endpoint (toggle "NY Session Only" next to TF selector). Data is sorted descending by time. Existing full data when off.
 
 ### GET `/api/market/xauusd/sync-status`
 

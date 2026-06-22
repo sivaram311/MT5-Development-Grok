@@ -15,6 +15,10 @@ import { FormsModule } from '@angular/forms';
         <select [(ngModel)]="selectedTimeframe" (change)="loadData()" class="bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-xs">
           <option *ngFor="let tf of timeframes" [value]="tf">{{ tf }}</option>
         </select>
+        <label class="flex items-center gap-1 text-xs ml-2 cursor-pointer">
+          <input type="checkbox" [(ngModel)]="nySessionOnly" (change)="loadData()">
+          NY Session Only
+        </label>
         <button (click)="columnDrawerOpen = !columnDrawerOpen" class="text-xs px-3 py-1.5 rounded-2xl border border-zinc-700 hover:bg-zinc-900">
           Customize columns
         </button>
@@ -95,6 +99,7 @@ export class MarketComponent implements OnInit {
   gridData: any[] = [];
   selectedTimeframe = 'D1';
   timeframes = ['D1', 'H4', 'H1', 'M15', 'M5', 'M1'];
+  nySessionOnly = false;
   
   // Simple column visibility for demo
   columnDefs = [
@@ -117,11 +122,15 @@ export class MarketComponent implements OnInit {
 
   loadData() {
     const limit = 500;
-    this.http.get<any[]>(`${environment.apiUrl}/market/xauusd/${this.selectedTimeframe}/grid?limit=${limit}`)
+    let url = `${environment.apiUrl}/market/xauusd/${this.selectedTimeframe}/grid?limit=${limit}`;
+    if (this.nySessionOnly) {
+      url += '&ny_session_only=true';
+    }
+    this.http.get<any[]>(url)
       .subscribe({
         next: (data) => {
           this.gridData = data || [];
-          console.log('Loaded grid data:', this.gridData.length, 'rows for', this.selectedTimeframe);
+          console.log('Loaded grid data:', this.gridData.length, 'rows for', this.selectedTimeframe, 'nyOnly=', this.nySessionOnly);
         },
         error: (err) => {
           console.error('Failed to load grid data', err);

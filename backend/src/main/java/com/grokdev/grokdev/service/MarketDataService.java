@@ -7,9 +7,12 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.Comparator;
+import java.util.Objects;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -79,7 +82,7 @@ public class MarketDataService {
         return getXauusdData(timeframe, null, null, limit);
     }
 
-    public List<XauusdCandle> getXauusdGridData(String timeframe, int limit) {
+    public List<XauusdCandle> getXauusdGridData(String timeframe, int limit, boolean nySessionOnly) {
         // Fetch extra bars for RSI calculation (14 period + buffer)
         int rsiPeriod = 14;
         int extra = rsiPeriod + 5;
@@ -88,12 +91,22 @@ public class MarketDataService {
         // getXauusdData returns DESC (newest first) - reverse to ASC for sequential RSI calc
         Collections.reverse(candles);
 
+        if (nySessionOnly) {
+            if ("D1".equalsIgnoreCase(timeframe)) {
+                // For D1 + NY session: fetch finer TF (M15), filter to NY session, aggregate per NY day
+                int aggExtra = (limit + extra) * 50; // enough M15 bars to cover recent days
+                List<XauusdCandle> fine = getXauusdData("M15", null, null, aggExtra);
+                Collections.reverse(fine); // ASC
+                List<XauusdCandle> nyFine = filterToNySession(fine);
+                candles = aggregateNySessionToDaily(nyFine);
+            } else {
+                candles = filterToNySession(candles);
+            }
+        }
+
         if (candles.size() > rsiPeriod) {
             calculateRSI(candles, rsiPeriod);
         }
-
-        // Add broker / NY / IST times for the Data Grid UI
-        enrichTimezoneFields(candles);
 
         // Return the most recent 'limit' candles in DESC order (newest first)
         if (candles.size() > limit) {
@@ -104,6 +117,59 @@ public class MarketDataService {
         // If less than limit, reverse back to DESC
         Collections.reverse(candles);
         return candles;
+    }
+
+    private List<XauusdCandle> filterToNySession(List<XauusdCandle> candles) {
+        if (candles == null || candles.isEmpty()) return List.of();
+        return candles.stream()
+                .filter(c -> isInNySession(c.getNyTime()))
+                .collect(Collectors.toList());
+    }
+
+    private boolean isInNySession(LocalDateTime nyTime) {
+        if (nyTime == null) return false;
+        int hour = nyTime.getHour();
+        // Common NY session: 08:00 - 17:00 NY time (9 hours)
+        return hour >= 8 && hour < 17;
+    }
+
+    private List<XauusdCandle> aggregateNySessionToDaily(List<XauusdCandle> fineCandles) {
+        if (fineCandles == null || fineCandles.isEmpty()) return List.of();
+
+        Map<LocalDate, List<XauusdCandle>> byNyDate = fineCandles.stream()
+                .filter(c -> c.getNyTime() != null)
+                .collect(Collectors.groupingBy(c -> c.getNyTime().toLocalDate()));
+
+        List<XauusdCandle> daily = new ArrayList<>();
+        for (List<XauusdCandle> dayBars : byNyDate.values()) {
+            if (dayBars.isEmpty()) continue;
+            dayBars.sort(Comparator.comparing(XauusdCandle::getTime));
+
+            XauusdCandle agg = new XauusdCandle();
+            agg.setTime(dayBars.get(0).getTime());
+            agg.setOpen(dayBars.get(0).getOpen());
+            agg.setHigh(dayBars.stream()
+                    .map(XauusdCandle::getHigh)
+                    .filter(Objects::nonNull)
+                    .max(Comparator.naturalOrder())
+                    .orElse(null));
+            agg.setLow(dayBars.stream()
+                    .map(XauusdCandle::getLow)
+                    .filter(Objects::nonNull)
+                    .min(Comparator.naturalOrder())
+                    .orElse(null));
+            agg.setClose(dayBars.get(dayBars.size() - 1).getClose());
+
+            long volSum = dayBars.stream()
+                    .mapToLong(c -> c.getTickVolume() != null ? c.getTickVolume() : 0L)
+                    .sum();
+            agg.setTickVolume(volSum);
+
+            daily.add(agg);
+        }
+        daily.sort(Comparator.comparing(XauusdCandle::getTime));
+        enrichTimezoneFields(daily);
+        return daily;
     }
 
     /**

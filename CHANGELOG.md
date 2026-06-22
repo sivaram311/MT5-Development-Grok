@@ -19,6 +19,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Login: Premium dark form.
 - **Routed Pages**: Introduced proper DashboardLayout with child routes for Overview, Market, Health, Analysis for better architecture and scalability.
 - **Data Grid Fix**: Market Data page now properly fetches real data from backend (`/market/xauusd/{tf}/grid?limit=500`) instead of hardcoded 3 rows. Supports timeframe switching and basic column visibility via drawer. Shows full available rows (hundreds if downloader ran).
+- **NY Session Filter**: Added "NY Session Only" toggle (next to timeframe selector in Market Data). When enabled:
+  - Only NY session bars (common 08:00-17:00 NY time) are fetched for the grid.
+  - Non-NY periods are omitted (not shown as gaps in the table).
+  - For D1: OHLC is computed only from NY session bars of the day.
+  - RSI is calculated only on the filtered NY-session data.
+  - Affects only the Data Grid tab (existing full data behavior preserved when off).
+  - Not persisted (manual toggle).
 - Overall: Scalable, delightful, trader-focused experience.
 
 ### Added
@@ -27,6 +34,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Collapsible sidebar.
 - Proper child routed pages with layout component.
 - Real data fetching in Market page with large limit.
+- NY session only filter for data grid.
 
 ### Added
 - **Data Grid timezone columns** (Broker / New York / IST):
