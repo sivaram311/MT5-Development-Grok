@@ -37,7 +37,9 @@ The Welcome page has been evolved into a clean, modern trading dashboard:
 - Premium price hero card with refined typography
 - Dedicated Health Dashboard with status cards
 - Modern data tables with excellent hover and responsive behavior
-- Full per-column visibility toggles (Overview + Data Grid) with persistence
+- Full per-column visibility toggles with slide-over drawer
+- Modern dashboard layout with collapsible sidebar
+- Sectioned pages (Overview, Market, Health, Analysis) with KPI bar
 - Consistent use of rounded-3xl, subtle shadows, and good visual hierarchy
 
 **Design principles**:

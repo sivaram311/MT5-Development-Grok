@@ -56,6 +56,13 @@ Chart.register(...registerables);
                       [class.text-zinc-300]="currentSection !== 'health'">
                 Health
               </button>
+              <button (click)="setSection('analysis')"
+                      class="px-4 py-1.5 rounded-2xl text-sm font-medium transition-colors"
+                      [class.bg-white]="currentSection === 'analysis'"
+                      [class.text-zinc-950]="currentSection === 'analysis'"
+                      [class.text-zinc-300]="currentSection !== 'analysis'">
+                Analysis
+              </button>
             </div>
           </div>
 
@@ -115,6 +122,11 @@ Chart.register(...registerables);
                     class="w-full text-left px-3 py-2 rounded-2xl flex items-center gap-2 hover:bg-zinc-900"
                     [class.bg-zinc-900]="currentSection === 'health'">
               <span>❤️</span> <span *ngIf="!sidebarCollapsed">Health</span>
+            </button>
+            <button (click)="setSection('analysis')" 
+                    class="w-full text-left px-3 py-2 rounded-2xl flex items-center gap-2 hover:bg-zinc-900"
+                    [class.bg-zinc-900]="currentSection === 'analysis'">
+              <span>🔬</span> <span *ngIf="!sidebarCollapsed">Analysis</span>
             </button>
           </nav>
 
@@ -260,36 +272,13 @@ Chart.register(...registerables);
         <div *ngIf="currentSection === 'market'">
           <div class="mb-4 flex items-center justify-between">
             <div class="font-semibold">Data Explorer</div>
-            <button (click)="showCustomizeModal = true" 
+            <button (click)="columnDrawerOpen = true" 
                     class="text-xs px-3 py-1.5 rounded-2xl border border-zinc-700 hover:bg-zinc-900">
               Customize columns
             </button>
           </div>
 
-          <!-- Column panel (modern) -->
-          <div *ngIf="showColumnPanel" class="mb-4 p-4 bg-zinc-900 border border-zinc-800 rounded-3xl">
-            <div class="flex items-center justify-between mb-3">
-              <div class="text-sm font-medium">Visible Columns</div>
-              <div class="flex gap-2 text-xs">
-                <button (click)="showAllGridColumns()" class="px-2 py-0.5 bg-emerald-900 text-emerald-300 rounded">Show all</button>
-                <button (click)="hideAllGridColumns()" class="px-2 py-0.5 bg-red-900 text-red-300 rounded">Hide all</button>
-                <button (click)="applyGridPreset('all')" class="px-2 py-0.5 border border-zinc-600 rounded">Reset</button>
-              </div>
-            </div>
-            <div class="flex flex-wrap gap-2">
-              <div *ngFor="let col of gridColumnDefs" 
-                   (click)="toggleGridColumn(col.key)"
-                   class="px-3 py-1 text-xs rounded-2xl border cursor-pointer transition"
-                   [class.bg-white]="isGridColumnVisible(col.key)"
-                   [class.text-zinc-950]="isGridColumnVisible(col.key)"
-                   [class.border-white]="isGridColumnVisible(col.key)"
-                   [class.bg-zinc-800]="!isGridColumnVisible(col.key)"
-                   [class.border-zinc-700]="!isGridColumnVisible(col.key)">
-                {{ col.label }}
-              </div>
-            </div>
-            <div class="text-[10px] mt-3 text-zinc-400">Drag & drop support available on desktop. Presets coming soon.</div>
-          </div>
+
 
           <!-- Data Grid Table -->
           <div class="bg-zinc-900 border border-zinc-800 rounded-3xl overflow-hidden">
@@ -365,6 +354,32 @@ Chart.register(...registerables);
           </div>
         </div>
 
+        <!-- Analysis Section (New Page) -->
+        <div *ngIf="currentSection === 'analysis'">
+          <div class="mb-4">
+            <div class="font-semibold">Analysis Tools</div>
+            <div class="text-xs text-zinc-400">Future Gann, RSI storm, multi-timeframe correlation, backtesting ideas</div>
+          </div>
+
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-6">
+              <div class="font-medium mb-2">Gann Analysis</div>
+              <p class="text-sm text-zinc-400">Placeholder for angle, square, and time studies on XAUUSD data. Coming soon.</p>
+              <div class="mt-4 text-xs px-3 py-1 bg-zinc-800 rounded inline-block">Beta</div>
+            </div>
+            <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-6">
+              <div class="font-medium mb-2">RSI Storm Detection</div>
+              <p class="text-sm text-zinc-400">HTF correlation and momentum storm scanner based on M15/H1 data.</p>
+              <div class="mt-4 text-xs px-3 py-1 bg-zinc-800 rounded inline-block">Planned</div>
+            </div>
+            <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 md:col-span-2">
+              <div class="font-medium mb-2">Backtest & Strategy Lab</div>
+              <p class="text-sm text-zinc-400">Upload or use DB candles for simple strategy backtesting and Gann-based entries.</p>
+              <button class="mt-3 text-xs px-4 py-1.5 border border-zinc-600 rounded-2xl hover:bg-zinc-800">Open Lab (coming)</button>
+            </div>
+          </div>
+        </div>
+
       </div>
 
       <!-- Column Customization Modal -->
@@ -412,6 +427,9 @@ Chart.register(...registerables);
         </div>
         <div (click)="setSection('health')" class="flex-1 py-2 text-center" [class.text-white]="currentSection === 'health'">
           Health
+        </div>
+        <div (click)="setSection('analysis')" class="flex-1 py-2 text-center" [class.text-white]="currentSection === 'analysis'">
+          Analysis
         </div>
       </div>
     </div>
@@ -536,14 +554,7 @@ Chart.register(...registerables);
       <!-- Modern Mobile Bottom Nav -->
       <div class="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur border-t z-50 px-2 py-1">
         <div class="flex justify-around items-center text-[10px] font-medium">
-          <div (click)="setView('overview')" class="flex flex-col items-center py-1 px-3 active:text-blue-600" [class.text-blue-600]="activeView === 'overview'">
-            <span class="text-lg mb-px">📈</span>
-            <span>Overview</span>
-          </div>
-          <div (click)="setView('grid')" class="flex flex-col items-center py-1 px-3 active:text-blue-600" [class.text-blue-600]="activeView === 'grid'">
-            <span class="text-lg mb-px">📋</span>
-            <span>Grid</span>
-          </div>
+  
           <div (click)="loadHealthStatus()" class="flex flex-col items-center py-1 px-3 active:text-blue-600">
             <span class="text-lg mb-px">❤️</span>
             <span>Health</span>

@@ -6,19 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased] - 2026-06-23
 
-### UI/UX Redesign (Senior Modern Dashboard)
-- Login page completely redefined with premium dark trading aesthetic, clean form, and professional branding.
-- Welcome/Dashboard page fully redefined:
-  - Modern dark zinc trading UI.
-  - Proper collapsible sidebar navigation (desktop) with icons and mobile bottom nav.
-  - Section-based pages: Overview, Market Data, Health — feel like distinct pages.
-  - Clean KPI row for instant insights.
-  - Elegant "Customize Columns" **modal** with visibility toggles and reordering (much better UX than inline panel).
-  - Preserved all advanced features (3 timezones, per-TF persistence, CSV, copy, drag & drop, health toggles).
-- Overall: Less clutter, better hierarchy, more professional and delightful for traders on mobile/tablet.
+### UI/UX Redesign & Iteration (Senior Modern Dashboard)
+- Full page redefinition with professional trading UI:
+  - Dark zinc palette, clean typography, sidebar navigation (collapsible on desktop).
+  - Distinct sections acting as pages: Overview, Market Data, Health, **Analysis**.
+  - Improved column customization as **slide-over drawer** (better mobile UX).
+  - Added **Analysis** page with placeholders for Gann, RSI Storm, Backtesting.
+- Iterations:
+  - Better KPI bar, empty states, section polish.
+  - Sidebar + top nav for modern dashboard feel.
+  - Preserved and enhanced all features (timezones, visibility, per-TF, exports, health).
+- Login: Premium dark form.
+- Overall: Scalable, delightful, trader-focused experience.
 
 ### Added
-- Column customization modal with drag support simulation.
+- Analysis section.
+- Slide-over column drawer.
 - Collapsible sidebar.
 
 ### Added
