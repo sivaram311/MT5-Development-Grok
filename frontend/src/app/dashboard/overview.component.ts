@@ -5,11 +5,11 @@ import { CommonModule } from '@angular/common';
   selector: 'app-overview',
   standalone: true,
   imports: [CommonModule],
-  template: \
+  template: `
     <div class="mb-6">
       <div class="flex items-center justify-between mb-3 px-1">
         <div class="font-semibold">Recent Candles</div>
-        <div class="text-xs text-zinc-500">Last 12 • D1</div>
+        <div class="text-xs text-zinc-500">Last 12 â€¢ D1</div>
       </div>
       
       <div class="hidden md:block bg-zinc-900 border border-zinc-800 rounded-3xl overflow-hidden">
@@ -53,6 +53,6 @@ import { CommonModule } from '@angular/common';
         </div>
       </div>
     </div>
-  \
+  `
 })
 export class OverviewComponent {}

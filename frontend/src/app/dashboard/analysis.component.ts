@@ -5,7 +5,7 @@ import { CommonModule } from '@angular/common';
   selector: 'app-analysis',
   standalone: true,
   imports: [CommonModule],
-  template: \
+  template: `
     <div class="mb-4">
       <div class="font-semibold">Analysis Tools</div>
       <div class="text-xs text-zinc-400">Future Gann, RSI storm, multi-timeframe correlation, backtesting ideas</div>
@@ -28,6 +28,6 @@ import { CommonModule } from '@angular/common';
         <button class="mt-3 text-xs px-4 py-1.5 border border-zinc-600 rounded-2xl hover:bg-zinc-800">Open Lab (coming)</button>
       </div>
     </div>
-  \
+  `
 })
 export class AnalysisComponent {}

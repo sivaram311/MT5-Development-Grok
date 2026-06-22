@@ -5,7 +5,7 @@ import { CommonModule } from '@angular/common';
   selector: 'app-health',
   standalone: true,
   imports: [CommonModule],
-  template: \
+  template: `
     <div class="mb-4">
       <div class="font-semibold mb-1">Pipeline Health</div>
       <div class="text-xs text-zinc-400">Per-timeframe freshness based on completed candles</div>
@@ -20,6 +20,6 @@ import { CommonModule } from '@angular/common';
         <div class="font-mono text-lg mt-2 text-zinc-100">14:30</div>
       </div>
     </div>
-  \
+  `
 })
 export class HealthComponent {}

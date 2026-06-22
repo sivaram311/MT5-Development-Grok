@@ -8,7 +8,7 @@ import { Router } from '@angular/router';
   selector: 'app-dashboard-layout',
   standalone: true,
   imports: [CommonModule, RouterModule],
-  template: \
+  template: `
     <div class="min-h-screen bg-zinc-950 text-zinc-200 flex flex-col">
       <!-- Top Bar -->
       <header class="sticky top-0 z-50 border-b border-zinc-800 bg-zinc-950/95 backdrop-blur-xl">
@@ -23,7 +23,7 @@ import { Router } from '@angular/router';
                 <span class="ml-1.5 text-[10px] px-1.5 py-px rounded bg-zinc-800 text-zinc-400 font-medium">PRO</span>
               </div>
             </div>
-            <button (click)="toggleSidebar()" class="md:hidden p-2 text-xl">?</button>
+            <button (click)="toggleSidebar()" class="md:hidden p-2 text-xl">☰</button>
           </div>
 
           <div class="flex items-center gap-3">
@@ -54,21 +54,21 @@ import { Router } from '@angular/router';
         <!-- Sidebar -->
         <aside class="hidden md:flex flex-col w-60 border-r border-zinc-800 bg-zinc-950 p-4 text-sm transition-all" [class.w-16]="sidebarCollapsed">
           <button (click)="sidebarCollapsed = !sidebarCollapsed" class="text-xs text-zinc-400 mb-4 text-left">
-            {{ sidebarCollapsed ? '? Expand' : '? Collapse' }}
+            {{ sidebarCollapsed ? '→ Expand' : '← Collapse' }}
           </button>
 
           <nav class="space-y-1">
             <a routerLink="overview" routerLinkActive="bg-zinc-900" class="block px-3 py-2 rounded-2xl flex items-center gap-2 hover:bg-zinc-900">
-              <span>??</span> <span *ngIf="!sidebarCollapsed">Overview</span>
+              <span>📊</span> <span *ngIf="!sidebarCollapsed">Overview</span>
             </a>
             <a routerLink="market" routerLinkActive="bg-zinc-900" class="block px-3 py-2 rounded-2xl flex items-center gap-2 hover:bg-zinc-900">
-              <span>??</span> <span *ngIf="!sidebarCollapsed">Market Data</span>
+              <span>📈</span> <span *ngIf="!sidebarCollapsed">Market Data</span>
             </a>
             <a routerLink="health" routerLinkActive="bg-zinc-900" class="block px-3 py-2 rounded-2xl flex items-center gap-2 hover:bg-zinc-900">
-              <span>??</span> <span *ngIf="!sidebarCollapsed">Health</span>
+              <span>❤️</span> <span *ngIf="!sidebarCollapsed">Health</span>
             </a>
             <a routerLink="analysis" routerLinkActive="bg-zinc-900" class="block px-3 py-2 rounded-2xl flex items-center gap-2 hover:bg-zinc-900">
-              <span>??</span> <span *ngIf="!sidebarCollapsed">Analysis</span>
+              <span>🔬</span> <span *ngIf="!sidebarCollapsed">Analysis</span>
             </a>
           </nav>
         </aside>
@@ -87,7 +87,7 @@ import { Router } from '@angular/router';
         <a routerLink="analysis" class="flex-1 py-2 text-center">Analysis</a>
       </div>
     </div>
-  \
+  `
 })
 export class DashboardLayoutComponent {
   sidebarCollapsed = false;
@@ -107,3 +107,4 @@ export class DashboardLayoutComponent {
     });
   }
 }
+

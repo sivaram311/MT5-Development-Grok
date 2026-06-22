@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   - Preserved and enhanced all features (timezones, visibility, per-TF, exports, health).
 - Login: Premium dark form.
 - **Routed Pages**: Introduced proper DashboardLayout with child routes for Overview, Market, Health, Analysis for better architecture and scalability.
+- **Data Grid Fix**: Market Data page now properly fetches real data from backend (`/market/xauusd/{tf}/grid?limit=500`) instead of hardcoded 3 rows. Supports timeframe switching and basic column visibility via drawer. Shows full available rows (hundreds if downloader ran).
 - Overall: Scalable, delightful, trader-focused experience.
 
 ### Added
@@ -25,6 +26,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Slide-over column drawer.
 - Collapsible sidebar.
 - Proper child routed pages with layout component.
+- Real data fetching in Market page with large limit.
 
 ### Added
 - **Data Grid timezone columns** (Broker / New York / IST):
