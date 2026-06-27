@@ -64,7 +64,7 @@ def main():
     )
     args = parser.parse_args()
 
-    print("=== XAUUSD MT5 → PostgreSQL Data Downloader ===")
+    print("=== XAUUSD MT5 -> PostgreSQL Data Downloader ===")
     print(f"Target Schema : grok_dev")
     print(f"Tables        : {', '.join([f'XAUUSD_{tf}' for tf in args.timeframes])}")
     print()

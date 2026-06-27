@@ -1,5 +1,8 @@
 package com.grokdev.grokdev.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.grokdev.grokdev.model.User;
 import com.grokdev.grokdev.repository.UserRepository;
 import org.slf4j.Logger;
@@ -23,6 +26,9 @@ public class UserService implements UserDetailsService {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
@@ -84,5 +90,54 @@ public class UserService implements UserDetailsService {
             u.setColumnPreferences(prefsJson);
             userRepository.save(u);
         }
+    }
+
+    /**
+     * Deep-merge partial preference JSON into stored preferences (PATCH semantics).
+     */
+    public String mergeColumnPreferences(String username, String patchJson) {
+        User u = findByUsername(username);
+        if (u == null) {
+            return null;
+        }
+        try {
+            ObjectNode existing = readPreferencesObject(u.getColumnPreferences());
+            JsonNode patch = objectMapper.readTree(patchJson != null ? patchJson : "{}");
+            if (!patch.isObject()) {
+                throw new IllegalArgumentException("Patch must be a JSON object");
+            }
+            deepMerge(existing, patch);
+            String merged = objectMapper.writeValueAsString(existing);
+            u.setColumnPreferences(merged);
+            userRepository.save(u);
+            return merged;
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Invalid preferences JSON", e);
+        }
+    }
+
+    private ObjectNode readPreferencesObject(String prefsJson) throws Exception {
+        if (prefsJson == null || prefsJson.isBlank()) {
+            return objectMapper.createObjectNode();
+        }
+        JsonNode node = objectMapper.readTree(prefsJson);
+        if (!node.isObject()) {
+            return objectMapper.createObjectNode();
+        }
+        return (ObjectNode) node;
+    }
+
+    private void deepMerge(ObjectNode target, JsonNode patch) {
+        patch.fields().forEachRemaining(entry -> {
+            String key = entry.getKey();
+            JsonNode patchValue = entry.getValue();
+            if (patchValue.isObject() && target.has(key) && target.get(key).isObject()) {
+                deepMerge((ObjectNode) target.get(key), patchValue);
+            } else {
+                target.set(key, patchValue);
+            }
+        });
     }
 }

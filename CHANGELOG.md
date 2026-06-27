@@ -4,6 +4,34 @@ All notable changes to the Grok Dev full-stack application (Spring Boot + Angula
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2026-06-28
+
+### Mobile-First UI Completion & Optional Follow-Ups
+
+#### Added
+- **Playwright e2e suite** (`frontend/e2e/`, `npm run e2e`) — login page, manifest 404 regression, auth-guard redirect; mobile + tablet viewports.
+- **PATCH `/api/auth/preferences`** — server deep-merge via `UserService.mergeColumnPreferences()`; Angular `PreferencesService` sends partial section updates only.
+- **Gann Analysis module** — swing octave levels + Square-of-9 projections on D1/H4/H1 ([gann.util.ts](frontend/src/app/utils/gann.util.ts)); RSI | Gann tabs in Analysis Lab.
+- **SSE health push notifications** — `GET /api/market/xauusd/health/stream` ([HealthStreamController.java](backend/src/main/java/com/grokdev/grokdev/controller/HealthStreamController.java)); dashboard `HealthAlertBannerComponent` + haptic on DEGRADED/DOWN.
+- **HealthStreamService** — EventSource subscription with JWT via `?access_token=` (JwtAuthenticationFilter extended).
+- **HealthAlertBannerComponent** — dismissible pipeline alert in dashboard shell.
+- Unit tests: `gann.util.spec.ts`, expanded `preferences.service.spec.ts` (PATCH).
+
+#### Changed
+- **PWA manifest** moved to `frontend/src/assets/manifest.webmanifest` (linked as `assets/manifest.webmanifest`) — fixes 404 during `ng serve`.
+- **Login page** redesigned — mobile-first emerald accent, icon inputs, improved alerts, feature pills footer.
+- **Canonical route** `/dashboard` ( `/welcome` kept as alias); login navigates to `/dashboard`.
+- **Tailwind** — PostCSS build only (CDN removed from index.html).
+- **Legacy `welcome.component.ts`** removed; features migrated to routed dashboard pages.
+- **In-app Docs** accordion synced with current architecture (PATCH prefs, Gann, SSE, manifest path).
+- Documentation updated across `frontend/docs/`, `docs/frontend-guidelines.md`, `docs/api-endpoints.md`, `frontend/README.md`.
+
+#### Fixed
+- `manifest.webmanifest` 404 in development (asset path).
+- Angular template errors from Tailwind class bindings with slashes (switched to `ngClass`).
+
+---
+
 ## [Unreleased] - 2026-06-23
 
 ### UI/UX Redesign & Iteration (Senior Modern Dashboard)

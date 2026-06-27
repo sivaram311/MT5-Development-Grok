@@ -23,7 +23,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin(origins = "http://localhost:4200")
+@CrossOrigin
 public class AuthController {
 
     private static final Logger log = LoggerFactory.getLogger(AuthController.class);
@@ -157,6 +157,25 @@ public class AuthController {
             String prefsJson = body.get("preferences");
             userService.updateColumnPreferences(username, prefsJson);
             return ResponseEntity.ok(Map.of("message", "Preferences saved"));
+        }
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Not authenticated");
+    }
+
+    @PatchMapping("/preferences")
+    public ResponseEntity<?> patchPreferences(@RequestBody Map<String, String> body) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getName())) {
+            String username = auth.getName();
+            String patchJson = body.get("preferences");
+            try {
+                String merged = userService.mergeColumnPreferences(username, patchJson);
+                Map<String, Object> response = new HashMap<>();
+                response.put("message", "Preferences merged");
+                response.put("preferences", merged != null ? merged : "{}");
+                return ResponseEntity.ok(response);
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+            }
         }
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Not authenticated");
     }

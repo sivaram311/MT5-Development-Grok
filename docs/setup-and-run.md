@@ -76,7 +76,7 @@ cd frontend
 npm install
 ng serve
 ```
-Open http://localhost:4200
+Open http://localhost:4200 (configured to run on http://localhost:4200 and bind to all network interfaces, allowing it to be accessed via local network/public IPs)
 
 ## Login
 - **admin / admin123**

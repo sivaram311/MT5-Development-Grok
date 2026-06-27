@@ -1,76 +1,80 @@
-import { Injectable } from '@angular/core';
+import { Injectable, Injector } from '@angular/core';
 import { HttpInterceptor, HttpRequest, HttpHandler, HttpEvent, HttpErrorResponse } from '@angular/common/http';
-import { Observable, throwError, BehaviorSubject, switchMap, filter, take, catchError } from 'rxjs';
+import { Router } from '@angular/router';
+import { Observable, throwError, BehaviorSubject, switchMap, filter, take, catchError, tap } from 'rxjs';
 import { AuthService } from '../services/auth.service';
+import { NetworkStatusService } from '../services/network-status.service';
 
 @Injectable()
 export class AuthInterceptor implements HttpInterceptor {
   private isRefreshing = false;
-  private refreshTokenSubject: BehaviorSubject<any> = new BehaviorSubject<any>(null);
+  private refreshTokenSubject: BehaviorSubject<string | null> = new BehaviorSubject<string | null>(null);
 
-  constructor(private authService: AuthService) {}
+  constructor(
+    private authService: AuthService,
+    private network: NetworkStatusService,
+    private injector: Injector
+  ) {}
 
-  intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
+  intercept(req: HttpRequest<unknown>, next: HttpHandler): Observable<HttpEvent<unknown>> {
     const token = this.authService.getToken();
+    let request = req;
 
     if (token) {
-      // Proactive refresh: if token expires in < 5 minutes, refresh first
       if (this.authService.isTokenExpiringSoon(token, 5)) {
-        return this.handleProactiveRefresh(req, next);
+        return this.handleProactiveRefresh(request, next);
       }
-      req = this.addTokenHeader(req, token);
+      request = this.addTokenHeader(request, token);
     }
 
-    return next.handle(req).pipe(
+    return next.handle(request).pipe(
+      tap(() => {
+        if (request.url.includes('/api/')) {
+          this.network.setApiSuccess();
+        }
+      }),
       catchError((error: HttpErrorResponse) => {
-        if (error.status === 401 && !req.url.includes('/auth/')) {
-          return this.handle401Error(req, next);
+        if (request.url.includes('/api/') && !request.url.includes('/auth/login')) {
+          this.network.setApiError(error.status || 0);
+        }
+        if (error.status === 401 && !request.url.includes('/auth/')) {
+          return this.handle401Error(request, next);
         }
         return throwError(() => error);
       })
     );
   }
 
-  private handleProactiveRefresh(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
+  private handleProactiveRefresh(req: HttpRequest<unknown>, next: HttpHandler): Observable<HttpEvent<unknown>> {
     if (!this.isRefreshing) {
       this.isRefreshing = true;
       this.refreshTokenSubject.next(null);
 
       return this.authService.refreshToken().pipe(
-        switchMap((response: any) => {
+        switchMap((response: { accessToken?: string }) => {
           this.isRefreshing = false;
-          const newToken = response.accessToken;
+          const newToken = response.accessToken || '';
           this.refreshTokenSubject.next(newToken);
           return next.handle(this.addTokenHeader(req, newToken));
         }),
-        catchError((err) => {
-          this.isRefreshing = false;
-          this.authService.clearAuthData();
-          return throwError(() => err);
-        })
-      );
-    } else {
-      return this.refreshTokenSubject.pipe(
-        filter(token => token !== null),
-        take(1),
-        switchMap((token) => next.handle(this.addTokenHeader(req, token)))
+        catchError(err => this.failAuth(err))
       );
     }
+
+    return this.refreshTokenSubject.pipe(
+      filter((token): token is string => token !== null),
+      take(1),
+      switchMap(token => next.handle(this.addTokenHeader(req, token)))
+    );
   }
 
-  private addTokenHeader(request: HttpRequest<any>, token: string) {
-    return request.clone({
-      headers: request.headers.set('Authorization', `Bearer ${token}`)
-    });
-  }
-
-  private handle401Error(request: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
+  private handle401Error(request: HttpRequest<unknown>, next: HttpHandler): Observable<HttpEvent<unknown>> {
     if (!this.isRefreshing) {
       this.isRefreshing = true;
       this.refreshTokenSubject.next(null);
 
       return this.authService.refreshToken().pipe(
-        switchMap((response: any) => {
+        switchMap((response: { accessToken?: string }) => {
           this.isRefreshing = false;
           if (response.accessToken) {
             this.refreshTokenSubject.next(response.accessToken);
@@ -78,18 +82,28 @@ export class AuthInterceptor implements HttpInterceptor {
           }
           return throwError(() => new Error('Unable to refresh token'));
         }),
-        catchError((err) => {
-          this.isRefreshing = false;
-          this.authService.clearAuthData();
-          return throwError(() => err);
-        })
-      );
-    } else {
-      return this.refreshTokenSubject.pipe(
-        filter(token => token !== null),
-        take(1),
-        switchMap((token) => next.handle(this.addTokenHeader(request, token)))
+        catchError(err => this.failAuth(err))
       );
     }
+
+    return this.refreshTokenSubject.pipe(
+      filter((token): token is string => token !== null),
+      take(1),
+      switchMap(token => next.handle(this.addTokenHeader(request, token)))
+    );
+  }
+
+  private failAuth(err: unknown): Observable<never> {
+    this.isRefreshing = false;
+    this.authService.clearAuthData();
+    this.network.setApiError(401);
+    this.injector.get(Router).navigate(['/login'], { queryParams: { reason: 'session_expired' } });
+    return throwError(() => err);
+  }
+
+  private addTokenHeader(request: HttpRequest<unknown>, token: string) {
+    return request.clone({
+      headers: request.headers.set('Authorization', `Bearer ${token}`)
+    });
   }
 }

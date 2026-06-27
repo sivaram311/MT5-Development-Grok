@@ -57,6 +57,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return headerAuth.substring(7);
         }
 
+        // EventSource cannot send Authorization header; allow token query param for SSE streams.
+        String queryToken = request.getParameter("access_token");
+        if (StringUtils.hasText(queryToken)) {
+            return queryToken;
+        }
+
         return null;
     }
 }

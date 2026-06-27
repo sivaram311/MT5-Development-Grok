@@ -112,7 +112,15 @@ Returns:
 
 Uses real per-TF freshness thresholds (see MarketDataService).
 
-Powers the dedicated Angular Health Dashboard.
+Powers the dedicated Angular Health Dashboard. The dashboard shell also subscribes to the SSE stream below for push alerts.
+
+### GET `/api/market/xauusd/health/stream`
+
+Server-Sent Events stream (`text/event-stream`). Emits a `health` event every 30 seconds with the same JSON shape as `/health`.
+
+Requires Bearer token **or** `?access_token=<jwt>` (EventSource cannot send Authorization headers).
+
+Example client URL: `/api/market/xauusd/health/stream?access_token=eyJ...`
 
 ## Other Endpoints
 
@@ -143,7 +151,18 @@ Get saved column visibility/order + health TF visibility (JSON).
 Requires Bearer.
 
 ### PUT `/api/auth/preferences`
-Save preferences: `{ "preferences": "{\"grid\": {...}, \"overview\": {...}, \"health\": {...}}" }`
+Replace entire preferences blob: `{ "preferences": "{\"grid\": {...}, \"market\": {...}}" }`
+
+### PATCH `/api/auth/preferences`
+Deep-merge partial preferences (preferred): `{ "preferences": "{\"grid\": {\"D1\": {...}}}" }`
+
+**Response:**
+```json
+{
+  "message": "Preferences merged",
+  "preferences": "{ ... merged full JSON ... }"
+}
+```
 
 ### GET `/api/auth/me`
 Requires Bearer access token.

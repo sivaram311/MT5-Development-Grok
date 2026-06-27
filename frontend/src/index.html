@@ -2,34 +2,18 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>GrokDev</title>
+  <title>Grok Dev — XAUUSD Trading Dashboard</title>
   <base href="/">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <!-- Tailwind CSS via CDN for quick responsive design -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    function initTailwind() {
-      tailwind.config = {
-        theme: {
-          extend: {
-            screens: {
-              'mobile': '360px',   // realme p2 pro approx
-              'tablet': '800px',   // realme pad 2
-            }
-          }
-        }
-      };
-    }
-    window.onload = initTailwind;
-  </script>
-  <style>
-    /* Mobile first responsive tweaks */
-    @media (max-width: 480px) {
-      .mobile-padding { padding: 1rem; }
-    }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#09090b">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Grok Dev">
+  <link rel="manifest" href="assets/manifest.webmanifest">
+  <link rel="icon" type="image/svg+xml" href="assets/icons/icon-192.svg">
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.svg">
 </head>
-<body class="bg-gray-50">
+<body class="bg-zinc-950 text-zinc-200 antialiased">
   <app-root></app-root>
 </body>
 </html>

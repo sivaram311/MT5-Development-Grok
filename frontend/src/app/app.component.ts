@@ -6,11 +6,7 @@ import { RouterOutlet } from '@angular/router';
   selector: 'app-root',
   standalone: true,
   imports: [CommonModule, RouterOutlet],
-  template: `
-    <div class="min-h-screen bg-gray-50">
-      <router-outlet></router-outlet>
-    </div>
-  `
+  template: `<router-outlet></router-outlet>`
 })
 export class AppComponent {
   title = 'grok-dev-frontend';
