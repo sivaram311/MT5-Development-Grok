@@ -4,6 +4,16 @@ All notable changes to the Grok Dev full-stack application (Spring Boot + Angula
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2026-06-29 (MT5 EA deploy script)
+
+### Added
+- **`python/mt5_scripts/deploy-mt5-eas.ps1`** — copies both GrokDev EAs (.mq5 + .ex5) to all local MT5 `MQL5\Experts` folders
+
+### Documentation
+- README, setup-and-run, order-rsi alignment updated to use deploy script
+
+---
+
 ## [Unreleased] - 2026-06-29 (MQL5 EA docs + pre-built binaries)
 
 ### Added

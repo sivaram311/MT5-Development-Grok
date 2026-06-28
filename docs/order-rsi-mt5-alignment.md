@@ -126,11 +126,14 @@ Python MetaTrader5 package has no `iRSI` API. The app reads MT5 terminal values 
 
 ### Quick install (pre-built)
 
-1. Copy `python/mt5_scripts/GrokDevOrderRsiExport.ex5` (+ `.mq5`) to your terminal `MQL5\Experts\` folder.
-2. MT5 Navigator → **Refresh** → drag **GrokDevOrderRsiExport** onto **XAUUSD**.
-3. Enable **Algo Trading**.
-4. EA writes `Terminal/Common/Files/grok_dev_order_rsi_mt5.json` (atomic temp + move).
-5. Publisher includes `timeframes.{TF}.mt5` in the API; use **MT5 built-in** toggle on the **Analyzer** page.
+```powershell
+cd E:\Source\grok_dev
+.\python\mt5_scripts\deploy-mt5-eas.ps1
+```
+
+Then in MT5: Navigator -> Expert Advisors -> **Refresh** -> drag **GrokDevOrderRsiExport** onto **XAUUSD** -> **Algo Trading** ON.
+
+EA writes `Terminal/Common/Files/grok_dev_order_rsi_mt5.json` (atomic temp + move). Publisher includes `timeframes.{TF}.mt5` in the API; use **MT5 built-in** toggle on the **Analyzer** page.
 
 Source: `python/mt5_scripts/GrokDevOrderRsiExport.mq5` (**v2.0**). Pre-built: `GrokDevOrderRsiExport.ex5` in the same folder.
 

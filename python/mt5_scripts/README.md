@@ -9,22 +9,46 @@ Source and pre-built EAs for the MT5 ↔ Python ↔ Angular bridge. All JSON exp
 
 ---
 
-## Quick install (pre-built Order RSI EA)
+## Quick install (pre-built EAs)
 
-1. **Copy to MT5 Experts folder**
+**Recommended — deploy script (all terminals):**
 
-   ```powershell
-   $experts = "$env:APPDATA\MetaQuotes\Terminal\<YOUR_TERMINAL_ID>\MQL5\Experts"
-   Copy-Item "E:\Source\grok_dev\python\mt5_scripts\GrokDevOrderRsiExport.ex5" $experts -Force
-   Copy-Item "E:\Source\grok_dev\python\mt5_scripts\GrokDevOrderRsiExport.mq5" $experts -Force
-   ```
+```powershell
+cd E:\Source\grok_dev
+.\python\mt5_scripts\deploy-mt5-eas.ps1
+```
 
-   Find `<YOUR_TERMINAL_ID>`: open `%APPDATA%\MetaQuotes\Terminal\` — use the folder that contains your `MQL5` directory (e.g. OctaFX / Octa Markets).
+Deploys **both** `GrokDevOrderRsiExport` and `GrokDevGannScanner` (`.mq5` + `.ex5`) to every `MQL5\Experts` folder under `%APPDATA%\MetaQuotes\Terminal\`.
 
-2. **MT5** → Navigator → Expert Advisors → right-click → **Refresh**
-3. Drag **GrokDevOrderRsiExport** onto **XAUUSD** chart
-4. Enable **Algo Trading** (toolbar button)
-5. Confirm file appears: `Common\Files\grok_dev_order_rsi_mt5.json`
+Single terminal only:
+
+```powershell
+.\python\mt5_scripts\deploy-mt5-eas.ps1 -TerminalId 903AFBEA36629AEC9838022C670CC5D2
+```
+
+Dry run:
+
+```powershell
+.\python\mt5_scripts\deploy-mt5-eas.ps1 -WhatIf
+```
+
+### Manual copy (one EA or one terminal)
+
+```powershell
+$experts = "$env:APPDATA\MetaQuotes\Terminal\<YOUR_TERMINAL_ID>\MQL5\Experts"
+Copy-Item "E:\Source\grok_dev\python\mt5_scripts\GrokDevOrderRsiExport.ex5" $experts -Force
+Copy-Item "E:\Source\grok_dev\python\mt5_scripts\GrokDevOrderRsiExport.mq5" $experts -Force
+Copy-Item "E:\Source\grok_dev\python\mt5_scripts\GrokDevGannScanner.ex5" $experts -Force
+Copy-Item "E:\Source\grok_dev\python\mt5_scripts\GrokDevGannScanner.mq5" $experts -Force
+```
+
+Find `<YOUR_TERMINAL_ID>`: open `%APPDATA%\MetaQuotes\Terminal\` — use the folder that contains your `MQL5` directory (e.g. OctaFX / Octa Markets).
+
+### After deploy
+
+1. **MT5** → Navigator → Expert Advisors → right-click → **Refresh**
+2. **GrokDevOrderRsiExport** → any **XAUUSD** chart → **Algo Trading** ON → `grok_dev_order_rsi_mt5.json`
+3. **GrokDevGannScanner** → **XAUUSD M5/M15** → **Algo Trading** ON → `grok_dev_gann_scanner.json`
 
 **Analyzer:** toggle **MT5 built-in** on `/dashboard/order-rsi` when `mt5ExportAvailable` is true.
 
@@ -63,6 +87,13 @@ Check log tail for **`0 errors, 0 warnings`**. Compiled `.ex5` is written **next
 4. Copy `.mq5` + `.ex5` to `MQL5\Experts\` (see quick install)
 
 ### Deploy to Experts
+
+```powershell
+cd E:\Source\grok_dev
+.\python\mt5_scripts\deploy-mt5-eas.ps1
+```
+
+Or copy manually:
 
 ```powershell
 $experts = "$env:APPDATA\MetaQuotes\Terminal\<YOUR_TERMINAL_ID>\MQL5\Experts"
@@ -166,6 +197,7 @@ Override path for Python: `MT5_COMMON_FILES` env var.
 ```
 python/mt5_scripts/
 ├── README.md                      ← this file
+├── deploy-mt5-eas.ps1              ← copy both EAs to all MT5 Experts folders
 ├── GrokDevOrderRsiExport.mq5      ← source (v2.0)
 ├── GrokDevOrderRsiExport.ex5      ← pre-built (commit in repo)
 ├── GrokDevGannScanner.mq5         ← source (v1.0)
