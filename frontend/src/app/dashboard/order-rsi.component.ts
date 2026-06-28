@@ -28,13 +28,13 @@ interface SrRowDef {
   label: string;
 }
 
-type GannVisibilityKey = 'gannOdd' | 'gannEven';
+type GannGridId = 'bar1' | 'bar0';
+type GannToggleKey = 'gannOdd' | 'gannEven';
 
 interface GannBandRowDef {
   label: string;
-  kind: 'odd' | 'even' | 'pivot';
-  direction?: 'above' | 'below';
-  index?: number;
+  direction: 'above' | 'below';
+  index: number;
 }
 
 @Component({
@@ -244,77 +244,170 @@ interface GannBandRowDef {
         </table>
       </div>
 
-      <!-- Gann Odd Square (Square of Nine) -->
+      <!-- Gann · Bar 1 Close -->
       <div class="space-y-3">
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 class="text-sm font-semibold text-zinc-200">Gann Odd Square</h2>
-            <p class="text-[10px] text-zinc-500 mt-0.5">
-              Square of Nine · Bar 1 close pivot per TF · odd (√P ± 2n)² · even (√P ± (2n±1))²
-            </p>
+            <h2 class="text-sm font-semibold text-zinc-200">Gann Odd Square · Bar 1 Close</h2>
+            <p class="text-[10px] text-zinc-500 mt-0.5">Pivot = last closed bar close · odd (√P ± 2n)² · even (√P ± (2n±1))²</p>
           </div>
           <div class="flex flex-wrap gap-2">
             <button
-              *ngFor="let g of gannRowDefs"
+              *ngFor="let g of gannToggleDefs"
               type="button"
               class="text-[11px] px-2.5 py-1.5 rounded-lg border transition-colors"
-              [ngClass]="gannVisibility[g.key]
+              [ngClass]="gannBar1Visibility[g.key]
                 ? 'border-violet-700 bg-violet-950/40 text-violet-300'
                 : 'border-zinc-700 bg-zinc-950 text-zinc-500'"
-              (click)="toggleGann(g.key)">
+              (click)="toggleGann('bar1', g.key)">
               {{ g.label }}
             </button>
           </div>
         </div>
-
         <div class="overflow-x-auto rounded-2xl border border-zinc-800 bg-zinc-900">
           <table class="w-full min-w-[36rem] text-sm border-collapse">
             <thead>
               <tr class="border-b border-zinc-800 bg-zinc-950/60">
-                <th class="sticky left-0 z-10 bg-zinc-950 text-left text-[10px] uppercase tracking-wider text-zinc-500 font-medium px-3 py-2.5 min-w-[5.5rem]">
-                  Level
-                </th>
-                <th
-                  *ngFor="let tf of timeframeOrder"
-                  class="text-center text-xs font-semibold text-zinc-200 px-2 py-2.5 min-w-[3.25rem]">
-                  {{ tf }}
-                </th>
+                <th class="sticky left-0 z-10 bg-zinc-950 text-left text-[10px] uppercase tracking-wider text-zinc-500 font-medium px-3 py-2.5 min-w-[5.5rem]">Level</th>
+                <th *ngFor="let tf of timeframeOrder" class="text-center text-xs font-semibold text-zinc-200 px-2 py-2.5 min-w-[3.25rem]">{{ tf }}</th>
               </tr>
             </thead>
             <tbody>
-              <ng-container *ngIf="gannVisibility.gannOdd">
-                <tr
-                  *ngFor="let row of gannOddRows"
-                  class="border-b border-zinc-800/80"
-                  [ngClass]="row.kind === 'pivot' ? 'bg-amber-950/10' : 'bg-violet-950/10'">
+              <ng-container *ngIf="gannBar1Visibility.gannOdd">
+                <tr *ngFor="let row of gannOddBandRows" class="border-b border-zinc-800/80 bg-violet-950/10">
                   <th class="sticky left-0 z-10 bg-zinc-900 text-left text-[10px] text-zinc-500 font-normal px-3 py-2 align-middle border-r border-zinc-800/50">
-                    <span class="font-medium" [ngClass]="row.kind === 'pivot' ? 'text-amber-300' : 'text-violet-300'">{{ row.label }}</span>
-                    <span *ngIf="row.kind !== 'pivot'" class="block text-[9px] text-zinc-600">odd square</span>
-                    <span *ngIf="row.kind === 'pivot'" class="block text-[9px] text-zinc-600">Bar 1 pivot</span>
+                    <span class="font-medium text-violet-300">{{ row.label }}</span>
+                    <span class="block text-[9px] text-zinc-600">odd square</span>
                   </th>
                   <td *ngFor="let tf of timeframeOrder" class="text-center px-2 py-2">
-                    <span
-                      class="tabular-nums font-mono text-xs"
-                      [ngClass]="gannCellClass(tf, gannOddCellValue(tf, row), 'odd')">
-                      {{ gannOddCellValue(tf, row) != null ? (gannOddCellValue(tf, row)! | number:'1.2-2') : '—' }}
+                    <span class="tabular-nums font-mono text-xs" [ngClass]="gannCellClass('bar1', tf, gannOddBandValue('bar1', tf, row), 'odd')">
+                      {{ gannOddBandValue('bar1', tf, row) != null ? (gannOddBandValue('bar1', tf, row)! | number:'1.2-2') : '—' }}
                     </span>
                   </td>
                 </tr>
               </ng-container>
-
-              <ng-container *ngIf="gannVisibility.gannEven">
-                <tr
-                  *ngFor="let row of gannEvenRows"
-                  class="border-b border-zinc-800/80 bg-indigo-950/10 last:border-b-0">
+              <tr *ngIf="showGannPivot('bar1')" class="border-b border-zinc-800/80 bg-amber-950/10">
+                <th class="sticky left-0 z-10 bg-zinc-900 text-left text-[10px] text-zinc-500 font-normal px-3 py-2 align-middle border-r border-zinc-800/50">
+                  <span class="font-medium text-amber-300">Pivot</span>
+                  <span class="block text-[9px] text-zinc-600">Bar 1 close</span>
+                </th>
+                <td *ngFor="let tf of timeframeOrder" class="text-center px-2 py-2">
+                  <span class="tabular-nums font-mono text-xs text-amber-300">
+                    {{ gannPivotValue('bar1', tf) != null ? (gannPivotValue('bar1', tf)! | number:'1.2-2') : '—' }}
+                  </span>
+                </td>
+              </tr>
+              <ng-container *ngIf="gannBar1Visibility.gannOdd">
+                <tr *ngFor="let row of gannOddBandRowsBelow" class="border-b border-zinc-800/80 bg-violet-950/10">
+                  <th class="sticky left-0 z-10 bg-zinc-900 text-left text-[10px] text-zinc-500 font-normal px-3 py-2 align-middle border-r border-zinc-800/50">
+                    <span class="font-medium text-violet-300">{{ row.label }}</span>
+                    <span class="block text-[9px] text-zinc-600">odd square</span>
+                  </th>
+                  <td *ngFor="let tf of timeframeOrder" class="text-center px-2 py-2">
+                    <span class="tabular-nums font-mono text-xs" [ngClass]="gannCellClass('bar1', tf, gannOddBandValue('bar1', tf, row), 'odd')">
+                      {{ gannOddBandValue('bar1', tf, row) != null ? (gannOddBandValue('bar1', tf, row)! | number:'1.2-2') : '—' }}
+                    </span>
+                  </td>
+                </tr>
+              </ng-container>
+              <ng-container *ngIf="gannBar1Visibility.gannEven">
+                <tr *ngFor="let row of gannEvenBandRows" class="border-b border-zinc-800/80 bg-indigo-950/10" [class.last:border-b-0]="!gannBar1Visibility.gannOdd">
                   <th class="sticky left-0 z-10 bg-zinc-900 text-left text-[10px] text-zinc-500 font-normal px-3 py-2 align-middle border-r border-zinc-800/50">
                     <span class="font-medium text-indigo-300">{{ row.label }}</span>
                     <span class="block text-[9px] text-zinc-600">even square</span>
                   </th>
                   <td *ngFor="let tf of timeframeOrder" class="text-center px-2 py-2">
-                    <span
-                      class="tabular-nums font-mono text-xs"
-                      [ngClass]="gannCellClass(tf, gannEvenCellValue(tf, row), 'even')">
-                      {{ gannEvenCellValue(tf, row) != null ? (gannEvenCellValue(tf, row)! | number:'1.2-2') : '—' }}
+                    <span class="tabular-nums font-mono text-xs" [ngClass]="gannCellClass('bar1', tf, gannEvenBandValue('bar1', tf, row), 'even')">
+                      {{ gannEvenBandValue('bar1', tf, row) != null ? (gannEvenBandValue('bar1', tf, row)! | number:'1.2-2') : '—' }}
+                    </span>
+                  </td>
+                </tr>
+              </ng-container>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Gann · Bar 0 Open -->
+      <div class="space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-sm font-semibold text-zinc-200">Gann Odd Square · Bar 0 Open</h2>
+            <p class="text-[10px] text-zinc-500 mt-0.5">Pivot = forming bar open · separate toggles from Bar 1 grid</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button
+              *ngFor="let g of gannToggleDefs"
+              type="button"
+              class="text-[11px] px-2.5 py-1.5 rounded-lg border transition-colors"
+              [ngClass]="gannBar0Visibility[g.key]
+                ? 'border-violet-700 bg-violet-950/40 text-violet-300'
+                : 'border-zinc-700 bg-zinc-950 text-zinc-500'"
+              (click)="toggleGann('bar0', g.key)">
+              {{ g.label }}
+            </button>
+          </div>
+        </div>
+
+        <p *ngIf="gannBar0GridUnavailable" class="text-xs text-amber-300/90 bg-amber-950/30 border border-amber-800/50 rounded-xl px-4 py-2">
+          Bar 0 open not available — restart <span class="font-mono">python-order-rsi</span> after update, or wait for forming-bar data from MT5.
+        </p>
+
+        <div class="overflow-x-auto rounded-2xl border border-zinc-800 bg-zinc-900">
+          <table class="w-full min-w-[36rem] text-sm border-collapse">
+            <thead>
+              <tr class="border-b border-zinc-800 bg-zinc-950/60">
+                <th class="sticky left-0 z-10 bg-zinc-950 text-left text-[10px] uppercase tracking-wider text-zinc-500 font-medium px-3 py-2.5 min-w-[5.5rem]">Level</th>
+                <th *ngFor="let tf of timeframeOrder" class="text-center text-xs font-semibold text-zinc-200 px-2 py-2.5 min-w-[3.25rem]">{{ tf }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <ng-container *ngIf="gannBar0Visibility.gannOdd">
+                <tr *ngFor="let row of gannOddBandRows" class="border-b border-zinc-800/80 bg-violet-950/10">
+                  <th class="sticky left-0 z-10 bg-zinc-900 text-left text-[10px] text-zinc-500 font-normal px-3 py-2 align-middle border-r border-zinc-800/50">
+                    <span class="font-medium text-violet-300">{{ row.label }}</span>
+                    <span class="block text-[9px] text-zinc-600">odd square</span>
+                  </th>
+                  <td *ngFor="let tf of timeframeOrder" class="text-center px-2 py-2">
+                    <span class="tabular-nums font-mono text-xs" [ngClass]="gannCellClass('bar0', tf, gannOddBandValue('bar0', tf, row), 'odd')">
+                      {{ gannAvailable('bar0', tf) && gannOddBandValue('bar0', tf, row) != null ? (gannOddBandValue('bar0', tf, row)! | number:'1.2-2') : '—' }}
+                    </span>
+                  </td>
+                </tr>
+              </ng-container>
+              <tr *ngIf="showGannPivot('bar0')" class="border-b border-zinc-800/80 bg-amber-950/10">
+                <th class="sticky left-0 z-10 bg-zinc-900 text-left text-[10px] text-zinc-500 font-normal px-3 py-2 align-middle border-r border-zinc-800/50">
+                  <span class="font-medium text-amber-300">Pivot</span>
+                  <span class="block text-[9px] text-zinc-600">Bar 0 open</span>
+                </th>
+                <td *ngFor="let tf of timeframeOrder" class="text-center px-2 py-2">
+                  <span class="tabular-nums font-mono text-xs text-amber-300">
+                    {{ gannAvailable('bar0', tf) && gannPivotValue('bar0', tf) != null ? (gannPivotValue('bar0', tf)! | number:'1.2-2') : '—' }}
+                  </span>
+                </td>
+              </tr>
+              <ng-container *ngIf="gannBar0Visibility.gannOdd">
+                <tr *ngFor="let row of gannOddBandRowsBelow" class="border-b border-zinc-800/80 bg-violet-950/10">
+                  <th class="sticky left-0 z-10 bg-zinc-900 text-left text-[10px] text-zinc-500 font-normal px-3 py-2 align-middle border-r border-zinc-800/50">
+                    <span class="font-medium text-violet-300">{{ row.label }}</span>
+                    <span class="block text-[9px] text-zinc-600">odd square</span>
+                  </th>
+                  <td *ngFor="let tf of timeframeOrder" class="text-center px-2 py-2">
+                    <span class="tabular-nums font-mono text-xs" [ngClass]="gannCellClass('bar0', tf, gannOddBandValue('bar0', tf, row), 'odd')">
+                      {{ gannAvailable('bar0', tf) && gannOddBandValue('bar0', tf, row) != null ? (gannOddBandValue('bar0', tf, row)! | number:'1.2-2') : '—' }}
+                    </span>
+                  </td>
+                </tr>
+              </ng-container>
+              <ng-container *ngIf="gannBar0Visibility.gannEven">
+                <tr *ngFor="let row of gannEvenBandRows" class="border-b border-zinc-800/80 bg-indigo-950/10 last:border-b-0">
+                  <th class="sticky left-0 z-10 bg-zinc-900 text-left text-[10px] text-zinc-500 font-normal px-3 py-2 align-middle border-r border-zinc-800/50">
+                    <span class="font-medium text-indigo-300">{{ row.label }}</span>
+                    <span class="block text-[9px] text-zinc-600">even square</span>
+                  </th>
+                  <td *ngFor="let tf of timeframeOrder" class="text-center px-2 py-2">
+                    <span class="tabular-nums font-mono text-xs" [ngClass]="gannCellClass('bar0', tf, gannEvenBandValue('bar0', tf, row), 'even')">
+                      {{ gannAvailable('bar0', tf) && gannEvenBandValue('bar0', tf, row) != null ? (gannEvenBandValue('bar0', tf, row)! | number:'1.2-2') : '—' }}
                     </span>
                   </td>
                 </tr>
@@ -361,33 +454,40 @@ export class OrderRsiComponent implements OnInit, OnDestroy {
     b1sr: true
   };
 
-  gannRowDefs: { key: GannVisibilityKey; label: string }[] = [
+  gannToggleDefs: { key: GannToggleKey; label: string }[] = [
     { key: 'gannOdd', label: 'Odd Sq' },
     { key: 'gannEven', label: 'Even Sq' }
   ];
 
-  gannVisibility: Record<GannVisibilityKey, boolean> = {
+  gannBar1Visibility: Record<GannToggleKey, boolean> = {
     gannOdd: true,
     gannEven: false
   };
 
-  gannOddRows: GannBandRowDef[] = [
-    { label: 'OS↑3', kind: 'odd', direction: 'above', index: 2 },
-    { label: 'OS↑2', kind: 'odd', direction: 'above', index: 1 },
-    { label: 'OS↑1', kind: 'odd', direction: 'above', index: 0 },
-    { label: 'Pivot', kind: 'pivot' },
-    { label: 'OS↓1', kind: 'odd', direction: 'below', index: 0 },
-    { label: 'OS↓2', kind: 'odd', direction: 'below', index: 1 },
-    { label: 'OS↓3', kind: 'odd', direction: 'below', index: 2 }
+  gannBar0Visibility: Record<GannToggleKey, boolean> = {
+    gannOdd: true,
+    gannEven: false
+  };
+
+  gannOddBandRows: GannBandRowDef[] = [
+    { label: 'OS↑3', direction: 'above', index: 2 },
+    { label: 'OS↑2', direction: 'above', index: 1 },
+    { label: 'OS↑1', direction: 'above', index: 0 }
   ];
 
-  gannEvenRows: GannBandRowDef[] = [
-    { label: 'ES↑3', kind: 'even', direction: 'above', index: 2 },
-    { label: 'ES↑2', kind: 'even', direction: 'above', index: 1 },
-    { label: 'ES↑1', kind: 'even', direction: 'above', index: 0 },
-    { label: 'ES↓1', kind: 'even', direction: 'below', index: 0 },
-    { label: 'ES↓2', kind: 'even', direction: 'below', index: 1 },
-    { label: 'ES↓3', kind: 'even', direction: 'below', index: 2 }
+  gannOddBandRowsBelow: GannBandRowDef[] = [
+    { label: 'OS↓1', direction: 'below', index: 0 },
+    { label: 'OS↓2', direction: 'below', index: 1 },
+    { label: 'OS↓3', direction: 'below', index: 2 }
+  ];
+
+  gannEvenBandRows: GannBandRowDef[] = [
+    { label: 'ES↑3', direction: 'above', index: 2 },
+    { label: 'ES↑2', direction: 'above', index: 1 },
+    { label: 'ES↑1', direction: 'above', index: 0 },
+    { label: 'ES↓1', direction: 'below', index: 0 },
+    { label: 'ES↓2', direction: 'below', index: 1 },
+    { label: 'ES↓3', direction: 'below', index: 2 }
   ];
 
   snapshot: OrderRsiSnapshot | null = null;
@@ -440,8 +540,19 @@ export class OrderRsiComponent implements OnInit, OnDestroy {
     this.rowVisibility[key] = !this.rowVisibility[key];
   }
 
-  toggleGann(key: GannVisibilityKey): void {
-    this.gannVisibility[key] = !this.gannVisibility[key];
+  toggleGann(grid: GannGridId, key: GannToggleKey): void {
+    const vis = grid === 'bar1' ? this.gannBar1Visibility : this.gannBar0Visibility;
+    vis[key] = !vis[key];
+  }
+
+  showGannPivot(grid: GannGridId): boolean {
+    const vis = grid === 'bar1' ? this.gannBar1Visibility : this.gannBar0Visibility;
+    return vis.gannOdd || vis.gannEven;
+  }
+
+  get gannBar0GridUnavailable(): boolean {
+    if (!this.snapshot?.timeframes) return true;
+    return !this.timeframeOrder.some(tf => this.gannAvailable('bar0', tf));
   }
 
   rowFor(tf: string): OrderRsiTfRow | undefined {
@@ -506,30 +617,40 @@ export class OrderRsiComponent implements OnInit, OnDestroy {
     return 'bg-rose-950/10';
   }
 
-  gannFor(tf: string): GannOddSquareBlock | undefined {
-    return this.rowFor(tf)?.gann;
+  gannBlock(grid: GannGridId, tf: string): GannOddSquareBlock | undefined {
+    const row = this.rowFor(tf);
+    if (!row) return undefined;
+    return grid === 'bar1' ? row.gannBar1 : row.gannBar0;
   }
 
-  gannOddCellValue(tf: string, row: GannBandRowDef): number | null {
-    const gann = this.gannFor(tf);
-    if (!gann) return null;
-    if (row.kind === 'pivot') return gann.pivot ?? null;
-    if (!row.direction || row.index == null) return null;
-    const bands = gann.oddSquare[row.direction];
-    return bands[row.index] ?? null;
+  gannAvailable(grid: GannGridId, tf: string): boolean {
+    const block = this.gannBlock(grid, tf);
+    if (!block) return false;
+    if (grid === 'bar0') return block.available === true;
+    return block.available !== false && block.pivot != null;
   }
 
-  gannEvenCellValue(tf: string, row: GannBandRowDef): number | null {
-    const gann = this.gannFor(tf);
-    if (!gann || !row.direction || row.index == null) return null;
-    const bands = gann.evenSquare[row.direction];
-    return bands[row.index] ?? null;
+  gannPivotValue(grid: GannGridId, tf: string): number | null {
+    if (!this.gannAvailable(grid, tf)) return null;
+    return this.gannBlock(grid, tf)?.pivot ?? null;
   }
 
-  gannCellClass(tf: string, value: number | null, kind: 'odd' | 'even'): string {
+  gannOddBandValue(grid: GannGridId, tf: string, row: GannBandRowDef): number | null {
+    if (!this.gannAvailable(grid, tf)) return null;
+    const bands = this.gannBlock(grid, tf)?.oddSquare?.[row.direction];
+    return bands?.[row.index] ?? null;
+  }
+
+  gannEvenBandValue(grid: GannGridId, tf: string, row: GannBandRowDef): number | null {
+    if (!this.gannAvailable(grid, tf)) return null;
+    const bands = this.gannBlock(grid, tf)?.evenSquare?.[row.direction];
+    return bands?.[row.index] ?? null;
+  }
+
+  gannCellClass(grid: GannGridId, tf: string, value: number | null, kind: 'odd' | 'even'): string {
     const base = kind === 'odd' ? 'text-violet-300' : 'text-indigo-300';
     if (value == null) return base;
-    const gann = this.gannFor(tf);
+    const gann = this.gannBlock(grid, tf);
     if (!gann) return base;
     const isNext =
       value === gann.nextOddAbove ||

@@ -22,13 +22,15 @@ export interface GannSquareBands {
   below: number[];
 }
 
-/** Gann Square of Nine odd/even square levels from Bar 1 close pivot. */
+/** Gann Square of Nine odd/even square levels from a pivot price. */
 export interface GannOddSquareBlock {
-  pivot: number;
-  sqrtPivot: number;
-  pivotSource: string;
-  oddSquare: GannSquareBands;
-  evenSquare: GannSquareBands;
+  available?: boolean;
+  reason?: string;
+  pivot?: number;
+  sqrtPivot?: number;
+  pivotSource?: string;
+  oddSquare?: GannSquareBands;
+  evenSquare?: GannSquareBands;
   nextOddAbove?: number | null;
   nextOddBelow?: number | null;
   nextEvenAbove?: number | null;
@@ -69,6 +71,8 @@ export interface OrderRsiTfRow {
   barIndex: number;
   forming: boolean;
   time: OrderRsiTimeBlock;
+  /** Bar 0 (forming) open — used for Gann Bar 0 grid pivot. */
+  open?: number | null;
   close: number;
   /** Python Wilder RSI — forming bar (shift 0). */
   rsi: number | null;
@@ -77,8 +81,10 @@ export interface OrderRsiTfRow {
   historyBars?: number;
   /** Classic floor pivots from Bar 0 H/L/C. */
   sr?: OrderRsiSrLevels;
-  /** Gann Square of Nine odd/even squares from Bar 1 close pivot. */
-  gann?: GannOddSquareBlock;
+  /** Gann So9 from Bar 1 close pivot. */
+  gannBar1?: GannOddSquareBlock;
+  /** Gann So9 from Bar 0 open pivot. */
+  gannBar0?: GannOddSquareBlock;
   completed?: OrderRsiCompletedBar;
   /** MT5 built-in iRSI from GrokDevOrderRsiExport EA (when available). */
   mt5?: OrderRsiMt5Block;

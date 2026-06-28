@@ -204,7 +204,7 @@ import { PageHeaderComponent } from '../ui/page-header.component';
 
             <p><strong>Classic S/R</strong> — floor pivots from each bar's H/L/C. B0SR / B1SR chips toggle S/R rows.</p>
 
-            <p><strong>Gann Odd Square</strong> — separate table below the grid. Bar 1 close pivot per TF; odd squares (√P ± 2n)² and even squares (√P ± (2n±1))². Toggle <strong>Odd Sq</strong> / <strong>Even Sq</strong>.</p>
+            <p><strong>Gann Odd Square</strong> — two tables below the grid: <strong>Bar 1 Close</strong> and <strong>Bar 0 Open</strong> pivots; separate Odd/Even toggles each; Pivot row when either is on. Banner if Bar 0 open unavailable.</p>
 
             <p><strong>Zone highlights</strong> (rectangle background, not text color):</p>
             <ul class="pl-4 list-disc space-y-1">

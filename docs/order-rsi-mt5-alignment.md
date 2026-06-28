@@ -36,21 +36,24 @@ API fields: `timeframes.{TF}.sr` (Bar 0), `timeframes.{TF}.completed.sr` (Bar 1)
 
 ### Gann Odd Square (Square of Nine)
 
-Separate table **below** the RSI / S/R grid. Computed live in `run_order_rsi.py` per timeframe.
+Two separate tables **below** the RSI / S/R grid:
+
+| Grid | Pivot | API field |
+|------|-------|-----------|
+| **Bar 1 Close** | Last closed bar **close** | `timeframes.{TF}.gannBar1` |
+| **Bar 0 Open** | Forming bar **open** | `timeframes.{TF}.gannBar0` |
+
+Each grid has its own **Odd Sq** / **Even Sq** toggles (page only). **Pivot** row shows when either Odd or Even is on (shared within that grid).
 
 | Item | Detail |
 |------|--------|
-| **Pivot** | Bar 1 (last closed) **close** |
-| **Odd squares** | (√pivot ± 2n)² — major So9 diagonal milestones (n = 1…3) |
-| **Even squares** | (√pivot ± (2n ± 1))² — intermediate diagonal levels |
-| **UI toggles** | **Odd Sq** / **Even Sq** (page only, not saved) |
-| **Rows** | OS↑3…OS↑1 · Pivot · OS↓1…OS↓3 · ES↑/↓ bands |
+| **Odd squares** | (√pivot ± 2n)² — OS↑/↓ bands |
+| **Even squares** | (√pivot ± (2n±1))² — ES↑/↓ bands |
+| **Bar 0 banner** | Amber banner when no TF has `gannBar0.available === true` (missing open — restart publisher) |
 
-API: `timeframes.{TF}.gann` with `pivot`, `oddSquare.above/below`, `evenSquare.above/below`, `nextOddAbove`, `nextOddBelow`.
+Forming bar **open** is also published as `timeframes.{TF}.open`.
 
-Nearest milestone rows are **underlined** in the UI. Use with price action / time confluence — not standalone signals.
-
-See also Analysis Lab Gann study (`gann.util.ts`) for swing-octave + 0.25 √ steps on historical grids.
+See also Analysis Lab Gann study (`gann.util.ts`) for swing-octave on historical grids.
 
 ### RSI zone highlights (colored box around value)
 

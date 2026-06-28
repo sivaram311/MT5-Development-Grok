@@ -18,7 +18,9 @@ def _sqrt_level(sp: float, offset: float) -> Optional[float]:
     return round(root * root, 5)
 
 
-def gann_odd_even_squares(pivot: float, bands: int = 3) -> Optional[Dict[str, Any]]:
+def gann_odd_even_squares(
+    pivot: float, pivot_source: str = "bar1_close", bands: int = 3
+) -> Optional[Dict[str, Any]]:
     """
     Compute odd- and even-square bands from pivot price P:
       odd  → (√P ± 2n)²
@@ -51,13 +53,23 @@ def gann_odd_even_squares(pivot: float, bands: int = 3) -> Optional[Dict[str, An
             even_below.append(eb)
 
     return {
+        "available": True,
         "pivot": round(p, 5),
         "sqrtPivot": round(sp, 5),
-        "pivotSource": "bar1_close",
+        "pivotSource": pivot_source,
         "oddSquare": {"above": odd_above, "below": odd_below},
         "evenSquare": {"above": even_above, "below": even_below},
         "nextOddAbove": odd_above[0] if odd_above else None,
         "nextOddBelow": odd_below[0] if odd_below else None,
         "nextEvenAbove": even_above[0] if even_above else None,
         "nextEvenBelow": even_below[0] if even_below else None,
+    }
+
+
+def gann_unavailable(pivot_source: str, reason: str = "missing_data") -> Dict[str, Any]:
+    """Placeholder when pivot input is not available (e.g. Bar 0 open missing)."""
+    return {
+        "available": False,
+        "pivotSource": pivot_source,
+        "reason": reason,
     }

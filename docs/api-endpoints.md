@@ -140,9 +140,11 @@ Live **Order RSI** snapshot — Wilder RSI(14) on **close**, with both MT5 bar s
 | `timeframes.{TF}.historyBars` | Bars used for Wilder warm-up (default **5000**) |
 | `timeframes.{TF}.sr` | Classic floor pivots from **Bar 0** H/L/C (`s3`…`r3`, `pivot`) |
 | `timeframes.{TF}.completed.sr` | Classic floor pivots from **Bar 1** H/L/C |
-| `timeframes.{TF}.gann` | Gann Square of Nine odd/even levels from **Bar 1 close** pivot |
+| `timeframes.{TF}.open` | Bar 0 (forming) **open** |
+| `timeframes.{TF}.gannBar1` | Gann So9 from **Bar 1 close** pivot |
+| `timeframes.{TF}.gannBar0` | Gann So9 from **Bar 0 open** pivot (`available: false` when open missing) |
 
-Frontend **Analyzer** page toggles RSI source and row groups; **Odd Sq** / **Even Sq** toggles the Gann table below the main grid.
+Frontend **Analyzer**: RSI/S/R table + two Gann grids (Bar 1 / Bar 0), each with **Odd Sq** / **Even Sq** toggles; shared **Pivot** row when either is on.
 
 ```json
 {
@@ -164,14 +166,19 @@ Frontend **Analyzer** page toggles RSI source and row groups; **Odd Sq** / **Eve
         "shift1": { "rsi": 65.86 }
       },
       "historyBars": 5000,
-      "gann": {
+      "open": 4182.50,
+      "gannBar1": {
+        "available": true,
         "pivot": 4180.00,
-        "sqrtPivot": 64.62,
         "pivotSource": "bar1_close",
         "oddSquare": { "above": [4289.55, 4401.02], "below": [4073.12, 3970.44] },
-        "evenSquare": { "above": [4244.20], "below": [4021.80] },
-        "nextOddAbove": 4289.55,
-        "nextOddBelow": 4073.12
+        "nextOddAbove": 4289.55
+      },
+      "gannBar0": {
+        "available": true,
+        "pivot": 4182.50,
+        "pivotSource": "bar0_open",
+        "oddSquare": { "above": [4292.10], "below": [4075.00] }
       }
     }
   }

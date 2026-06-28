@@ -28,7 +28,7 @@ from .config import (
     ORDER_RSI_TIMEFRAMES,
     SYMBOL,
 )
-from .gann_odd_square_util import gann_odd_even_squares
+from .gann_odd_square_util import gann_odd_even_squares, gann_unavailable
 from .mt5_client import MT5Client, MAX_MT5_COPY_COUNT
 from .mt5_rsi_export import read_mt5_builtin_export
 from .postgres_client import PostgresClient
@@ -110,12 +110,14 @@ class OrderRsiPublisher:
         close = closes[-1]
         high0 = float(df["high"].iloc[-1])
         low0 = float(df["low"].iloc[-1])
+        open0 = float(df["open"].iloc[-1])
 
         row: Dict[str, Any] = {
             "timeframe": tf_key,
             "barIndex": 0,
             "forming": True,
             "time": _enrich_times_from_utc(bar_time_utc),
+            "open": round(open0, 5) if open0 > 0 else None,
             "close": round(close, 5),
             "rsi": round(rsi_forming, 2) if rsi_forming is not None else None,
             "rsiPeriod": self.period,
@@ -144,10 +146,23 @@ class OrderRsiPublisher:
                 completed_block["sr"] = sr1
             row["completed"] = completed_block
 
-        gann_pivot = float(row["completed"]["close"]) if row.get("completed") else close
-        gann = gann_odd_even_squares(gann_pivot)
-        if gann:
-            row["gann"] = gann
+        if row.get("completed"):
+            gann_bar1 = gann_odd_even_squares(float(row["completed"]["close"]), "bar1_close")
+            if gann_bar1:
+                row["gannBar1"] = gann_bar1
+        elif close > 0:
+            gann_bar1 = gann_odd_even_squares(close, "bar1_close")
+            if gann_bar1:
+                row["gannBar1"] = gann_bar1
+
+        if open0 > 0:
+            gann_bar0 = gann_odd_even_squares(open0, "bar0_open")
+            if gann_bar0:
+                row["gannBar0"] = gann_bar0
+            else:
+                row["gannBar0"] = gann_unavailable("bar0_open", "invalid_open")
+        else:
+            row["gannBar0"] = gann_unavailable("bar0_open", "missing_open")
 
         mt5_block = self._mt5_export_block(tf_key)
         if mt5_block:

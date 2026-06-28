@@ -1,6 +1,6 @@
 import math
 
-from mt5_xauusd.gann_odd_square_util import gann_odd_even_squares
+from mt5_xauusd.gann_odd_square_util import gann_odd_even_squares, gann_unavailable
 
 
 def test_gann_odd_square_levels_from_pivot():
@@ -25,3 +25,9 @@ def test_gann_even_square_offset():
 def test_gann_invalid_pivot():
     assert gann_odd_even_squares(0) is None
     assert gann_odd_even_squares(-1) is None
+
+
+def test_gann_unavailable():
+    block = gann_unavailable("bar0_open", "missing_open")
+    assert block["available"] is False
+    assert block["pivotSource"] == "bar0_open"

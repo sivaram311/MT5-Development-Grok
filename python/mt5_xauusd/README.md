@@ -210,7 +210,7 @@ python run_order_rsi.py
 
 **Classic S/R:** `pivot_util.classic_floor_pivots()` — snapshot `sr` keys match UI row labels.
 
-**Gann Odd Square:** `gann_odd_square_util.gann_odd_even_squares()` — Bar 1 close pivot; `timeframes.{TF}.gann` with odd/even square bands.
+**Gann Odd Square:** `gann_odd_even_squares()` — `gannBar1` (Bar 1 close), `gannBar0` (Bar 0 open); `open` on forming bar. `gannBar0.available: false` when open missing.
 
 ### 5. Robustness (Implemented)
 - Automatic reconnection logic (`ensure_connected` with exponential backoff).

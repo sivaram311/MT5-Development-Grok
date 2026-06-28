@@ -4,6 +4,18 @@ All notable changes to the Grok Dev full-stack application (Spring Boot + Angula
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2026-06-28 (Gann dual grids Bar 0 / Bar 1)
+
+### Added
+- **Gann Bar 0 Open** grid — separate table, pivot from forming bar **open**; unavailable banner when missing.
+- **Gann Bar 1 Close** grid — renamed from single `gann`; own Odd/Even toggles.
+- **Shared Pivot row** when Odd or Even is on (fixes pivot hidden on Even-only).
+
+### Changed
+- API: `gann` → `gannBar1` + `gannBar0`; `timeframes.{TF}.open` published.
+
+---
+
 ## [Unreleased] - 2026-06-28 (Analyzer Gann Odd Square)
 
 ### Added

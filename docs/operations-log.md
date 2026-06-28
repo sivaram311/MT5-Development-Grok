@@ -12,6 +12,18 @@ Format for each entry:
 
 ---
 
+## 2026-06-28 — Gann dual grids (Bar 1 close + Bar 0 open)
+
+### Changes
+| Area | Change |
+|------|--------|
+| `order_rsi_service.py` | `open`, `gannBar1`, `gannBar0`; pivot shared when Odd/Even on |
+| `order-rsi.component.ts` | Two Gann tables; separate toggles; Bar 0 unavailable banner |
+
+**Verification:** restart `python-order-rsi`.
+
+---
+
 ## 2026-06-28 — Analyzer Gann Odd Square (Square of Nine)
 
 ### Changes
