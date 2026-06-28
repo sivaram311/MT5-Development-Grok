@@ -220,6 +220,8 @@ Python push modes (env):
 
 Gann intraday study for XAUUSD mean reversion — session pivots, 1×1 angle, So9, time squaring, killzones, reversal alert.
 
+**Usage guide:** [frontend/docs/GANN_INTRADAY_USAGE_GUIDE.md](../frontend/docs/GANN_INTRADAY_USAGE_GUIDE.md) · page route `/dashboard/gann-intraday`.
+
 **Query params:**
 
 | Param | Default | Description |

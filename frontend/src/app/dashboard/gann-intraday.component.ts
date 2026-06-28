@@ -48,7 +48,7 @@ import { buildGannAboveRows, buildGannBelowRows } from '../utils/gann-grid-rows.
             [tone]="streamConnected ? 'success' : (offline ? 'warning' : 'neutral')">
           </app-status-badge>
           <a routerLink="../docs" fragment="gann-intraday" class="min-h-11 px-4 text-xs font-semibold rounded-2xl border border-zinc-700 active:bg-zinc-900 inline-flex items-center">
-            Docs
+            Usage guide
           </a>
         </div>
         <div toolbar class="flex flex-wrap gap-3">

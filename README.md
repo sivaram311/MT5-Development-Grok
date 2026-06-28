@@ -71,7 +71,7 @@ Then restart the backend. The seeder will recreate them.
 - **Health dashboard** — per-TF freshness cards + **SSE push alerts** when pipeline degrades
 - **Analysis Lab** — RSI storm scanner + Gann level studies (octave + Square-of-9)
 - **Analyzer** — live multi-TF RSI(14) table, classic S/R pivots, **Gann Odd Square** (So9), toggleable rows — route `/dashboard/order-rsi`; see [docs/order-rsi-mt5-alignment.md](docs/order-rsi-mt5-alignment.md)
-- **Gann Intraday** — five-module intraday Gann page (1×1 angle, session pivots, fine So9, time squaring, NY/London killzones) — route `/dashboard/gann-intraday`; API `GET /api/market/xauusd/gann-intraday`; see [docs/gann-intraday-pending-implementation.md](docs/gann-intraday-pending-implementation.md)
+- **Gann Intraday** — five-module intraday Gann page (1×1 angle, session pivots, fine So9, time squaring, NY/London killzones) — route `/dashboard/gann-intraday`; API `GET /api/market/xauusd/gann-intraday`; **usage guide:** [frontend/docs/GANN_INTRADAY_USAGE_GUIDE.md](frontend/docs/GANN_INTRADAY_USAGE_GUIDE.md); implementation tracker: [docs/gann-intraday-pending-implementation.md](docs/gann-intraday-pending-implementation.md)
 - **User preferences** — PATCH merge to `/api/auth/preferences` (grid, market UI, volatility)
 - **Playwright e2e** — login, manifest, auth-guard smoke tests (`npm run e2e`)
 
@@ -125,6 +125,7 @@ Rich technical documentation lives **inside the Angular project**:
   - [PYTHON_MT5_DOWNLOADER.md](file:///E:/Source/grok_dev/frontend/docs/PYTHON_MT5_DOWNLOADER.md) (MT5 daemon)
   - [SPRINGBOOT_BACKEND.md](file:///E:/Source/grok_dev/frontend/docs/SPRINGBOOT_BACKEND.md) (API controllers)
   - [ANGULAR_FRONTEND.md](file:///E:/Source/grok_dev/frontend/docs/ANGULAR_FRONTEND.md) (UI layouts)
+  - [GANN_INTRADAY_USAGE_GUIDE.md](file:///E:/Source/grok_dev/frontend/docs/GANN_INTRADAY_USAGE_GUIDE.md) (Gann Intraday page tutorial)
   - [NY_SESSION_ONLY_FEATURE.md](file:///E:/Source/grok_dev/frontend/docs/NY_SESSION_ONLY_FEATURE.md) (Session filtering)
   - [TIMEZONE_HANDLING.md](file:///E:/Source/grok_dev/frontend/docs/TIMEZONE_HANDLING.md) (DST calculations)
   - [MOBILE_TABLET_UX.md](file:///E:/Source/grok_dev/frontend/docs/MOBILE_TABLET_UX.md) (Layout constraints)

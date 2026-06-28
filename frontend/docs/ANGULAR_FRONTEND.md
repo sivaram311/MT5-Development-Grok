@@ -115,7 +115,9 @@ Full alignment guide: [order-rsi-mt5-alignment.md](../../docs/order-rsi-mt5-alig
 ### GannIntradayComponent
 [gann-intraday.component.ts](file:///E:/Source/grok_dev/frontend/src/app/dashboard/gann-intraday.component.ts) — sidebar **Gann Intraday**, route `/dashboard/gann-intraday`.
 
-Grid-based (REST) intraday Gann study for XAUUSD mean reversion — not SSE.
+Intraday Gann study for XAUUSD mean reversion — REST API with grid fallback; SSE for live badge and dashboard reversal alerts.
+
+**Usage guide (tutorial):** [GANN_INTRADAY_USAGE_GUIDE.md](file:///E:/Source/grok_dev/frontend/docs/GANN_INTRADAY_USAGE_GUIDE.md) · in-app: Docs → **Gann Intraday** accordion.
 
 | Module | Util | Behavior |
 |--------|------|----------|

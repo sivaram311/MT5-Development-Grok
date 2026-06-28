@@ -4,6 +4,14 @@ All notable changes to the Grok Dev full-stack application (Spring Boot + Angula
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2026-06-29 (Gann Intraday usage guide)
+
+### Documentation
+- **Gann Intraday usage guide** — [frontend/docs/GANN_INTRADAY_USAGE_GUIDE.md](frontend/docs/GANN_INTRADAY_USAGE_GUIDE.md): page tutorial, controls, confluence scoring, step-by-step workflows, troubleshooting
+- In-app Docs accordion expanded; page header link renamed to **Usage guide**; README, `ANGULAR_FRONTEND.md`, implementation tracker updated
+
+---
+
 ## [Unreleased] - 2026-06-28 (Gann Intraday phase 2 — API, SSE, filters)
 
 ### Added

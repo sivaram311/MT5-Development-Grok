@@ -238,30 +238,62 @@ import { PageHeaderComponent } from '../ui/page-header.component';
 
         <!-- Gann Intraday -->
         <details id="gann-intraday" class="doc-section bg-zinc-900 border border-zinc-800 rounded-3xl overflow-hidden">
-          <summary class="px-4 py-3.5 font-semibold cursor-pointer flex justify-between items-center active:bg-zinc-800 text-base">Gann Intraday — Mean Reversion &amp; Reversals</summary>
-          <div class="px-4 pb-5 text-sm text-zinc-300 text-xs space-y-3">
-            <p>Sidebar / More menu <strong>Gann Intraday</strong> (<code>/dashboard/gann-intraday</code>) — five-module intraday framework for XAUUSD (grid REST, client-side math).</p>
+          <summary class="px-4 py-3.5 font-semibold cursor-pointer flex justify-between items-center active:bg-zinc-800 text-base">Gann Intraday — Usage Guide</summary>
+          <div class="px-4 pb-5 text-sm text-zinc-300 text-xs space-y-3 leading-relaxed">
+            <p><strong>Route:</strong> <code>/dashboard/gann-intraday</code> — sidebar <strong>Gann Intraday</strong> or phone <strong>More</strong> menu. Intraday mean-reversion &amp; reversal study for <strong>XAUUSD</strong>.</p>
+            <p>Full tutorial (markdown): <a href="file:///E:/Source/grok_dev/frontend/docs/GANN_INTRADAY_USAGE_GUIDE.md" target="_blank" class="text-emerald-400 underline">frontend/docs/GANN_INTRADAY_USAGE_GUIDE.md</a></p>
 
-            <p><strong>Modules (V1):</strong></p>
+            <p><strong>Before you start</strong></p>
             <ul class="pl-4 list-disc space-y-1">
-              <li><strong>1×1 Gann angle</strong> — equilibrium vs price; overextension bias (ATR multiples)</li>
-              <li><strong>Session pivots</strong> — PDH/PDL, prev close, NY session H/L/open from D1 + M15 nyTime</li>
-              <li><strong>Fine So9</strong> — 0.25 / 0.5 / 1.0 √ steps plus odd/even diagonals</li>
-              <li><strong>Time squaring</strong> — session minutes vs price move (45/90/180 milestones)</li>
-              <li><strong>Killzones + reversal alert</strong> — NY windows + combined confluence score</li>
+              <li>Log in; backend + M5/M15/D1 grids with <code>nyTime</code> on M15</li>
+              <li>Optional: <code>python run_gann_intraday.py</code> for <strong>LIVE</strong> badge</li>
+              <li>Pull-to-refresh or tap <strong>Refresh</strong> after changing controls</li>
             </ul>
 
-            <p><strong>Controls:</strong> Entry TF (M5/M15), So9 pivot source selector, Odd/Even toggles, pull-to-refresh.</p>
+            <p><strong>Header controls</strong></p>
+            <ul class="pl-4 list-disc space-y-1">
+              <li><strong>Entry TF</strong> (M5/M15) — current price, ATR, candle filters</li>
+              <li><strong>So9 pivot</strong> — NY open (default), London open, PDH/PDL, session H/L</li>
+              <li><strong>Time scale</strong> (0.5–2.0) — time squaring sensitivity</li>
+              <li><strong>ATR alert</strong> (0.75–2.5×) — 1×1 stretch threshold</li>
+              <li><strong>Status:</strong> LIVE (SSE) · GRID (REST/computed) · OFFLINE DATA (cache)</li>
+            </ul>
+
+            <p><strong>Page sections (top → bottom)</strong></p>
+            <ol class="pl-4 list-decimal space-y-1">
+              <li><strong>Reversal confluence</strong> — HIGH / MEDIUM / LOW score + reason bullets</li>
+              <li><strong>Session cards</strong> — PDH, PDL, NY/London open, active killzones</li>
+              <li><strong>1×1 angle</strong> — equilibrium, deviation, bias, fan table (1×1/2×1/1×2)</li>
+              <li><strong>Square of Nine</strong> — fine steps (teal) + Odd/Even toggles; emerald = near price</li>
+              <li><strong>Time squaring</strong> — 45/90/180 min vs price move; NEAR SQUARE flag</li>
+              <li><strong>Killzones</strong> — London Open, NY Open, Overlap, Afternoon (NY + IST)</li>
+              <li><strong>Filters</strong> — volume spike, RSI divergence</li>
+            </ol>
+
+            <p><strong>Confluence scoring</strong> (reversal banner)</p>
+            <div class="bg-zinc-950 p-3 rounded-2xl text-[11px] font-mono leading-relaxed">
+              1×1 alert/overextension +2 · So9 level +1 · time square +1 · killzone +1<br>
+              reversal candle +1 · volume spike +1 · RSI div +1<br>
+              ≥5 HIGH · ≥3 MEDIUM · ≥1 LOW
+            </div>
+
+            <p><strong>Tutorial — NY open fade</strong></p>
+            <ol class="pl-4 list-decimal space-y-1">
+              <li>Trade during <strong>NY Open</strong> killzone (ACTIVE badge)</li>
+              <li>Wait for <strong>Overextended ↑</strong> on 1×1 with So9 level highlighted</li>
+              <li>Banner <strong>MEDIUM</strong> or <strong>HIGH</strong> → fade toward <strong>Equilibrium</strong></li>
+            </ol>
+
+            <p><strong>Dashboard banner</strong> — red/amber <em>Gann reversal</em> on other pages when severity is high/medium; tap <strong>Open Gann Intraday</strong>.</p>
 
             <p><strong>Data flow:</strong></p>
             <div class="bg-zinc-950 p-3 rounded-2xl font-mono text-[11px] leading-relaxed">
-              GET /api/market/xauusd/M5 · M15 · D1 /grid<br>
-              ↓ client utils (gann-intraday.util.ts + modules)<br>
-              <a href="file:///E:/Source/grok_dev/frontend/src/app/dashboard/gann-intraday.component.ts" target="_blank" class="text-emerald-400 underline">gann-intraday.component.ts</a>
+              GET /api/market/xauusd/gann-intraday (your controls)<br>
+              ↓ fallback: M5 · M15 · D1 /grid → gann-intraday.util.ts<br>
+              SSE /gann-intraday/stream → LIVE badge + dashboard alerts
             </div>
 
-            <p>Tracker &amp; future work: <a href="file:///E:/Source/grok_dev/docs/gann-intraday-pending-implementation.md" target="_blank" class="text-emerald-400 underline">docs/gann-intraday-pending-implementation.md</a></p>
-            <p><strong>API:</strong> <code>GET /api/market/xauusd/gann-intraday</code> · SSE <code>/gann-intraday/stream</code> · Python <code>run_gann_intraday.py</code> · MT5 <code>GrokDevGannScanner.mq5</code></p>
+            <p>Tracker: <a href="file:///E:/Source/grok_dev/docs/gann-intraday-pending-implementation.md" target="_blank" class="text-emerald-400 underline">gann-intraday-pending-implementation.md</a> · API: <a href="file:///E:/Source/grok_dev/docs/api-endpoints.md" target="_blank" class="text-emerald-400 underline">api-endpoints.md</a></p>
           </div>
         </details>
 

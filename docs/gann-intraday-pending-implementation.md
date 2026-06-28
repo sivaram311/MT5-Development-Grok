@@ -94,6 +94,7 @@ Python publisher: **`python run_gann_intraday.py`** · MT5 EA: **`GrokDevGannSca
 
 ## Related docs
 
+- **[GANN_INTRADAY_USAGE_GUIDE.md](../frontend/docs/GANN_INTRADAY_USAGE_GUIDE.md)** — how to use the page (tutorial, controls, workflows)
 - [order-rsi-mt5-alignment.md](./order-rsi-mt5-alignment.md)
 - [api-endpoints.md](./api-endpoints.md)
 - [ANGULAR_FRONTEND.md](../frontend/docs/ANGULAR_FRONTEND.md)
