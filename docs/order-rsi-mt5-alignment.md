@@ -43,13 +43,17 @@ Two separate tables **below** the RSI / S/R grid:
 | **Bar 1 Close** | Last closed bar **close** | `timeframes.{TF}.gannBar1` |
 | **Bar 0 Open** | Forming bar **open** | `timeframes.{TF}.gannBar0` |
 
-Each grid has its own **Odd Sq** / **Even Sq** toggles (page only). **Pivot** row shows when either Odd or Even is on (shared within that grid).
+Each grid has its own **Odd Sq** / **Even Sq** toggles (page only). **Pivot** row is **centered** when either toggle is on.
 
-| Item | Detail |
-|------|--------|
-| **Odd squares** | (√pivot ± 2n)² — OS↑/↓ bands |
-| **Even squares** | (√pivot ± (2n±1))² — ES↑/↓ bands |
-| **Bar 0 banner** | Amber banner when no TF has `gannBar0.available === true` (missing open — restart publisher) |
+**Row order** (one row per band level — OS↑1 and ES↑1 are separate rows when both visible):
+
+| Section | Order (top → bottom) |
+|---------|----------------------|
+| **Above pivot** | Odd + even **merged**, sorted by distance from pivot — **furthest / highest at top**, **nearest above pivot** just above the pivot row |
+| **Pivot** | Center |
+| **Below pivot** | Odd + even **merged** — **nearest below pivot** first, then progressively lower |
+
+Odd-only or even-only uses the same nearest-from-pivot ordering; pivot stays centered.
 
 Forming bar **open** is also published as `timeframes.{TF}.open`.
 

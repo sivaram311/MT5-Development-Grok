@@ -4,6 +4,13 @@ All notable changes to the Grok Dev full-stack application (Spring Boot + Angula
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2026-06-28 (Gann merged row order)
+
+### Changed
+- **Gann grids** — odd/even bands merged above/below pivot; pivot centered; one row per level sorted by distance from pivot (`gann-grid-rows.util.ts`).
+
+---
+
 ## [Unreleased] - 2026-06-28 (Gann dual grids Bar 0 / Bar 1)
 
 ### Added
