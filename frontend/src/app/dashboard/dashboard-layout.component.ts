@@ -1,16 +1,16 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '../services/auth.service';
 import { TimeframeContextService } from '../services/timeframe-context.service';
+import { SseManagerService } from '../services/sse-manager.service';
 import { BottomSheetComponent } from '../ui/bottom-sheet.component';
 import { NavIconComponent, NavIconName } from '../ui/nav-icon.component';
 import { OfflineBannerComponent } from '../ui/offline-banner.component';
 import { PwaUpdateComponent } from '../ui/pwa-update.component';
 import { HealthAlertBannerComponent } from '../ui/health-alert-banner.component';
 import { GannAlertBannerComponent } from '../ui/gann-alert-banner.component';
-import { HealthStreamService } from '../services/health-stream.service';
-import { GannIntradayStreamService } from '../services/gann-intraday-stream.service';
 
 interface NavItem {
   route: string;
@@ -21,6 +21,7 @@ interface NavItem {
 @Component({
   selector: 'app-dashboard-layout',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, RouterModule, BottomSheetComponent, NavIconComponent, OfflineBannerComponent, PwaUpdateComponent, HealthAlertBannerComponent, GannAlertBannerComponent],
   template: `
     <div class="min-h-screen bg-zinc-950 text-zinc-200 flex flex-col">
@@ -206,23 +207,22 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
     private authService: AuthService,
     private router: Router,
     private timeframeContext: TimeframeContextService,
-    private healthStream: HealthStreamService,
-    private gannStream: GannIntradayStreamService
+    private sseManager: SseManagerService,
+    private cdr: ChangeDetectorRef
   ) {
     this.currentUser = this.authService.getCurrentUser();
-    this.timeframeContext.timeframe$.subscribe(tf => {
+    this.timeframeContext.timeframe$.pipe(takeUntilDestroyed()).subscribe(tf => {
       this.activeTimeframe = tf;
+      this.cdr.markForCheck();
     });
   }
 
   ngOnInit(): void {
-    this.healthStream.start();
-    this.gannStream.start();
+    this.sseManager.startDashboard();
   }
 
   ngOnDestroy(): void {
-    this.healthStream.stop();
-    this.gannStream.stop();
+    this.sseManager.stopDashboard();
   }
 
   logout() {

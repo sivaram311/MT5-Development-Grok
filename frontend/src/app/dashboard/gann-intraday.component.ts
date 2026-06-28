@@ -1,8 +1,9 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Subscription, forkJoin } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { forkJoin } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { environment } from '../../environments/environment';
 import { PageHeaderComponent } from '../ui/page-header.component';
@@ -26,6 +27,7 @@ import { buildGannAboveRows, buildGannBelowRows } from '../utils/gann-grid-rows.
 @Component({
   selector: 'app-gann-intraday',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
     RouterModule,
@@ -75,12 +77,12 @@ import { buildGannAboveRows, buildGannBelowRows } from '../utils/gann-grid-rows.
         <div toolbar class="flex flex-wrap gap-3 mt-2">
           <label class="text-xs text-zinc-500 flex items-center gap-2">
             Time scale
-            <input type="range" min="0.5" max="2" step="0.1" [(ngModel)]="timeScaleFactor" (change)="refresh()" class="w-24" />
+            <input type="range" min="0.5" max="2" step="0.1" [(ngModel)]="timeScaleFactor" (change)="refreshDebounced()" class="w-24" />
             <span class="font-mono text-zinc-300">{{ timeScaleFactor | number:'1.1-1' }}</span>
           </label>
           <label class="text-xs text-zinc-500 flex items-center gap-2">
             ATR alert
-            <input type="range" min="0.75" max="2.5" step="0.05" [(ngModel)]="extensionThresholdAtr" (change)="refresh()" class="w-24" />
+            <input type="range" min="0.75" max="2.5" step="0.05" [(ngModel)]="extensionThresholdAtr" (change)="refreshDebounced()" class="w-24" />
             <span class="font-mono text-zinc-300">{{ extensionThresholdAtr | number:'1.2-2' }}×</span>
           </label>
         </div>
@@ -335,7 +337,11 @@ import { buildGannAboveRows, buildGannBelowRows } from '../utils/gann-grid-rows.
     </app-pull-to-refresh>
   `
 })
-export class GannIntradayComponent implements OnInit, OnDestroy {
+export class GannIntradayComponent implements OnInit {
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly cdr = inject(ChangeDetectorRef);
+  private refreshDebounceTimer?: ReturnType<typeof setTimeout>;
+
   entryTfOptions = ['M5', 'M15'];
   pivotOptions: SessionPivotKey[] = [
     'nyOpen', 'londonOpen', 'pdh', 'pdl', 'prevClose', 'nyHigh', 'nyLow', 'londonHigh', 'londonLow'
@@ -353,7 +359,6 @@ export class GannIntradayComponent implements OnInit, OnDestroy {
   offline = false;
   streamConnected = false;
   formatWallTime = formatWallTime;
-  private subs = new Subscription();
 
   constructor(
     private http: HttpClient,
@@ -362,18 +367,24 @@ export class GannIntradayComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    this.gannStream.start();
-    this.subs.add(this.gannStream.connected$.subscribe(c => { this.streamConnected = c; }));
-    this.subs.add(this.gannStream.snapshot$.subscribe(s => {
+    this.gannStream.connected$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(c => {
+      this.streamConnected = c;
+      this.cdr.markForCheck();
+    });
+    this.gannStream.snapshot$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(s => {
       if (s?.live !== false && s?.angle) {
         this.applyStudy(s as GannIntradayStudy);
+        this.cdr.markForCheck();
       }
-    }));
+    });
     this.refresh();
   }
 
-  ngOnDestroy(): void {
-    this.subs.unsubscribe();
+  refreshDebounced(): void {
+    if (this.refreshDebounceTimer) {
+      clearTimeout(this.refreshDebounceTimer);
+    }
+    this.refreshDebounceTimer = setTimeout(() => this.refresh(), 250);
   }
 
   setPivot(key: string): void {
@@ -383,6 +394,7 @@ export class GannIntradayComponent implements OnInit, OnDestroy {
 
   refresh(): void {
     this.loading = true;
+    this.cdr.markForCheck();
     const params = new HttpParams()
       .set('entry_tf', this.entryTf)
       .set('so9_pivot', this.so9PivotKey)
@@ -398,7 +410,9 @@ export class GannIntradayComponent implements OnInit, OnDestroy {
           this.gannStream.pushAlertFromStudy(this.study);
         } else {
           this.refreshFromGrid();
+          return;
         }
+        this.cdr.markForCheck();
       },
       error: () => this.refreshFromGrid()
     });
@@ -430,10 +444,12 @@ export class GannIntradayComponent implements OnInit, OnDestroy {
         } else {
           this.study = null;
         }
+        this.cdr.markForCheck();
       },
       error: () => {
         this.loading = false;
         this.study = null;
+        this.cdr.markForCheck();
       }
     });
   }

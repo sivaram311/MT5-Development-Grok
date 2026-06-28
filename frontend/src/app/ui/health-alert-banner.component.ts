@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { HealthStreamService } from '../services/health-stream.service';
@@ -6,6 +6,7 @@ import { HealthStreamService } from '../services/health-stream.service';
 @Component({
   selector: 'app-health-alert-banner',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, RouterModule],
   template: `
     <div

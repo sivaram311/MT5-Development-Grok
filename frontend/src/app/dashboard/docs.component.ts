@@ -187,7 +187,9 @@ import { PageHeaderComponent } from '../ui/page-header.component';
               <li><strong>Preference Sync:</strong> GET on load; PATCH partial sections on save (deep merge on server).</li>
             </ul>
 
-            <p><strong>Health push alerts:</strong> Dashboard shell subscribes to <code>/api/market/xauusd/health/stream</code> (SSE). Shows a banner when pipeline status becomes DEGRADED or DOWN.</p>
+            <p><strong>Health push alerts:</strong> Dashboard shell uses <a href="file:///E:/Source/grok_dev/frontend/src/app/services/sse-manager.service.ts" target="_blank" class="text-emerald-400 underline">SseManagerService</a> for SSE lifecycle: Health + Gann streams always on; Order RSI only on the Analyzer route.</p>
+
+            <p><strong>Performance (June 2026):</strong> Dashboard pages use <code>OnPush</code> change detection, throttled SSE UI updates (Order RSI 800ms, Gann 500ms), virtual-scroll <code>trackBy</code>, and debounced Gann slider refresh. See <a href="file:///E:/Source/grok_dev/frontend/docs/PERFORMANCE_OPTIMIZATION.md" target="_blank" class="text-emerald-400 underline">PERFORMANCE_OPTIMIZATION.md</a>.</p>
 
             <p><strong>PWA manifest:</strong> <code>src/assets/manifest.webmanifest</code> — linked as <code>assets/manifest.webmanifest</code> in index.html (fixes dev-server 404).</p>
 
@@ -414,7 +416,7 @@ export class DocsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngAfterViewInit(): void {
     this.viewReady = true;
-    const initial = this.route.snapshot.fragment ?? window.location.hash.replace(/^#/, '') || null;
+    const initial = this.route.snapshot.fragment ?? (window.location.hash.replace(/^#/, '') || null);
     if (initial) {
       this.pendingSectionId = initial;
     }

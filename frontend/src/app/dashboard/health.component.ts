@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
@@ -11,6 +11,7 @@ import { formatBrokerTime, formatAgeMinutes } from '../utils/time.util';
 @Component({
   selector: 'app-health',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, RouterModule, PageHeaderComponent, StatusBadgeComponent],
   template: `
     <app-page-header
@@ -78,6 +79,8 @@ import { formatBrokerTime, formatAgeMinutes } from '../utils/time.util';
   `
 })
 export class HealthComponent implements OnInit {
+  private readonly cdr = inject(ChangeDetectorRef);
+
   timeframes = ['D1', 'H4', 'H1', 'M15', 'M5', 'M1'];
   health: any = null;
   expandedTf: string | null = null;
@@ -95,8 +98,14 @@ export class HealthComponent implements OnInit {
 
   loadHealth() {
     this.http.get<any>(`${environment.apiUrl}/market/xauusd/health`).subscribe({
-      next: data => { this.health = data || {}; },
-      error: () => { this.health = { status: 'DOWN', details: {}, message: 'Could not reach health API' }; }
+      next: data => {
+        this.health = data || {};
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.health = { status: 'DOWN', details: {}, message: 'Could not reach health API' };
+        this.cdr.markForCheck();
+      }
     });
   }
 

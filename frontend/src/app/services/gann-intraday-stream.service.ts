@@ -1,9 +1,11 @@
 import { Injectable, OnDestroy } from '@angular/core';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, Subject } from 'rxjs';
+import { throttleTime } from 'rxjs/operators';
 import { AuthService } from './auth.service';
 import { environment } from '../../environments/environment';
 import { GannIntradayStudy } from '../utils/gann-intraday.util';
 import { ReversalSeverity } from '../utils/gann-killzone.util';
+import { GANN_INTRADAY_UI_THROTTLE_MS } from './stream-throttle.config';
 
 export interface GannIntradaySnapshot extends GannIntradayStudy {
   live?: boolean;
@@ -23,7 +25,9 @@ export interface GannAlertState {
 @Injectable({ providedIn: 'root' })
 export class GannIntradayStreamService implements OnDestroy {
   private eventSource: EventSource | null = null;
+  private rawSnapshot$ = new Subject<GannIntradaySnapshot>();
   private snapshotSubject = new BehaviorSubject<GannIntradaySnapshot | null>(null);
+  /** Throttled study snapshots for page UI; alerts evaluate on every event. */
   snapshot$ = this.snapshotSubject.asObservable();
   private connectedSubject = new BehaviorSubject(false);
   connected$ = this.connectedSubject.asObservable();
@@ -31,7 +35,11 @@ export class GannIntradayStreamService implements OnDestroy {
   alert$ = this.alertSubject.asObservable();
   private dismissed = false;
 
-  constructor(private auth: AuthService) {}
+  constructor(private auth: AuthService) {
+    this.rawSnapshot$.pipe(
+      throttleTime(GANN_INTRADAY_UI_THROTTLE_MS, undefined, { leading: true, trailing: true })
+    ).subscribe(data => this.snapshotSubject.next(data));
+  }
 
   start(): void {
     const token = this.auth.getToken();
@@ -46,7 +54,7 @@ export class GannIntradayStreamService implements OnDestroy {
     this.eventSource.addEventListener('gannIntraday', (event: MessageEvent) => {
       try {
         const data = JSON.parse(event.data) as GannIntradaySnapshot;
-        this.snapshotSubject.next(data);
+        this.rawSnapshot$.next(data);
         this.connectedSubject.next(true);
         this.updateAlert(data);
       } catch {

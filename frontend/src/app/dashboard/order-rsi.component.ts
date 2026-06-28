@@ -1,7 +1,7 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { Subscription } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { environment } from '../../environments/environment';
 import { PageHeaderComponent } from '../ui/page-header.component';
 import { StatusBadgeComponent } from '../ui/status-badge.component';
@@ -39,6 +39,7 @@ type GannToggleKey = 'gannOdd' | 'gannEven';
 @Component({
   selector: 'app-order-rsi',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, PageHeaderComponent, StatusBadgeComponent],
   template: `
     <app-page-header
@@ -273,7 +274,7 @@ type GannToggleKey = 'gannOdd' | 'gannEven';
             </thead>
             <tbody>
               <tr
-                *ngFor="let row of gannAboveRows('bar1')"
+                *ngFor="let row of bar1GannAbove; trackBy: trackGannRow"
                 class="border-b border-zinc-800/80"
                 [ngClass]="gannRowBgClass(row)">
                 <th class="sticky left-0 z-10 bg-zinc-900 text-left text-[10px] text-zinc-500 font-normal px-3 py-2 align-middle border-r border-zinc-800/50">
@@ -298,7 +299,7 @@ type GannToggleKey = 'gannOdd' | 'gannEven';
                 </td>
               </tr>
               <tr
-                *ngFor="let row of gannBelowRows('bar1'); let last = last"
+                *ngFor="let row of bar1GannBelow; trackBy: trackGannRow; let last = last"
                 class="border-b border-zinc-800/80"
                 [ngClass]="gannRowBgClass(row)"
                 [class.border-b-0]="last">
@@ -352,7 +353,7 @@ type GannToggleKey = 'gannOdd' | 'gannEven';
             </thead>
             <tbody>
               <tr
-                *ngFor="let row of gannAboveRows('bar0')"
+                *ngFor="let row of bar0GannAbove; trackBy: trackGannRow"
                 class="border-b border-zinc-800/80"
                 [ngClass]="gannRowBgClass(row)">
                 <th class="sticky left-0 z-10 bg-zinc-900 text-left text-[10px] text-zinc-500 font-normal px-3 py-2 align-middle border-r border-zinc-800/50">
@@ -377,7 +378,7 @@ type GannToggleKey = 'gannOdd' | 'gannEven';
                 </td>
               </tr>
               <tr
-                *ngFor="let row of gannBelowRows('bar0'); let last = last"
+                *ngFor="let row of bar0GannBelow; trackBy: trackGannRow; let last = last"
                 class="border-b border-zinc-800/80"
                 [ngClass]="gannRowBgClass(row)"
                 [class.border-b-0]="last">
@@ -402,7 +403,10 @@ type GannToggleKey = 'gannOdd' | 'gannEven';
     <div *ngIf="!snapshot" class="text-center text-zinc-500 text-sm py-12">Connecting to live Order RSI stream…</div>
   `
 })
-export class OrderRsiComponent implements OnInit, OnDestroy {
+export class OrderRsiComponent implements OnInit {
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly cdr = inject(ChangeDetectorRef);
+
   timeframeOrder = ['W1', 'D1', 'H4', 'H1', 'M15', 'M5', 'M1'];
 
   rowDefs: OrderRsiRowDef[] = [
@@ -448,13 +452,16 @@ export class OrderRsiComponent implements OnInit, OnDestroy {
     gannEven: false
   };
 
+  bar1GannAbove: GannGridRowDef[] = [];
+  bar1GannBelow: GannGridRowDef[] = [];
+  bar0GannAbove: GannGridRowDef[] = [];
+  bar0GannBelow: GannGridRowDef[] = [];
+
   snapshot: OrderRsiSnapshot | null = null;
   connected = false;
   rsiSourceMode: OrderRsiSourceMode = 'python_wilder';
   formatWallTime = formatWallTime;
   formatAgeMinutes = formatAgeMinutes;
-
-  private subs = new Subscription();
 
   constructor(
     private stream: OrderRsiStreamService,
@@ -462,21 +469,43 @@ export class OrderRsiComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit() {
-    this.http.get<OrderRsiSnapshot>(`${environment.apiUrl}/market/xauusd/order-rsi`).subscribe({
-      next: data => { this.snapshot = data; },
+    this.syncGannRowCaches();
+    this.http.get<OrderRsiSnapshot>(`${environment.apiUrl}/market/xauusd/order-rsi`).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: data => {
+        this.snapshot = data;
+        this.syncGannRowCaches();
+        this.cdr.markForCheck();
+      },
       error: () => undefined
     });
 
-    this.stream.start();
-    this.subs.add(this.stream.snapshot$.subscribe(s => {
-      if (s) this.snapshot = s;
-    }));
-    this.subs.add(this.stream.connected$.subscribe(c => { this.connected = c; }));
+    this.stream.snapshot$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(s => {
+      if (s) {
+        this.snapshot = s;
+        this.syncGannRowCaches();
+        this.cdr.markForCheck();
+      }
+    });
+    this.stream.connected$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(c => {
+      this.connected = c;
+      this.cdr.markForCheck();
+    });
   }
 
-  ngOnDestroy() {
-    this.subs.unsubscribe();
-    this.stream.stop();
+  trackGannRow(_index: number, row: GannGridRowDef): string {
+    return `${row.kind}-${row.direction}-${row.index}-${row.label}`;
+  }
+
+  private syncGannRowCaches(): void {
+    const b1 = this.gannBar1Visibility;
+    this.bar1GannAbove = (b1.gannOdd || b1.gannEven) ? buildGannAboveRows(b1.gannOdd, b1.gannEven) : [];
+    this.bar1GannBelow = (b1.gannOdd || b1.gannEven) ? buildGannBelowRows(b1.gannOdd, b1.gannEven) : [];
+
+    const b0 = this.gannBar0Visibility;
+    this.bar0GannAbove = (b0.gannOdd || b0.gannEven) ? buildGannAboveRows(b0.gannOdd, b0.gannEven) : [];
+    this.bar0GannBelow = (b0.gannOdd || b0.gannEven) ? buildGannBelowRows(b0.gannOdd, b0.gannEven) : [];
   }
 
   get mt5Available(): boolean {
@@ -492,15 +521,19 @@ export class OrderRsiComponent implements OnInit, OnDestroy {
 
   setRsiSource(mode: OrderRsiSourceMode): void {
     this.rsiSourceMode = mode;
+    this.cdr.markForCheck();
   }
 
   toggleRow(key: OrderRsiRowKey): void {
     this.rowVisibility[key] = !this.rowVisibility[key];
+    this.cdr.markForCheck();
   }
 
   toggleGann(grid: GannGridId, key: GannToggleKey): void {
     const vis = grid === 'bar1' ? this.gannBar1Visibility : this.gannBar0Visibility;
     vis[key] = !vis[key];
+    this.syncGannRowCaches();
+    this.cdr.markForCheck();
   }
 
   showGannPivot(grid: GannGridId): boolean {
@@ -512,16 +545,9 @@ export class OrderRsiComponent implements OnInit, OnDestroy {
     return grid === 'bar1' ? this.gannBar1Visibility : this.gannBar0Visibility;
   }
 
-  gannAboveRows(grid: GannGridId): GannGridRowDef[] {
-    const vis = this.gannVisibilityFor(grid);
-    if (!vis.gannOdd && !vis.gannEven) return [];
-    return buildGannAboveRows(vis.gannOdd, vis.gannEven);
-  }
-
-  gannBelowRows(grid: GannGridId): GannGridRowDef[] {
-    const vis = this.gannVisibilityFor(grid);
-    if (!vis.gannOdd && !vis.gannEven) return [];
-    return buildGannBelowRows(vis.gannOdd, vis.gannEven);
+  get gannBar0GridUnavailable(): boolean {
+    if (!this.snapshot?.timeframes) return true;
+    return !this.timeframeOrder.some(tf => this.gannAvailable('bar0', tf));
   }
 
   gannRowTextClass(row: GannGridRowDef): string {
@@ -530,11 +556,6 @@ export class OrderRsiComponent implements OnInit, OnDestroy {
 
   gannRowBgClass(row: GannGridRowDef): string {
     return row.kind === 'odd' ? 'bg-violet-950/10' : 'bg-indigo-950/10';
-  }
-
-  get gannBar0GridUnavailable(): boolean {
-    if (!this.snapshot?.timeframes) return true;
-    return !this.timeframeOrder.some(tf => this.gannAvailable('bar0', tf));
   }
 
   rowFor(tf: string): OrderRsiTfRow | undefined {

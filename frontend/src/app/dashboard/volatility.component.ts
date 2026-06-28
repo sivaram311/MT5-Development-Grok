@@ -1,7 +1,8 @@
-import { Component, OnInit, ViewChild } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, OnDestroy, OnInit, ViewChild, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ScrollingModule } from '@angular/cdk/scrolling';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { PageHeaderComponent } from '../ui/page-header.component';
 import { SegmentControlComponent } from '../ui/segment-control.component';
 import { PullToRefreshComponent } from '../ui/pull-to-refresh.component';
@@ -34,6 +35,7 @@ interface SortColumn {
 @Component({
   selector: 'app-volatility',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
     FormsModule,
@@ -111,8 +113,8 @@ interface SortColumn {
         <app-empty-state *ngIf="isLoading" [loading]="true" loadingMessage="Loading volatility data…"></app-empty-state>
 
         <div *ngIf="!isLoading && displayRows.length && viewMode === 'cards'" class="tablet:hidden p-3">
-          <cdk-virtual-scroll-viewport itemSize="148" class="h-[70vh] w-full">
-            <div *cdkVirtualFor="let row of displayRows" class="pb-2">
+          <cdk-virtual-scroll-viewport itemSize="148" minBufferPx="200" maxBufferPx="400" class="h-[70vh] w-full">
+            <div *cdkVirtualFor="let row of displayRows; trackBy: trackVolatilityRow" class="pb-2">
               <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-4">
                 <div class="flex justify-between items-start">
                   <div>
@@ -148,9 +150,9 @@ interface SortColumn {
               <span *ngIf="sortKey === col.key">{{ sortAsc ? '▲' : '▼' }}</span>
             </button>
           </div>
-          <cdk-virtual-scroll-viewport itemSize="40" class="h-[70vh] w-full">
+          <cdk-virtual-scroll-viewport itemSize="40" minBufferPx="200" maxBufferPx="400" class="h-[70vh] w-full">
             <div
-              *cdkVirtualFor="let row of displayRows"
+              *cdkVirtualFor="let row of displayRows; trackBy: trackVolatilityRow"
               class="flex min-w-max border-b border-zinc-800 active:bg-zinc-800/40">
               <div class="px-3 py-2.5 text-zinc-300 font-medium text-xs shrink-0 min-w-[5rem]">{{ row.dayOfWeek }}</div>
               <div class="px-3 py-2.5 font-mono text-xs text-zinc-400 shrink-0 min-w-[6.5rem]">{{ formatWallTime(row.time) }}</div>
@@ -187,8 +189,11 @@ interface SortColumn {
     </app-pull-to-refresh>
   `
 })
-export class VolatilityComponent implements OnInit {
+export class VolatilityComponent implements OnInit, OnDestroy {
   @ViewChild('ptr') ptr?: PullToRefreshComponent;
+
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   gridData: VolatilityRow[] = [];
   displayRows: VolatilityRow[] = [];
@@ -222,6 +227,7 @@ export class VolatilityComponent implements OnInit {
 
   private prefsHintTimer?: ReturnType<typeof setTimeout>;
   private mediaQuery?: MediaQueryList;
+  private mediaListener = () => this.onMediaQueryChange();
 
   constructor(
     private marketCache: MarketDataCacheService,
@@ -232,11 +238,8 @@ export class VolatilityComponent implements OnInit {
   ngOnInit() {
     this.mediaQuery = window.matchMedia('(min-width: 800px)');
     this.isTabletUp = this.mediaQuery.matches;
-    this.mediaQuery.addEventListener('change', () => {
-      this.isTabletUp = this.mediaQuery?.matches ?? false;
-      if (this.isTabletUp) this.viewMode = 'table';
-    });
-    this.preferences.load().subscribe(() => {
+    this.mediaQuery.addEventListener('change', this.mediaListener);
+    this.preferences.load().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
       const lastTf = this.preferences.getVolatilityLastTimeframe();
       if (lastTf && this.timeframes.includes(lastTf)) {
         this.selectedTimeframe = lastTf;
@@ -244,6 +247,25 @@ export class VolatilityComponent implements OnInit {
       this.applyVolatilityPrefs();
       this.loadData();
     });
+  }
+
+  ngOnDestroy(): void {
+    this.mediaQuery?.removeEventListener('change', this.mediaListener);
+    if (this.prefsHintTimer) {
+      clearTimeout(this.prefsHintTimer);
+    }
+  }
+
+  private onMediaQueryChange(): void {
+    this.isTabletUp = this.mediaQuery?.matches ?? false;
+    if (this.isTabletUp) {
+      this.viewMode = 'table';
+    }
+    this.cdr.markForCheck();
+  }
+
+  trackVolatilityRow(_index: number, row: VolatilityRow): string {
+    return row.time || String(_index);
   }
 
   get sortLabel(): string {
@@ -278,6 +300,7 @@ export class VolatilityComponent implements OnInit {
   loadData(fromPull = false) {
     this.isLoading = true;
     this.usingCachedData = false;
+    this.cdr.markForCheck();
     this.marketCache.fetchGridWithFallback(this.selectedTimeframe, this.limit, this.nySessionOnly).subscribe({
       next: result => {
         this.isLoading = false;
@@ -286,6 +309,7 @@ export class VolatilityComponent implements OnInit {
         if (fromPull) {
           this.ptr?.completeRefresh();
         }
+        this.cdr.markForCheck();
       },
       error: err => {
         this.isLoading = false;
@@ -295,6 +319,7 @@ export class VolatilityComponent implements OnInit {
         this.averageDiff = 0;
         this.maxDiff = 0;
         this.ptr?.completeRefresh();
+        this.cdr.markForCheck();
       }
     });
   }
@@ -329,6 +354,7 @@ export class VolatilityComponent implements OnInit {
     }
     this.updateDisplayRows();
     this.persistVolatilityPrefs();
+    this.cdr.markForCheck();
   }
 
   isHighlyVolatile(diff: number): boolean {
@@ -386,6 +412,7 @@ export class VolatilityComponent implements OnInit {
     }
     this.prefsHintTimer = setTimeout(() => {
       this.prefsSavedHint = false;
+      this.cdr.markForCheck();
     }, 2000);
   }
 

@@ -4,6 +4,29 @@ All notable changes to the Grok Dev full-stack application (Spring Boot + Angula
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2026-06-29 (Angular performance optimizations)
+
+### Added
+- **`SseManagerService`** — centralized dashboard SSE lifecycle; Order RSI stream only on Analyzer route
+- **`stream-throttle.config.ts`** — UI throttle constants (Order RSI 800ms, Gann 500ms)
+- **`frontend/docs/PERFORMANCE_OPTIMIZATION.md`** — implementation guide for all performance changes
+
+### Changed
+- **OnPush** change detection on dashboard pages and key UI components (Order RSI, Gann, Market, Volatility, Health, Analysis, layout, candle cards, alert banners)
+- **SSE UI throttling** in `order-rsi-stream.service.ts` and `gann-intraday-stream.service.ts` (alerts still evaluate every event)
+- **Virtual scroll** — `trackBy` + buffer tuning on Market and Volatility grids
+- **Gann Intraday** — 250ms debounce on slider-driven refresh; removed duplicate `gannStream.start()` from page
+- **Market** — cached `visibleColumns` to avoid per-row template recomputation
+- **`takeUntilDestroyed()`** subscription cleanup on long-lived dashboard observables
+
+### Fixed
+- **`docs.component.ts`** — nullish coalescing / logical-OR precedence (build error)
+
+### Documentation
+- `ANGULAR_FRONTEND.md`, in-app docs, `frontend/docs/README.md` updated
+
+---
+
 ## [Unreleased] - 2026-06-29 (MT5 EA deploy script)
 
 ### Added

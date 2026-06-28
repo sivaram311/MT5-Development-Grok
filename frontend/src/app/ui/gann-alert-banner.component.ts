@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { GannIntradayStreamService } from '../services/gann-intraday-stream.service';
@@ -6,6 +6,7 @@ import { GannIntradayStreamService } from '../services/gann-intraday-stream.serv
 @Component({
   selector: 'app-gann-alert-banner',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, RouterModule],
   template: `
     <div

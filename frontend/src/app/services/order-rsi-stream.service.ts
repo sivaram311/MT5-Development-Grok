@@ -1,7 +1,9 @@
 import { Injectable, OnDestroy } from '@angular/core';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, Subject } from 'rxjs';
+import { throttleTime } from 'rxjs/operators';
 import { AuthService } from './auth.service';
 import { environment } from '../../environments/environment';
+import { ORDER_RSI_UI_THROTTLE_MS } from './stream-throttle.config';
 
 export type OrderRsiSourceMode = 'python_wilder' | 'mt5_iRSI';
 
@@ -106,12 +108,18 @@ export interface OrderRsiSnapshot {
 @Injectable({ providedIn: 'root' })
 export class OrderRsiStreamService implements OnDestroy {
   private eventSource: EventSource | null = null;
+  private rawSnapshot$ = new Subject<OrderRsiSnapshot>();
   private snapshotSubject = new BehaviorSubject<OrderRsiSnapshot | null>(null);
+  /** Throttled for UI — backend may push faster than render cadence. */
   snapshot$ = this.snapshotSubject.asObservable();
   private connectedSubject = new BehaviorSubject(false);
   connected$ = this.connectedSubject.asObservable();
 
-  constructor(private auth: AuthService) {}
+  constructor(private auth: AuthService) {
+    this.rawSnapshot$.pipe(
+      throttleTime(ORDER_RSI_UI_THROTTLE_MS, undefined, { leading: true, trailing: true })
+    ).subscribe(data => this.snapshotSubject.next(data));
+  }
 
   start(): void {
     const token = this.auth.getToken();
@@ -126,7 +134,7 @@ export class OrderRsiStreamService implements OnDestroy {
     this.eventSource.addEventListener('orderRsi', (event: MessageEvent) => {
       try {
         const data = JSON.parse(event.data) as OrderRsiSnapshot;
-        this.snapshotSubject.next(data);
+        this.rawSnapshot$.next(data);
         this.connectedSubject.next(true);
       } catch {
         // ignore malformed

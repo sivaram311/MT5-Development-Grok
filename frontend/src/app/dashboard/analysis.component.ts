@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
@@ -21,6 +21,7 @@ interface StormRow {
 @Component({
   selector: 'app-analysis',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, RouterModule, PageHeaderComponent, SegmentControlComponent, StatusBadgeComponent, EmptyStateComponent, PullToRefreshComponent],
   template: `
     <app-pull-to-refresh #ptr (refresh)="refresh()">
@@ -122,6 +123,8 @@ interface StormRow {
   `
 })
 export class AnalysisComponent implements OnInit {
+  private readonly cdr = inject(ChangeDetectorRef);
+
   modules = ['rsi', 'gann'];
   activeModule = 'rsi';
   timeframes = ['M15', 'H1', 'H4'];
@@ -155,6 +158,7 @@ export class AnalysisComponent implements OnInit {
 
   scanRsi() {
     this.loading = true;
+    this.cdr.markForCheck();
     this.marketCache.fetchGridWithFallback(this.selectedTf, 120, false).subscribe({
       next: result => {
         this.loading = false;
@@ -168,27 +172,32 @@ export class AnalysisComponent implements OnInit {
             signal: r.rsi >= 70 ? 'OVERBOUGHT' as const : 'OVERSOLD' as const
           }))
           .slice(0, 30);
+        this.cdr.markForCheck();
       },
       error: () => {
         this.loading = false;
         this.storms = [];
+        this.cdr.markForCheck();
       }
     });
   }
 
   scanGann() {
     this.loading = true;
+    this.cdr.markForCheck();
     const limit = this.gannTf === 'D1' ? 120 : 120;
     this.marketCache.fetchGridWithFallback(this.gannTf, limit, false).subscribe({
       next: result => {
         this.loading = false;
         this.gannStudy = computeGannStudy(result.rows || [], this.gannTf === 'D1' ? 90 : 60);
         this.nearestLevels = this.gannStudy ? nearestGannLevels(this.gannStudy, 4) : [];
+        this.cdr.markForCheck();
       },
       error: () => {
         this.loading = false;
         this.gannStudy = null;
         this.nearestLevels = [];
+        this.cdr.markForCheck();
       }
     });
   }

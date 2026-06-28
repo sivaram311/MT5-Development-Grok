@@ -1,8 +1,9 @@
-import { Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, OnDestroy, OnInit, ViewChild, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { ScrollingModule } from '@angular/cdk/scrolling';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { PageHeaderComponent } from '../ui/page-header.component';
 import { SegmentControlComponent } from '../ui/segment-control.component';
 import { BottomSheetComponent } from '../ui/bottom-sheet.component';
@@ -29,6 +30,7 @@ const COLUMN_LABELS: Record<string, string> = {
 @Component({
   selector: 'app-market',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
     FormsModule,
@@ -171,8 +173,8 @@ const COLUMN_LABELS: Record<string, string> = {
           <app-empty-state *ngIf="!isLoading && gridData.length === 0" [message]="emptyMessage"
             actionLabel="Retry" (actionClick)="loadData()"></app-empty-state>
           <app-empty-state *ngIf="isLoading" [loading]="true" loadingMessage="Loading market data…"></app-empty-state>
-          <cdk-virtual-scroll-viewport *ngIf="!isLoading && gridData.length" itemSize="132" class="h-[70vh] p-3">
-            <app-candle-card *cdkVirtualFor="let row of gridData" [row]="row" class="block mb-2"></app-candle-card>
+          <cdk-virtual-scroll-viewport *ngIf="!isLoading && gridData.length" itemSize="132" minBufferPx="200" maxBufferPx="400" class="h-[70vh] p-3">
+            <app-candle-card *cdkVirtualFor="let row of gridData; trackBy: trackGridRow" [row]="row" class="block mb-2"></app-candle-card>
           </cdk-virtual-scroll-viewport>
         </div>
 
@@ -184,11 +186,11 @@ const COLUMN_LABELS: Record<string, string> = {
           <app-empty-state *ngIf="isLoading" [loading]="true" loadingMessage="Loading market data…"></app-empty-state>
           <ng-container *ngIf="!isLoading && gridData.length">
             <div class="flex min-w-max border-b border-zinc-800 text-[10px] text-zinc-400 bg-zinc-950 uppercase tracking-wider sticky top-0 z-10">
-              <div *ngFor="let col of getVisibleColumns()" class="py-3 px-3 font-medium text-left whitespace-nowrap shrink-0 min-w-[4.5rem]">{{ col.label }}</div>
+              <div *ngFor="let col of visibleColumns" class="py-3 px-3 font-medium text-left whitespace-nowrap shrink-0 min-w-[4.5rem]">{{ col.label }}</div>
             </div>
-            <cdk-virtual-scroll-viewport itemSize="40" class="h-[70vh] w-full">
-              <div *cdkVirtualFor="let row of gridData" (click)="selectRow(row)" class="flex min-w-max border-b border-zinc-800 active:bg-zinc-800/40 cursor-pointer" [class.bg-zinc-800]="selectedRow === row">
-                <div *ngFor="let col of getVisibleColumns()" class="px-3 py-2.5 font-mono text-xs whitespace-nowrap shrink-0 min-w-[4.5rem]">
+            <cdk-virtual-scroll-viewport itemSize="40" minBufferPx="200" maxBufferPx="400" class="h-[70vh] w-full">
+              <div *cdkVirtualFor="let row of gridData; trackBy: trackGridRow" (click)="selectRow(row)" class="flex min-w-max border-b border-zinc-800 active:bg-zinc-800/40 cursor-pointer" [class.bg-zinc-800]="selectedRow === row">
+                <div *ngFor="let col of visibleColumns" class="px-3 py-2.5 font-mono text-xs whitespace-nowrap shrink-0 min-w-[4.5rem]">
                   <ng-container [ngSwitch]="col.key">
                     <span *ngSwitchCase="'time'">{{ formatWallTime(row.time) }}</span>
                     <span *ngSwitchCase="'nyTime'">{{ formatWallTime(row.nyTime) }}</span>
@@ -222,6 +224,9 @@ const COLUMN_LABELS: Record<string, string> = {
 export class MarketComponent implements OnInit, OnDestroy {
   @ViewChild('ptr') ptr?: PullToRefreshComponent;
 
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly cdr = inject(ChangeDetectorRef);
+
   columnSheetOpen = false;
   filterSheetOpen = false;
   gridData: any[] = [];
@@ -238,6 +243,7 @@ export class MarketComponent implements OnInit, OnDestroy {
 
   columnOrder: string[] = [];
   columnVisibility: Record<string, boolean> = {};
+  visibleColumns: { key: string; label: string }[] = [];
   emptyMessage = 'No data loaded. Run the Python MT5 downloader and ensure the backend is serving data.';
 
   columnPresets = [
@@ -263,7 +269,7 @@ export class MarketComponent implements OnInit, OnDestroy {
     this.updateViewport();
     this.mediaQuery.addEventListener('change', this.mediaListener);
 
-    this.preferences.load().subscribe(() => {
+    this.preferences.load().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
       this.selectedTimeframe = this.timeframeContext.current;
       const ui = this.preferences.getMarketUi();
       if (ui.viewMode && !this.isTabletUp) {
@@ -276,7 +282,7 @@ export class MarketComponent implements OnInit, OnDestroy {
       this.loadData();
     });
 
-    this.timeframeContext.timeframe$.subscribe(tf => {
+    this.timeframeContext.timeframe$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(tf => {
       if (tf !== this.selectedTimeframe) {
         this.selectedTimeframe = tf;
         this.applyGridPrefsForTimeframe();
@@ -310,6 +316,7 @@ export class MarketComponent implements OnInit, OnDestroy {
   loadData(fromPull = false) {
     this.isLoading = true;
     this.usingCachedData = false;
+    this.cdr.markForCheck();
     this.marketCache.fetchGridWithFallback(this.selectedTimeframe, 500, this.nySessionOnly).subscribe({
       next: result => {
         this.gridData = result.rows || [];
@@ -317,6 +324,7 @@ export class MarketComponent implements OnInit, OnDestroy {
         this.selectedRow = this.gridData[0] ?? null;
         this.isLoading = false;
         this.ptr?.completeRefresh();
+        this.cdr.markForCheck();
       },
       error: () => {
         this.gridData = [];
@@ -324,18 +332,22 @@ export class MarketComponent implements OnInit, OnDestroy {
         this.emptyMessage = 'Failed to load data. Check that the backend is running on port 8081.';
         this.isLoading = false;
         this.ptr?.completeRefresh();
+        this.cdr.markForCheck();
       }
     });
   }
 
+  trackGridRow(_index: number, row: { time?: string }): string {
+    return row.time ?? String(_index);
+  }
+
   selectRow(row: any) {
     this.selectedRow = row;
+    this.cdr.markForCheck();
   }
 
   getVisibleColumns(): { key: string; label: string }[] {
-    return this.columnOrder
-      .filter(k => this.isColumnVisible(k))
-      .map(k => ({ key: k, label: this.getColumnLabel(k) }));
+    return this.visibleColumns;
   }
 
   getColumnLabel(key: string): string {
@@ -364,6 +376,7 @@ export class MarketComponent implements OnInit, OnDestroy {
     allKeys.forEach(k => {
       this.columnVisibility[k] = visible.includes(k);
     });
+    this.rebuildVisibleColumns();
     this.persistGridPrefs();
   }
 
@@ -372,6 +385,7 @@ export class MarketComponent implements OnInit, OnDestroy {
     if (this.isColumnVisible(key) && !this.columnOrder.includes(key)) {
       this.columnOrder.push(key);
     }
+    this.rebuildVisibleColumns();
     this.persistGridPrefs();
   }
 
@@ -381,6 +395,7 @@ export class MarketComponent implements OnInit, OnDestroy {
     const newIdx = direction === 'up' ? idx - 1 : idx + 1;
     if (newIdx < 0 || newIdx >= this.columnOrder.length) return;
     [this.columnOrder[idx], this.columnOrder[newIdx]] = [this.columnOrder[newIdx], this.columnOrder[idx]];
+    this.rebuildVisibleColumns();
     this.persistGridPrefs();
   }
 
@@ -407,6 +422,7 @@ export class MarketComponent implements OnInit, OnDestroy {
     if (fromIdx > -1 && toIdx > -1) {
       const [moved] = this.columnOrder.splice(fromIdx, 1);
       this.columnOrder.splice(toIdx, 0, moved);
+      this.rebuildVisibleColumns();
       this.persistGridPrefs();
     }
   }
@@ -449,6 +465,14 @@ export class MarketComponent implements OnInit, OnDestroy {
     const pref = this.preferences.getGridPref(this.selectedTimeframe);
     this.columnVisibility = { ...pref.visibility };
     this.columnOrder = [...pref.order];
+    this.rebuildVisibleColumns();
+  }
+
+  private rebuildVisibleColumns(): void {
+    this.visibleColumns = this.columnOrder
+      .filter(k => this.isColumnVisible(k))
+      .map(k => ({ key: k, label: this.getColumnLabel(k) }));
+    this.cdr.markForCheck();
   }
 
   private persistGridPrefs() {
@@ -465,6 +489,7 @@ export class MarketComponent implements OnInit, OnDestroy {
     }
     this.prefsHintTimer = setTimeout(() => {
       this.prefsSavedHint = false;
+      this.cdr.markForCheck();
     }, 2000);
   }
 
@@ -486,5 +511,6 @@ export class MarketComponent implements OnInit, OnDestroy {
     if (this.isTabletUp) {
       this.viewMode = 'table';
     }
+    this.cdr.markForCheck();
   }
 }

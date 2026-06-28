@@ -1,10 +1,11 @@
-import { Component, Input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { formatBrokerTime, formatWallTime } from '../utils/time.util';
 
 @Component({
   selector: 'app-candle-card',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule],
   template: `
     <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-4 active:bg-zinc-800/50 transition-colors">

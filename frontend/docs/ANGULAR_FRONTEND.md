@@ -8,7 +8,9 @@
 - Shared UI kit in [src/app/ui/](file:///E:/Source/grok_dev/frontend/src/app/ui/)
 - [preferences.service.ts](file:///E:/Source/grok_dev/frontend/src/app/services/preferences.service.ts) — backend-synced column layout (PATCH merge)
 - [health-stream.service.ts](file:///E:/Source/grok_dev/frontend/src/app/services/health-stream.service.ts) — SSE pipeline alerts
-- [order-rsi-stream.service.ts](file:///E:/Source/grok_dev/frontend/src/app/services/order-rsi-stream.service.ts) — live Analyzer snapshot (SSE)
+- [sse-manager.service.ts](file:///E:/Source/grok_dev/frontend/src/app/services/sse-manager.service.ts) — centralized dashboard SSE lifecycle (route-aware Order RSI)
+- [stream-throttle.config.ts](file:///E:/Source/grok_dev/frontend/src/app/services/stream-throttle.config.ts) — UI throttle intervals for SSE snapshots
+- [order-rsi-stream.service.ts](file:///E:/Source/grok_dev/frontend/src/app/services/order-rsi-stream.service.ts) — live Analyzer snapshot (SSE, throttled for UI)
 - [market-data-cache.service.ts](file:///E:/Source/grok_dev/frontend/src/app/services/market-data-cache.service.ts) — `fetchGridWithFallback()` with IndexedDB offline
 - HttpClient + RxJS for API communications
 - PWA manifest: [manifest.webmanifest](file:///E:/Source/grok_dev/frontend/src/assets/manifest.webmanifest)
@@ -54,7 +56,9 @@ Utilities: [time.util.ts](file:///E:/Source/grok_dev/frontend/src/app/utils/time
 
 - **Phone**: Compact header + offline/health banners + `.dashboard-main` content + fixed bottom nav + More sheet
 - **Tablet+**: Collapsible sidebar, no bottom nav, table-first pages
-- Starts [HealthStreamService](file:///E:/Source/grok_dev/frontend/src/app/services/health-stream.service.ts) on init for live pipeline alerts
+- Starts [SseManagerService](file:///E:/Source/grok_dev/frontend/src/app/services/sse-manager.service.ts) on init — Health + Gann SSE always on; Order RSI SSE only on Analyzer route
+
+See [PERFORMANCE_OPTIMIZATION.md](file:///E:/Source/grok_dev/frontend/docs/PERFORMANCE_OPTIMIZATION.md) for OnPush, SSE throttling, virtual-scroll tuning, and subscription cleanup.
 
 Child routes under `/dashboard` (canonical) — `/welcome` is an alias. See [app.routes.ts](file:///E:/Source/grok_dev/frontend/src/app/app.routes.ts).
 
