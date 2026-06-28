@@ -71,6 +71,7 @@ Then restart the backend. The seeder will recreate them.
 - **Health dashboard** — per-TF freshness cards + **SSE push alerts** when pipeline degrades
 - **Analysis Lab** — RSI storm scanner + Gann level studies (octave + Square-of-9)
 - **Analyzer** — live multi-TF RSI(14) table, classic S/R pivots, **Gann Odd Square** (So9), toggleable rows — route `/dashboard/order-rsi`; see [docs/order-rsi-mt5-alignment.md](docs/order-rsi-mt5-alignment.md)
+- **Gann Intraday** — five-module intraday Gann page (1×1 angle, session pivots, fine So9, time squaring, NY killzones) — route `/dashboard/gann-intraday`; see [docs/gann-intraday-pending-implementation.md](docs/gann-intraday-pending-implementation.md)
 - **User preferences** — PATCH merge to `/api/auth/preferences` (grid, market UI, volatility)
 - **Playwright e2e** — login, manifest, auth-guard smoke tests (`npm run e2e`)
 

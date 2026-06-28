@@ -4,6 +4,20 @@ All notable changes to the Grok Dev full-stack application (Spring Boot + Angula
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2026-06-28 (Gann Intraday page)
+
+### Added
+- **Gann Intraday** page (`/dashboard/gann-intraday`) — all five intraday Gann modules (V1 frontend):
+  - 1×1 Gann angle equilibrium & overextension bias
+  - Session pivots (PDH/PDL, NY open/H/L)
+  - Fine So9 steps (0.25 / 0.5 / 1.0) + odd/even diagonals
+  - Time squaring (45/90/180 min milestones)
+  - NY killzones + reversal confluence alert
+- Utils: `gann-session-pivot`, `gann-angle`, `gann-so9-fine`, `gann-so9-odd-even`, `gann-time-square`, `gann-killzone`, `gann-intraday`
+- Tracker doc: [docs/gann-intraday-pending-implementation.md](docs/gann-intraday-pending-implementation.md)
+
+---
+
 ## [Unreleased] - 2026-06-28 (Gann merged row order)
 
 ### Changed

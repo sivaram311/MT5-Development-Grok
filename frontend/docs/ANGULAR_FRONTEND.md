@@ -46,7 +46,7 @@ See [MOBILE_TABLET_UX.md](file:///E:/Source/grok_dev/frontend/docs/MOBILE_TABLET
 | `PwaUpdateComponent` | New version available prompt |
 | `HealthAlertBannerComponent` | Pipeline DEGRADED/DOWN alert from SSE |
 
-Utilities: [time.util.ts](file:///E:/Source/grok_dev/frontend/src/app/utils/time.util.ts), [gann.util.ts](file:///E:/Source/grok_dev/frontend/src/app/utils/gann.util.ts), [order-rsi-zone.util.ts](file:///E:/Source/grok_dev/frontend/src/app/utils/order-rsi-zone.util.ts), [haptic.util.ts](file:///E:/Source/grok_dev/frontend/src/app/utils/haptic.util.ts)
+Utilities: [time.util.ts](file:///E:/Source/grok_dev/frontend/src/app/utils/time.util.ts), [gann.util.ts](file:///E:/Source/grok_dev/frontend/src/app/utils/gann.util.ts), [gann-intraday.util.ts](file:///E:/Source/grok_dev/frontend/src/app/utils/gann-intraday.util.ts), [order-rsi-zone.util.ts](file:///E:/Source/grok_dev/frontend/src/app/utils/order-rsi-zone.util.ts), [haptic.util.ts](file:///E:/Source/grok_dev/frontend/src/app/utils/haptic.util.ts)
 
 ## Layout & Routing
 
@@ -111,6 +111,21 @@ Live multi-timeframe table (W1 → M1) fed by SSE via [order-rsi-stream.service.
 **Show rows** chips are page-only (not persisted). Defaults: all groups on.
 
 Full alignment guide: [order-rsi-mt5-alignment.md](../../docs/order-rsi-mt5-alignment.md).
+
+### GannIntradayComponent
+[gann-intraday.component.ts](file:///E:/Source/grok_dev/frontend/src/app/dashboard/gann-intraday.component.ts) — sidebar **Gann Intraday**, route `/dashboard/gann-intraday`.
+
+Grid-based (REST) intraday Gann study for XAUUSD mean reversion — not SSE.
+
+| Module | Util | Behavior |
+|--------|------|----------|
+| **1×1 angle** | [gann-angle.util.ts](file:///E:/Source/grok_dev/frontend/src/app/utils/gann-angle.util.ts) | Equilibrium from session pivot + ATR/bar slope; overextension bias |
+| **Session pivots** | [gann-session-pivot.util.ts](file:///E:/Source/grok_dev/frontend/src/app/utils/gann-session-pivot.util.ts) | PDH/PDL/prev close (D1); NY H/L/open (M15 nyTime) |
+| **Fine So9** | [gann-so9-fine.util.ts](file:///E:/Source/grok_dev/frontend/src/app/utils/gann-so9-fine.util.ts) | 0.25 / 0.5 / 1.0 √ increments + odd/even bands |
+| **Time squaring** | [gann-time-square.util.ts](file:///E:/Source/grok_dev/frontend/src/app/utils/gann-time-square.util.ts) | Session minutes vs price move; 45/90/180 milestones |
+| **Killzones** | [gann-killzone.util.ts](file:///E:/Source/grok_dev/frontend/src/app/utils/gann-killzone.util.ts) | NY windows + combined reversal alert |
+
+Orchestrator: [gann-intraday.util.ts](file:///E:/Source/grok_dev/frontend/src/app/utils/gann-intraday.util.ts). Tracker: [gann-intraday-pending-implementation.md](../../docs/gann-intraday-pending-implementation.md).
 
 ### LoginComponent
 [login.component.ts](file:///E:/Source/grok_dev/frontend/src/app/login/login.component.ts)

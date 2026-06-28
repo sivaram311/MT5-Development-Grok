@@ -30,6 +30,7 @@ import { PageHeaderComponent } from '../ui/page-header.component';
         <a href="#auth" class="px-3 py-1 rounded-full bg-zinc-800 border border-zinc-700 active:bg-zinc-700">9. Auth &amp; JWT</a>
         <a href="#health" class="px-3 py-1 rounded-full bg-zinc-800 border border-zinc-700 active:bg-zinc-700">10. Health</a>
         <a href="#order-rsi" class="px-3 py-1 rounded-full bg-zinc-800 border border-zinc-700 active:bg-zinc-700">Analyzer</a>
+        <a href="#gann-intraday" class="px-3 py-1 rounded-full bg-zinc-800 border border-zinc-700 active:bg-zinc-700">Gann Intraday</a>
         <a href="#flow" class="px-3 py-1 rounded-full bg-zinc-800 border border-zinc-700 active:bg-zinc-700">11. Full Data Flow</a>
       </div>
 
@@ -232,6 +233,34 @@ import { PageHeaderComponent } from '../ui/page-header.component';
             <p>Compare with MT5 Data Window: Bar 0 = forming candle, Bar 1 = previous closed candle. RSI indicator must be <strong>14 / Close</strong>.</p>
 
             <p>Full guide: <a href="file:///E:/Source/grok_dev/docs/order-rsi-mt5-alignment.md" target="_blank" class="text-emerald-400 underline">docs/order-rsi-mt5-alignment.md</a></p>
+          </div>
+        </details>
+
+        <!-- Gann Intraday -->
+        <details id="gann-intraday" class="doc-section bg-zinc-900 border border-zinc-800 rounded-3xl overflow-hidden">
+          <summary class="px-4 py-3.5 font-semibold cursor-pointer flex justify-between items-center active:bg-zinc-800 text-base">Gann Intraday — Mean Reversion &amp; Reversals</summary>
+          <div class="px-4 pb-5 text-sm text-zinc-300 text-xs space-y-3">
+            <p>Sidebar / More menu <strong>Gann Intraday</strong> (<code>/dashboard/gann-intraday</code>) — five-module intraday framework for XAUUSD (grid REST, client-side math).</p>
+
+            <p><strong>Modules (V1):</strong></p>
+            <ul class="pl-4 list-disc space-y-1">
+              <li><strong>1×1 Gann angle</strong> — equilibrium vs price; overextension bias (ATR multiples)</li>
+              <li><strong>Session pivots</strong> — PDH/PDL, prev close, NY session H/L/open from D1 + M15 nyTime</li>
+              <li><strong>Fine So9</strong> — 0.25 / 0.5 / 1.0 √ steps plus odd/even diagonals</li>
+              <li><strong>Time squaring</strong> — session minutes vs price move (45/90/180 milestones)</li>
+              <li><strong>Killzones + reversal alert</strong> — NY windows + combined confluence score</li>
+            </ul>
+
+            <p><strong>Controls:</strong> Entry TF (M5/M15), So9 pivot source selector, Odd/Even toggles, pull-to-refresh.</p>
+
+            <p><strong>Data flow:</strong></p>
+            <div class="bg-zinc-950 p-3 rounded-2xl font-mono text-[11px] leading-relaxed">
+              GET /api/market/xauusd/M5 · M15 · D1 /grid<br>
+              ↓ client utils (gann-intraday.util.ts + modules)<br>
+              <a href="file:///E:/Source/grok_dev/frontend/src/app/dashboard/gann-intraday.component.ts" target="_blank" class="text-emerald-400 underline">gann-intraday.component.ts</a>
+            </div>
+
+            <p>Tracker &amp; future work: <a href="file:///E:/Source/grok_dev/docs/gann-intraday-pending-implementation.md" target="_blank" class="text-emerald-400 underline">docs/gann-intraday-pending-implementation.md</a></p>
           </div>
         </details>
 
