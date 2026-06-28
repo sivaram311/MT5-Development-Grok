@@ -103,6 +103,7 @@ Live multi-timeframe table (W1 → M1) fed by SSE via [order-rsi-stream.service.
 | **RSI rows** | Bar 0 / Bar 1 RSI with zone-colored boxes ([order-rsi-zone.util.ts](file:///E:/Source/grok_dev/frontend/src/app/utils/order-rsi-zone.util.ts)) |
 | **Data rows** | Bar 0 / Bar 1 broker time + close |
 | **B0SR / B1SR** | Classic floor pivots (S3–R3); each chip toggles all seven levels for that bar group |
+| **Gann Odd Square** | Separate table below grid — So9 odd/even squares from Bar 1 close pivot; **Odd Sq** / **Even Sq** toggles |
 | **RSI source** | Page toggle **Calculated** (Python Wilder) vs **MT5 built-in** — not saved to preferences |
 
 **S/R data** comes from the Order RSI publisher (`timeframes.{TF}.sr` for Bar 0, `completed.sr` for Bar 1). `sr.s3`…`sr.r3` keys match row labels (S3 = upper band). Independent of the RSI source toggle.

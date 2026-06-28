@@ -34,6 +34,24 @@ Computed in `run_order_rsi.py` from each bar's **high, low, close**:
 
 API fields: `timeframes.{TF}.sr` (Bar 0), `timeframes.{TF}.completed.sr` (Bar 1).
 
+### Gann Odd Square (Square of Nine)
+
+Separate table **below** the RSI / S/R grid. Computed live in `run_order_rsi.py` per timeframe.
+
+| Item | Detail |
+|------|--------|
+| **Pivot** | Bar 1 (last closed) **close** |
+| **Odd squares** | (√pivot ± 2n)² — major So9 diagonal milestones (n = 1…3) |
+| **Even squares** | (√pivot ± (2n ± 1))² — intermediate diagonal levels |
+| **UI toggles** | **Odd Sq** / **Even Sq** (page only, not saved) |
+| **Rows** | OS↑3…OS↑1 · Pivot · OS↓1…OS↓3 · ES↑/↓ bands |
+
+API: `timeframes.{TF}.gann` with `pivot`, `oddSquare.above/below`, `evenSquare.above/below`, `nextOddAbove`, `nextOddBelow`.
+
+Nearest milestone rows are **underlined** in the UI. Use with price action / time confluence — not standalone signals.
+
+See also Analysis Lab Gann study (`gann.util.ts`) for swing-octave + 0.25 √ steps on historical grids.
+
 ### RSI zone highlights (colored box around value)
 
 | RSI | Box color |

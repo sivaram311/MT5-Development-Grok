@@ -269,7 +269,7 @@ $env:BROKER_SERVER_ZONE = "Etc/GMT-3"   # OctaFX server time (match grok.market.
 
 Frontend: bottom nav **Analyzer** (`/dashboard/order-rsi`) → TF-column table + SSE `/api/market/xauusd/order-rsi/stream`.
 
-**UI features:** toggleable rows (Bar 0/1 RSI + data, **B0SR** / **B1SR** classic S/R pivots), zone-colored RSI boxes, page toggle **Calculated** vs **MT5 built-in**. See [order-rsi-mt5-alignment.md](./order-rsi-mt5-alignment.md).
+**UI features:** toggleable RSI/S/R rows, **Gann Odd Square** table (**Odd Sq** / **Even Sq**), zone-colored RSI, page toggle **Calculated** vs **MT5 built-in**. See [order-rsi-mt5-alignment.md](./order-rsi-mt5-alignment.md).
 
 Requires MT5 terminal logged in (same as data downloader).
 

@@ -17,6 +17,24 @@ export interface OrderRsiSrLevels {
   r3: number;
 }
 
+export interface GannSquareBands {
+  above: number[];
+  below: number[];
+}
+
+/** Gann Square of Nine odd/even square levels from Bar 1 close pivot. */
+export interface GannOddSquareBlock {
+  pivot: number;
+  sqrtPivot: number;
+  pivotSource: string;
+  oddSquare: GannSquareBands;
+  evenSquare: GannSquareBands;
+  nextOddAbove?: number | null;
+  nextOddBelow?: number | null;
+  nextEvenAbove?: number | null;
+  nextEvenBelow?: number | null;
+}
+
 export interface OrderRsiTimeBlock {
   broker: string;
   ny: string;
@@ -59,6 +77,8 @@ export interface OrderRsiTfRow {
   historyBars?: number;
   /** Classic floor pivots from Bar 0 H/L/C. */
   sr?: OrderRsiSrLevels;
+  /** Gann Square of Nine odd/even squares from Bar 1 close pivot. */
+  gann?: GannOddSquareBlock;
   completed?: OrderRsiCompletedBar;
   /** MT5 built-in iRSI from GrokDevOrderRsiExport EA (when available). */
   mt5?: OrderRsiMt5Block;

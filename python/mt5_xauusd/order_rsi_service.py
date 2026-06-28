@@ -28,6 +28,7 @@ from .config import (
     ORDER_RSI_TIMEFRAMES,
     SYMBOL,
 )
+from .gann_odd_square_util import gann_odd_even_squares
 from .mt5_client import MT5Client, MAX_MT5_COPY_COUNT
 from .mt5_rsi_export import read_mt5_builtin_export
 from .postgres_client import PostgresClient
@@ -142,6 +143,11 @@ class OrderRsiPublisher:
             if sr1:
                 completed_block["sr"] = sr1
             row["completed"] = completed_block
+
+        gann_pivot = float(row["completed"]["close"]) if row.get("completed") else close
+        gann = gann_odd_even_squares(gann_pivot)
+        if gann:
+            row["gann"] = gann
 
         mt5_block = self._mt5_export_block(tf_key)
         if mt5_block:

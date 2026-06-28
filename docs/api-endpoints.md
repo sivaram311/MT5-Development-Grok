@@ -140,8 +140,9 @@ Live **Order RSI** snapshot — Wilder RSI(14) on **close**, with both MT5 bar s
 | `timeframes.{TF}.historyBars` | Bars used for Wilder warm-up (default **5000**) |
 | `timeframes.{TF}.sr` | Classic floor pivots from **Bar 0** H/L/C (`s3`…`r3`, `pivot`) |
 | `timeframes.{TF}.completed.sr` | Classic floor pivots from **Bar 1** H/L/C |
+| `timeframes.{TF}.gann` | Gann Square of Nine odd/even levels from **Bar 1 close** pivot |
 
-Frontend **Analyzer** page (`/dashboard/order-rsi`) toggles display between Python and MT5 RSI values (page-only, not saved). **B0SR** / **B1SR** chips toggle S/R row groups.
+Frontend **Analyzer** page toggles RSI source and row groups; **Odd Sq** / **Even Sq** toggles the Gann table below the main grid.
 
 ```json
 {
@@ -162,7 +163,16 @@ Frontend **Analyzer** page (`/dashboard/order-rsi`) toggles display between Pyth
         "shift0": { "rsi": 72.82 },
         "shift1": { "rsi": 65.86 }
       },
-      "historyBars": 5000
+      "historyBars": 5000,
+      "gann": {
+        "pivot": 4180.00,
+        "sqrtPivot": 64.62,
+        "pivotSource": "bar1_close",
+        "oddSquare": { "above": [4289.55, 4401.02], "below": [4073.12, 3970.44] },
+        "evenSquare": { "above": [4244.20], "below": [4021.80] },
+        "nextOddAbove": 4289.55,
+        "nextOddBelow": 4073.12
+      }
     }
   }
 }
@@ -174,7 +184,7 @@ Timeframes: **W1, D1, H4, H1, M15, M5, M1** — all read live from MT5 (W1 is no
 
 **MT5 alignment:** Terminal RSI **14 / Close**. Match **Bar 1** → Data Window bar index 1; **Bar 0** → bar index 0. See [order-rsi-mt5-alignment.md](./order-rsi-mt5-alignment.md).
 
-**UI:** **Analyzer** nav item — TF-column table, zone-colored RSI boxes, **B0SR** / **B1SR** classic pivot rows, toggleable row chips, page toggle (**Calculated** vs **MT5 built-in**).
+**UI:** **Analyzer** — TF-column RSI/S/R table + **Gann Odd Square** block below; zone-colored RSI; **B0SR** / **B1SR** / **Odd Sq** / **Even Sq** row toggles; page RSI source toggle (**Calculated** vs **MT5 built-in**).
 
 Python env:
 

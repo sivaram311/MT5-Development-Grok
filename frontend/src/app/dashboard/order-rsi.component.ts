@@ -6,6 +6,7 @@ import { environment } from '../../environments/environment';
 import { PageHeaderComponent } from '../ui/page-header.component';
 import { StatusBadgeComponent } from '../ui/status-badge.component';
 import {
+  GannOddSquareBlock,
   OrderRsiSnapshot,
   OrderRsiSourceMode,
   OrderRsiSrLevelKey,
@@ -27,6 +28,15 @@ interface SrRowDef {
   label: string;
 }
 
+type GannVisibilityKey = 'gannOdd' | 'gannEven';
+
+interface GannBandRowDef {
+  label: string;
+  kind: 'odd' | 'even' | 'pivot';
+  direction?: 'above' | 'below';
+  index?: number;
+}
+
 @Component({
   selector: 'app-order-rsi',
   standalone: true,
@@ -34,7 +44,7 @@ interface SrRowDef {
   template: `
     <app-page-header
       title="Analyzer"
-      subtitle="Timeframes as columns — RSI, bar data, and classic S/R pivots (Bar 0 / Bar 1).">
+      subtitle="RSI · classic S/R pivots · Gann Odd Square — timeframes as columns.">
       <div actions class="flex flex-wrap items-center gap-2">
         <app-status-badge
           [label]="connected ? 'LIVE' : 'OFFLINE'"
@@ -234,6 +244,86 @@ interface SrRowDef {
         </table>
       </div>
 
+      <!-- Gann Odd Square (Square of Nine) -->
+      <div class="space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-sm font-semibold text-zinc-200">Gann Odd Square</h2>
+            <p class="text-[10px] text-zinc-500 mt-0.5">
+              Square of Nine · Bar 1 close pivot per TF · odd (√P ± 2n)² · even (√P ± (2n±1))²
+            </p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button
+              *ngFor="let g of gannRowDefs"
+              type="button"
+              class="text-[11px] px-2.5 py-1.5 rounded-lg border transition-colors"
+              [ngClass]="gannVisibility[g.key]
+                ? 'border-violet-700 bg-violet-950/40 text-violet-300'
+                : 'border-zinc-700 bg-zinc-950 text-zinc-500'"
+              (click)="toggleGann(g.key)">
+              {{ g.label }}
+            </button>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto rounded-2xl border border-zinc-800 bg-zinc-900">
+          <table class="w-full min-w-[36rem] text-sm border-collapse">
+            <thead>
+              <tr class="border-b border-zinc-800 bg-zinc-950/60">
+                <th class="sticky left-0 z-10 bg-zinc-950 text-left text-[10px] uppercase tracking-wider text-zinc-500 font-medium px-3 py-2.5 min-w-[5.5rem]">
+                  Level
+                </th>
+                <th
+                  *ngFor="let tf of timeframeOrder"
+                  class="text-center text-xs font-semibold text-zinc-200 px-2 py-2.5 min-w-[3.25rem]">
+                  {{ tf }}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <ng-container *ngIf="gannVisibility.gannOdd">
+                <tr
+                  *ngFor="let row of gannOddRows"
+                  class="border-b border-zinc-800/80"
+                  [ngClass]="row.kind === 'pivot' ? 'bg-amber-950/10' : 'bg-violet-950/10'">
+                  <th class="sticky left-0 z-10 bg-zinc-900 text-left text-[10px] text-zinc-500 font-normal px-3 py-2 align-middle border-r border-zinc-800/50">
+                    <span class="font-medium" [ngClass]="row.kind === 'pivot' ? 'text-amber-300' : 'text-violet-300'">{{ row.label }}</span>
+                    <span *ngIf="row.kind !== 'pivot'" class="block text-[9px] text-zinc-600">odd square</span>
+                    <span *ngIf="row.kind === 'pivot'" class="block text-[9px] text-zinc-600">Bar 1 pivot</span>
+                  </th>
+                  <td *ngFor="let tf of timeframeOrder" class="text-center px-2 py-2">
+                    <span
+                      class="tabular-nums font-mono text-xs"
+                      [ngClass]="gannCellClass(tf, gannOddCellValue(tf, row), 'odd')">
+                      {{ gannOddCellValue(tf, row) != null ? (gannOddCellValue(tf, row)! | number:'1.2-2') : '—' }}
+                    </span>
+                  </td>
+                </tr>
+              </ng-container>
+
+              <ng-container *ngIf="gannVisibility.gannEven">
+                <tr
+                  *ngFor="let row of gannEvenRows"
+                  class="border-b border-zinc-800/80 bg-indigo-950/10 last:border-b-0">
+                  <th class="sticky left-0 z-10 bg-zinc-900 text-left text-[10px] text-zinc-500 font-normal px-3 py-2 align-middle border-r border-zinc-800/50">
+                    <span class="font-medium text-indigo-300">{{ row.label }}</span>
+                    <span class="block text-[9px] text-zinc-600">even square</span>
+                  </th>
+                  <td *ngFor="let tf of timeframeOrder" class="text-center px-2 py-2">
+                    <span
+                      class="tabular-nums font-mono text-xs"
+                      [ngClass]="gannCellClass(tf, gannEvenCellValue(tf, row), 'even')">
+                      {{ gannEvenCellValue(tf, row) != null ? (gannEvenCellValue(tf, row)! | number:'1.2-2') : '—' }}
+                    </span>
+                  </td>
+                </tr>
+              </ng-container>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <p *ngIf="snapshot.message && !snapshot.live" class="text-xs text-amber-300/90">{{ snapshot.message }}</p>
     </div>
 
@@ -270,6 +360,35 @@ export class OrderRsiComponent implements OnInit, OnDestroy {
     bar1Data: true,
     b1sr: true
   };
+
+  gannRowDefs: { key: GannVisibilityKey; label: string }[] = [
+    { key: 'gannOdd', label: 'Odd Sq' },
+    { key: 'gannEven', label: 'Even Sq' }
+  ];
+
+  gannVisibility: Record<GannVisibilityKey, boolean> = {
+    gannOdd: true,
+    gannEven: false
+  };
+
+  gannOddRows: GannBandRowDef[] = [
+    { label: 'OS↑3', kind: 'odd', direction: 'above', index: 2 },
+    { label: 'OS↑2', kind: 'odd', direction: 'above', index: 1 },
+    { label: 'OS↑1', kind: 'odd', direction: 'above', index: 0 },
+    { label: 'Pivot', kind: 'pivot' },
+    { label: 'OS↓1', kind: 'odd', direction: 'below', index: 0 },
+    { label: 'OS↓2', kind: 'odd', direction: 'below', index: 1 },
+    { label: 'OS↓3', kind: 'odd', direction: 'below', index: 2 }
+  ];
+
+  gannEvenRows: GannBandRowDef[] = [
+    { label: 'ES↑3', kind: 'even', direction: 'above', index: 2 },
+    { label: 'ES↑2', kind: 'even', direction: 'above', index: 1 },
+    { label: 'ES↑1', kind: 'even', direction: 'above', index: 0 },
+    { label: 'ES↓1', kind: 'even', direction: 'below', index: 0 },
+    { label: 'ES↓2', kind: 'even', direction: 'below', index: 1 },
+    { label: 'ES↓3', kind: 'even', direction: 'below', index: 2 }
+  ];
 
   snapshot: OrderRsiSnapshot | null = null;
   connected = false;
@@ -319,6 +438,10 @@ export class OrderRsiComponent implements OnInit, OnDestroy {
 
   toggleRow(key: OrderRsiRowKey): void {
     this.rowVisibility[key] = !this.rowVisibility[key];
+  }
+
+  toggleGann(key: GannVisibilityKey): void {
+    this.gannVisibility[key] = !this.gannVisibility[key];
   }
 
   rowFor(tf: string): OrderRsiTfRow | undefined {
@@ -381,6 +504,39 @@ export class OrderRsiComponent implements OnInit, OnDestroy {
     if (level === 'pivot') return 'bg-amber-950/10';
     if (level.startsWith('s')) return 'bg-sky-950/10';
     return 'bg-rose-950/10';
+  }
+
+  gannFor(tf: string): GannOddSquareBlock | undefined {
+    return this.rowFor(tf)?.gann;
+  }
+
+  gannOddCellValue(tf: string, row: GannBandRowDef): number | null {
+    const gann = this.gannFor(tf);
+    if (!gann) return null;
+    if (row.kind === 'pivot') return gann.pivot ?? null;
+    if (!row.direction || row.index == null) return null;
+    const bands = gann.oddSquare[row.direction];
+    return bands[row.index] ?? null;
+  }
+
+  gannEvenCellValue(tf: string, row: GannBandRowDef): number | null {
+    const gann = this.gannFor(tf);
+    if (!gann || !row.direction || row.index == null) return null;
+    const bands = gann.evenSquare[row.direction];
+    return bands[row.index] ?? null;
+  }
+
+  gannCellClass(tf: string, value: number | null, kind: 'odd' | 'even'): string {
+    const base = kind === 'odd' ? 'text-violet-300' : 'text-indigo-300';
+    if (value == null) return base;
+    const gann = this.gannFor(tf);
+    if (!gann) return base;
+    const isNext =
+      value === gann.nextOddAbove ||
+      value === gann.nextOddBelow ||
+      value === gann.nextEvenAbove ||
+      value === gann.nextEvenBelow;
+    return isNext ? `${base} font-semibold underline decoration-violet-500/70` : base;
   }
 
   zoneBoxClass(rsi: number | null): string {

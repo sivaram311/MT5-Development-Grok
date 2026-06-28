@@ -12,6 +12,21 @@ Format for each entry:
 
 ---
 
+## 2026-06-28 — Analyzer Gann Odd Square (Square of Nine)
+
+### Changes
+
+| Area | Change |
+|------|--------|
+| `gann_odd_square_util.py` | Odd (√P±2n)² and even (√P±(2n±1))² bands from Bar 1 close pivot |
+| `order_rsi_service.py` | Adds `timeframes.{TF}.gann` to live snapshot |
+| `order-rsi.component.ts` | Separate Gann table below RSI/S/R grid; **Odd Sq** / **Even Sq** toggles |
+| Docs | Alignment guide, API, README, in-app Docs |
+
+**Verification:** `pytest python/tests/test_gann_odd_square_util.py`; restart `python-order-rsi`.
+
+---
+
 ## 2026-06-28 — Analyzer S/R label key fix
 
 ### Symptom

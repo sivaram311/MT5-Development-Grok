@@ -11,7 +11,6 @@ def classic_floor_pivots(high: float, low: float, close: float) -> Optional[Dict
     Returns s3–s1, pivot, r1–r3 keyed to match UI / MT5 row labels.
     Returns None if inputs are invalid.
     """
-    """
     h = float(high)
     l = float(low)
     c = float(close)

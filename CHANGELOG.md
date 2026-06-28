@@ -4,6 +4,17 @@ All notable changes to the Grok Dev full-stack application (Spring Boot + Angula
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2026-06-28 (Analyzer Gann Odd Square)
+
+### Added
+- **Gann Odd Square** block on Analyzer — live So9 odd/even square levels per TF (Bar 1 close pivot).
+- **`gann_odd_square_util.py`** + pytest; `timeframes.{TF}.gann` in Order RSI snapshot.
+
+### Documentation
+- Alignment guide, API docs, README, in-app Docs, `ANGULAR_FRONTEND.md`.
+
+---
+
 ## [Unreleased] - 2026-06-28 (Analyzer S/R label fix)
 
 ### Fixed
