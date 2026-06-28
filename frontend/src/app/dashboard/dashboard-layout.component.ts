@@ -87,13 +87,6 @@ interface NavItem {
               <span *ngIf="!sidebarCollapsed">Docs</span>
             </a>
             <a
-              routerLink="gann-intraday"
-              routerLinkActive="bg-zinc-900 text-white"
-              class="flex items-center gap-2 px-3 py-2.5 min-h-11 rounded-2xl text-zinc-400 active:bg-zinc-900">
-              <app-nav-icon class="w-5 h-5 shrink-0" name="gann-intraday"></app-nav-icon>
-              <span *ngIf="!sidebarCollapsed">Gann Intraday</span>
-            </a>
-            <a
               routerLink="analysis"
               routerLinkActive="bg-zinc-900 text-white"
               class="flex items-center gap-2 px-3 py-2.5 min-h-11 rounded-2xl text-zinc-400 active:bg-zinc-900">
