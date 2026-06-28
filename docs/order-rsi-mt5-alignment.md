@@ -55,6 +55,12 @@ Each grid has its own **Odd Sq** / **Even Sq** toggles (page only). **Pivot** ro
 
 Odd-only or even-only uses the same nearest-from-pivot ordering; pivot stays centered.
 
+| Item | Detail |
+|------|--------|
+| **Odd squares** | (√pivot ± 2n)² — OS↑/↓ |
+| **Even squares** | (√pivot ± (2n±1))² — ES↑/↓ |
+| **Bar 0 banner** | When `gannBar0.available` is false for all TFs |
+
 Forming bar **open** is also published as `timeframes.{TF}.open`.
 
 See also Analysis Lab Gann study (`gann.util.ts`) for swing-octave on historical grids.
