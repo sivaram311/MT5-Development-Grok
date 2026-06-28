@@ -35,9 +35,9 @@ import { formatWallTime, formatAgeMinutes } from '../utils/time.util';
             </div>
           </div>
           <div class="text-right text-[10px] text-zinc-500 space-y-1 font-mono">
-            <div><span class="text-zinc-600">Broker</span> {{ formatWallTime(snapshot.asOf?.broker) }}</div>
-            <div><span class="text-zinc-600">NY</span> {{ formatWallTime(snapshot.asOf?.ny) }}</div>
-            <div><span class="text-zinc-600">IST</span> {{ formatWallTime(snapshot.asOf?.ist) }}</div>
+            <div><span class="text-zinc-600">Broker</span> {{ formatWallTime(snapshot.asOf.broker) }}</div>
+            <div><span class="text-zinc-600">NY</span> {{ formatWallTime(snapshot.asOf.ny) }}</div>
+            <div><span class="text-zinc-600">IST</span> {{ formatWallTime(snapshot.asOf.ist) }}</div>
           </div>
         </div>
         <div class="mt-3 flex flex-wrap gap-2 text-[10px] text-zinc-500">

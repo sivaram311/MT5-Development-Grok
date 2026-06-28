@@ -222,6 +222,61 @@ RSI uses Wilder(14) on MT5 bars including forming bar; price = forming **close**
 
 ---
 
+## 2026-06-28 — Frontend `Application bundle generation failed` (Stack Pilot logs)
+
+### Symptom
+
+Stack Pilot `logs/frontend.log` showed repeated **`Application bundle generation failed`** during `ng serve` hot reload (64 failures in the session). Latest successful build still emitted **NG8107** warnings on the Order RSI page on every rebuild.
+
+Representative log lines (read bottom-up in `E:\Source\stack-pilot\logs\frontend.log`):
+
+```
+Application bundle generation failed.
+X [ERROR] TS2300: Duplicate identifier 'OnDestroy'.  market.component.ts:348
+X [ERROR] NG1: Object is possibly 'null'.  overview.component.ts (priceChange)
+X [ERROR] NG9: Property 'onTimeframeChange' does not exist on type 'VolatilityComponent'.
+X [ERROR] TS2300: Duplicate identifier 'formatWallTime'.  volatility.component.ts:268
+X [ERROR] TS2304: Cannot find name 'FormsModule' / 'HttpClient'.  volatility.component.ts
+X [ERROR] NG9: Property 'fillDemoCredentials' does not exist on type 'LoginComponent'.
+▲ [WARNING] NG8107: unnecessary ?. on snapshot.asOf  order-rsi.component.ts:38-40
+```
+
+### Root cause
+
+Iterative UI work under **`strictTemplates: true`** left transient TypeScript/template errors that blocked esbuild:
+
+| Error | Cause |
+|-------|--------|
+| Duplicate `OnDestroy` | Second `import { OnDestroy }` appended mid-file in `market.component.ts` while already imported on line 1 |
+| `priceChange` possibly null | Strict template checks on `overview.component.ts` without null guards |
+| Missing `onTimeframeChange` | Template wired before method existed on `VolatilityComponent` |
+| Duplicate `formatWallTime` | Class property **and** local method with the same name in `volatility.component.ts` |
+| Missing `FormsModule` / `HttpClient` | Imports removed or incomplete during volatility refactor |
+| Missing `fillDemoCredentials` | Login template button added before method was implemented |
+| NG8107 on Order RSI | `OrderRsiSnapshot.asOf` is required in the type, but template used `snapshot.asOf?.broker` inside `*ngIf="snapshot"` |
+
+### Changes
+
+| File | Fix |
+|------|-----|
+| `market.component.ts` | Removed duplicate `OnDestroy` import (already on line 1) |
+| `overview.component.ts` | Null-safe `priceChange != null && …` in template bindings |
+| `volatility.component.ts` | Added `onTimeframeChange`; single `formatWallTime` from `time.util`; restored `FormsModule` / `HttpClient` imports |
+| `login.component.ts` | Implemented `fillDemoCredentials()` for demo button + dev auto-login |
+| `order-rsi.component.ts` | Use `snapshot.asOf.broker` / `.ny` / `.ist` (required field); `rowFor(tf)?.time.ny` |
+
+### Verification
+
+```powershell
+cd frontend
+npm run build
+# Application bundle generation complete — no ERROR lines, no NG8107 warnings
+```
+
+Stack Pilot frontend log after fix should show **`Application bundle generation complete`** without preceding `failed` blocks on Order RSI edits.
+
+---
+
 ## Template (copy for future entries)
 
 ```markdown
