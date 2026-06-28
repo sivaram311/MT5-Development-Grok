@@ -240,14 +240,19 @@ public class MarketDataService {
         avgGain /= period;
         avgLoss /= period;
 
-        for (int i = period; i < candles.size(); i++) {
+        if (avgLoss == 0) {
+            candles.get(period).setRsi(100.0);
+        } else {
+            double rs = avgGain / avgLoss;
+            candles.get(period).setRsi(100 - (100 / (1 + rs)));
+        }
+
+        for (int i = period + 1; i < candles.size(); i++) {
+            avgGain = ((avgGain * (period - 1)) + gains[i]) / period;
+            avgLoss = ((avgLoss * (period - 1)) + losses[i]) / period;
             double rs = (avgLoss == 0) ? 100 : avgGain / avgLoss;
             double rsi = 100 - (100 / (1 + rs));
             candles.get(i).setRsi(rsi);
-
-            // Wilder smoothing
-            avgGain = ((avgGain * (period - 1)) + gains[i]) / period;
-            avgLoss = ((avgLoss * (period - 1)) + losses[i]) / period;
         }
     }
 

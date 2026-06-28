@@ -63,8 +63,9 @@ DB_CONFIG = {
 # Schema used by Spring Boot
 SCHEMA = "grok_dev"
 
-# Broker wall-clock zone for live order RSI timestamps (match backend grok.market.broker-server-zone)
-BROKER_SERVER_ZONE = os.getenv("BROKER_SERVER_ZONE", "UTC")
+# Broker wall-clock zone — MT5 copy_rates times are UTC; convert for display.
+# OctaFX/Octa Markets server charts use UTC+3 (EEST). Match grok.market.broker-server-zone in backend.
+BROKER_SERVER_ZONE = os.getenv("BROKER_SERVER_ZONE", "Etc/GMT-3")
 
 # ====================== Live Order RSI publisher ======================
 ORDER_RSI_TIMEFRAMES = ["W1", "D1", "H4", "H1", "M15", "M5", "M1"]
@@ -72,6 +73,8 @@ ORDER_RSI_MODE = os.getenv("ORDER_RSI_MODE", "tick").lower()  # tick | poll
 ORDER_RSI_TICK_MS = int(os.getenv("ORDER_RSI_TICK_MS", "250"))
 ORDER_RSI_POLL_MS = int(os.getenv("ORDER_RSI_POLL_MS", "1000"))
 ORDER_RSI_RSI_PERIOD = int(os.getenv("ORDER_RSI_RSI_PERIOD", "14"))
+# Bars fetched for Wilder warm-up (MT5 terminal uses full chart history; 5000 matches terminal closely)
+ORDER_RSI_HISTORY_BARS = int(os.getenv("ORDER_RSI_HISTORY_BARS", "5000"))
 
 # Table naming: XAUUSD_{Timeframe}
 def get_table_name(timeframe_key: str) -> str:

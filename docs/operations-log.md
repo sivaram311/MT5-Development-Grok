@@ -12,6 +12,113 @@ Format for each entry:
 
 ---
 
+## 2026-06-28 — Analyzer table UI + nav rename
+
+### Changes
+
+| Area | Change |
+|------|--------|
+| `dashboard-layout.component.ts` | Nav label **Order RSI** → **Analyzer** (route unchanged: `order-rsi`) |
+| `order-rsi.component.ts` | TF-column table; rows: Bar 0 RSI, Bar 0 data, Bar 1 RSI, Bar 1 data; row visibility toggles |
+| Docs | README, alignment guide, setup, API, in-app Docs |
+
+---
+
+## 2026-06-28 — Order RSI vertical stack + zone highlights + source toggle
+
+### Changes
+
+| Area | Change |
+|------|--------|
+| `order-rsi.component.ts` | Vertical card stack (one per TF); zone-colored RSI boxes; page toggle Calculated / MT5 built-in |
+| `order-rsi-zone.util.ts` | Zone rules: red &lt;40, yellow 40–44 &amp; 56–60, neutral 45–55, green &gt;60 |
+| `order_rsi_service.py` | Payload includes both `rsi`/`completed` (Python) and `mt5.shift0/shift1`; `mt5ExportAvailable` |
+| Docs | `api-endpoints.md`, `order-rsi-mt5-alignment.md`, `setup-and-run.md` |
+
+### Verification
+
+- `npm run build` — pass.
+- Toggle MT5 built-in requires `GrokDevOrderRsiExport` EA + restart `python-order-rsi`.
+
+---
+
+## 2026-06-28 — Order RSI still mismatched MT5 (Wilder off-by-one bug)
+
+### Symptom
+
+After history + shift-1 UI, API still disagreed with MT5 terminal RSI. Example from live snapshot:
+
+| TF | App (buggy) bar 0 | App (buggy) bar 1 | Fixed bar 0 | Fixed bar 1 |
+|----|-------------------|-------------------|-------------|-------------|
+| M1 | **85.89** | 84.66 | **80.83** | 85.89 |
+| M5 | 65.86 | 58.77 | 72.82 | 65.86 |
+
+User's **85.89** on M1 bar 0 equaled **fixed bar 1** — app was one bar ahead of MT5 iRSI.
+
+### Root cause
+
+**Wilder RSI loop bug** in `rsi_util.py`: the first smoothing step double-counted `gains[period]`, so RSI at the forming index matched MT5 **shift 1** (previous closed bar), not shift 0.
+
+Secondary: bar `time` from `copy_rates` is **UTC** but was labeled as broker wall with `BROKER_SERVER_ZONE=UTC` while OctaFX charts use **UTC+3** — confusing which candle to compare in Data Window.
+
+### Changes
+
+| Area | Change |
+|------|--------|
+| `rsi_util.py` | Correct Wilder loop: first RSI at bar `period`, smooth from `period+1` |
+| `MarketDataService.java` | Same Wilder fix for grid RSI |
+| `order_rsi_service.py` | Bar times from UTC → broker/NY/IST; optional read of `GrokDevOrderRsiExport.mq5` JSON |
+| `mt5_scripts/GrokDevOrderRsiExport.mq5` | EA writes MT5 `iRSI` shift 0/1 to Common Files for verification |
+| Config | `BROKER_SERVER_ZONE=Etc/GMT-3` (OctaFX) in Python, backend, Stack Pilot |
+
+### Verification
+
+```powershell
+cd python
+python scripts/compare_mt5_rsi.py
+# M1 APP shift0=80.83 shift1=85.89 (was 85.89 / 84.66)
+```
+
+Attach **GrokDevOrderRsiExport** EA on XAUUSD chart (Algo Trading ON) to cross-check; publisher uses `mt5_iRSI` when export file is fresh.
+
+**Operator action:** Restart **python-order-rsi** and **backend** after pull.
+
+---
+
+## 2026-06-28 — Order RSI aligned with MT5 terminal (history + shift 1)
+
+### Symptom
+
+Order RSI values on the dashboard did not match the MT5 terminal RSI panel — often by several points on M5/H4.
+
+### Root cause
+
+1. **Bar shift mismatch** — App showed RSI on the **forming bar (shift 0)** only; MT5 Data Window commonly shows the **last completed bar (shift 1)**.
+2. **Short Wilder warm-up** — Publisher fetched only **44 bars** (`period + 30`); MT5 RSI uses full chart history, causing ~0.2–1.6 pt drift even on the same bar.
+
+Price source (bid vs last) was not the issue on this broker (`chart_mode=BID`, `tick.last=0`).
+
+### Changes
+
+| Area | Change | Why |
+|------|--------|-----|
+| `order_rsi_service.py` | Fetch **5000 bars** (`ORDER_RSI_HISTORY_BARS`); emit `completed` block with shift-1 RSI | Match MT5 Wilder state; expose both shifts |
+| `rsi_util.py` | `wilder_rsi_forming_and_completed()` | Shared shift 0 / shift 1 helper |
+| `config.py` | `ORDER_RSI_HISTORY_BARS` env (default 5000) | Tunable warm-up depth |
+| `order-rsi.component.ts` | Show **Bar 0 · forming** and **Bar 1 · MT5 Data Window** per TF | Side-by-side terminal comparison |
+| `order-rsi-stream.service.ts` | Types for `completed`, `historyBars` | Typed API payload |
+| Docs | `api-endpoints.md`, `setup-and-run.md`, `python/mt5_xauusd/README.md`, `CHANGELOG.md` | Operator + dev reference |
+
+### Verification
+
+- `pytest tests/test_rsi_util.py` — pass.
+- `npm run build` — pass.
+- Live M1: 44-bar vs 5000-bar forming RSI delta &lt; 0.3 pt; shift 0 vs shift 1 delta ~1–7 pt (expected).
+
+**Operator action:** Restart **python-order-rsi** in Stack Pilot to pick up the publisher change.
+
+---
+
 ## 2026-06-28 — Login returns 401 for admin / admin123
 
 ### Symptom

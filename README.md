@@ -70,6 +70,7 @@ Then restart the backend. The seeder will recreate them.
 - **Volatility explorer** — sortable grid with per-TF preference sync
 - **Health dashboard** — per-TF freshness cards + **SSE push alerts** when pipeline degrades
 - **Analysis Lab** — RSI storm scanner + Gann level studies (octave + Square-of-9)
+- **Analyzer** — live multi-TF RSI(14) table (W1→M1), zone highlights, toggleable rows, Python vs MT5 source — route `/dashboard/order-rsi`; see [docs/order-rsi-mt5-alignment.md](docs/order-rsi-mt5-alignment.md)
 - **User preferences** — PATCH merge to `/api/auth/preferences` (grid, market UI, volatility)
 - **Playwright e2e** — login, manifest, auth-guard smoke tests (`npm run e2e`)
 
@@ -129,7 +130,7 @@ Rich technical documentation lives **inside the Angular project**:
   - [PWA_AND_OFFLINE.md](file:///E:/Source/grok_dev/frontend/docs/PWA_AND_OFFLINE.md) (Installable PWA + offline shell)
   - [UI_IMPLEMENTATION_PLAN.md](file:///E:/Source/grok_dev/frontend/docs/UI_IMPLEMENTATION_PLAN.md) (Completed UI roadmap)
   - [DATA_FLOW_AND_INTEGRATION.md](file:///E:/Source/grok_dev/frontend/docs/DATA_FLOW_AND_INTEGRATION.md) (Ingestion tracing)
-- Root docs: [docs/frontend-guidelines.md](docs/frontend-guidelines.md), [docs/api-endpoints.md](docs/api-endpoints.md), [docs/setup-and-run.md](docs/setup-and-run.md)
+- Root docs: [docs/frontend-guidelines.md](docs/frontend-guidelines.md), [docs/api-endpoints.md](docs/api-endpoints.md), [docs/setup-and-run.md](docs/setup-and-run.md), [docs/order-rsi-mt5-alignment.md](docs/order-rsi-mt5-alignment.md)
 
 A condensed, mobile-friendly version of the docs is also available inside the live app (tap **Docs** in the bottom navigation on phones) — see [docs.component.ts](file:///E:/Source/grok_dev/frontend/src/app/dashboard/docs.component.ts). 
 
@@ -144,7 +145,21 @@ All documentation was written with priority given to readability on small screen
 - GET /api/market/xauusd/{tf}/grid → OHLC grid with RSI (+ optional NY session filter)
 - GET /api/market/xauusd/health → pipeline freshness (UP / DEGRADED / DOWN)
 - GET /api/market/xauusd/health/stream → SSE push stream (30s interval)
+- GET /api/market/xauusd/order-rsi → live Order RSI snapshot (Python Wilder + optional MT5 iRSI)
+- GET /api/market/xauusd/order-rsi/stream → SSE push when snapshot updates (~250ms)
 - GET /api/projects → demo content
+
+## Analyzer (live RSI panel)
+
+Second Python process (`python run_order_rsi.py`) publishes forming-bar RSI for **W1, D1, H4, H1, M15, M5, M1** into `grok_dev.live_order_rsi`.
+
+**Frontend:** bottom nav **Analyzer** (`/dashboard/order-rsi`) — table with timeframes as columns, four toggleable rows (Bar 0/1 RSI + data), zone-colored RSI boxes, page toggle **Calculated** vs **MT5 built-in**.
+
+**Run via Stack Pilot:** start service `python-order-rsi` after MT5 is logged in.
+
+**Optional MT5 verify:** attach EA `python/mt5_scripts/GrokDevOrderRsiExport.mq5` on XAUUSD (Algo Trading ON).
+
+Full guide: [docs/order-rsi-mt5-alignment.md](docs/order-rsi-mt5-alignment.md)
 
 ## SOLID & Design Patterns
 See docs/solid-and-patterns.md for details on how the project follows clean architecture.

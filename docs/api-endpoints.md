@@ -128,28 +128,55 @@ Example client URL: `/api/market/xauusd/health/stream?access_token=eyJ...`
 
 ### GET `/api/market/xauusd/order-rsi`
 
-Live **Order RSI** snapshot (forming bar / MT5 shift 0, RSI Wilder 14):
+Live **Order RSI** snapshot — Wilder RSI(14) on **close**, with both MT5 bar shifts:
+
+| Field | Meaning |
+|-------|---------|
+| `timeframes.{TF}.rsi` | Python Wilder — **shift 0** (forming) |
+| `timeframes.{TF}.completed.rsi` | Python Wilder — **shift 1** (last closed) |
+| `timeframes.{TF}.mt5.shift0.rsi` | MT5 built-in `iRSI` shift 0 (when EA export fresh) |
+| `timeframes.{TF}.mt5.shift1.rsi` | MT5 built-in `iRSI` shift 1 |
+| `mt5ExportAvailable` | `true` when `GrokDevOrderRsiExport.mq5` JSON is fresh |
+| `timeframes.{TF}.historyBars` | Bars used for Wilder warm-up (default **5000**) |
+
+Frontend **Analyzer** page (`/dashboard/order-rsi`) toggles display between Python and MT5 values (page-only, not saved).
 
 ```json
 {
   "symbol": "XAUUSD",
   "live": true,
+  "mt5ExportAvailable": true,
   "price": 4188.67,
-  "priceSource": "forming_close",
-  "pushMode": "tick",
-  "asOf": { "broker": "2026-06-28T08:30:00", "ny": "...", "ist": "..." },
   "timeframes": {
-    "W1": { "barIndex": 0, "forming": true, "close": 4188.67, "rsi": 52.1, "time": { "broker": "...", "ny": "...", "ist": "..." } },
-    "D1": { ... },
-    "M1": { ... }
-  },
-  "updatedAt": "2026-06-28T08:30:01.123Z"
+    "M5": {
+      "rsi": 72.82,
+      "completed": { "rsi": 65.86 },
+      "mt5": {
+        "available": true,
+        "shift0": { "rsi": 72.82 },
+        "shift1": { "rsi": 65.86 }
+      },
+      "historyBars": 5000
+    }
+  }
 }
 ```
 
 Requires Python publisher: `python run_order_rsi.py` (writes `grok_dev.live_order_rsi`).
 
 Timeframes: **W1, D1, H4, H1, M15, M5, M1** — all read live from MT5 (W1 is not stored in historical sync tables).
+
+**MT5 alignment:** Terminal RSI **14 / Close**. Match **Bar 1** → Data Window bar index 1; **Bar 0** → bar index 0. See [order-rsi-mt5-alignment.md](./order-rsi-mt5-alignment.md).
+
+**UI:** **Analyzer** nav item — TF-column table, zone-colored RSI boxes, toggleable rows, page toggle (**Calculated** vs **MT5 built-in**).
+
+Python env:
+
+| Variable | Default | Meaning |
+|----------|---------|---------|
+| `ORDER_RSI_HISTORY_BARS` | `5000` | Bars per TF for Wilder warm-up |
+| `ORDER_RSI_RSI_PERIOD` | `14` | RSI period |
+| `BROKER_SERVER_ZONE` | `Etc/GMT-3` | OctaFX server time for bar labels |
 
 ### GET `/api/market/xauusd/order-rsi/stream`
 

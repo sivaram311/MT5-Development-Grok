@@ -29,6 +29,7 @@ import { PageHeaderComponent } from '../ui/page-header.component';
         <a href="#time" class="px-3 py-1 rounded-full bg-zinc-800 border border-zinc-700 active:bg-zinc-700">8. Timezones</a>
         <a href="#auth" class="px-3 py-1 rounded-full bg-zinc-800 border border-zinc-700 active:bg-zinc-700">9. Auth &amp; JWT</a>
         <a href="#health" class="px-3 py-1 rounded-full bg-zinc-800 border border-zinc-700 active:bg-zinc-700">10. Health</a>
+        <a href="#order-rsi" class="px-3 py-1 rounded-full bg-zinc-800 border border-zinc-700 active:bg-zinc-700">Analyzer</a>
         <a href="#flow" class="px-3 py-1 rounded-full bg-zinc-800 border border-zinc-700 active:bg-zinc-700">11. Full Data Flow</a>
       </div>
 
@@ -171,6 +172,7 @@ import { PageHeaderComponent } from '../ui/page-header.component';
               <li><strong>Volatility:</strong> <a href="file:///E:/Source/grok_dev/frontend/src/app/dashboard/volatility.component.ts" target="_blank" class="text-emerald-400 underline">volatility.component.ts</a> - Volatility Explorer analyzing High-to-Low price ranges over custom candle counts.</li>
               <li><strong>Health:</strong> <a href="file:///E:/Source/grok_dev/frontend/src/app/dashboard/health.component.ts" target="_blank" class="text-emerald-400 underline">health.component.ts</a> - displays live freshness cards from backend.</li>
               <li><strong>Analysis:</strong> <a href="file:///E:/Source/grok_dev/frontend/src/app/dashboard/analysis.component.ts" target="_blank" class="text-emerald-400 underline">analysis.component.ts</a> — RSI storm scanner and Gann level studies (octave + Square-of-9).</li>
+              <li><strong>Analyzer:</strong> <a href="file:///E:/Source/grok_dev/frontend/src/app/dashboard/order-rsi.component.ts" target="_blank" class="text-emerald-400 underline">order-rsi.component.ts</a> — live multi-TF RSI table (route <code>order-rsi</code>).</li>
               <li><strong>Docs:</strong> <a href="file:///E:/Source/grok_dev/frontend/src/app/dashboard/docs.component.ts" target="_blank" class="text-emerald-400 underline">docs.component.ts</a> - this technical doc viewer.</li>
             </ul>
 
@@ -187,6 +189,43 @@ import { PageHeaderComponent } from '../ui/page-header.component';
             <p><strong>PWA manifest:</strong> <code>src/assets/manifest.webmanifest</code> — linked as <code>assets/manifest.webmanifest</code> in index.html (fixes dev-server 404).</p>
 
             <p><strong>Time Parsing:</strong> Utilizes <code>formatWallTime()</code> in <a href="file:///E:/Source/grok_dev/frontend/src/app/dashboard/market.component.ts" target="_blank" class="text-emerald-400 underline">market.component.ts</a> to parse naive ISO strings. This bypasses browser local timezone conversions which shift display hours based on the client's location.</p>
+          </div>
+        </details>
+
+        <!-- Analyzer (order-rsi route) -->
+        <details id="order-rsi" class="doc-section bg-zinc-900 border border-zinc-800 rounded-3xl overflow-hidden">
+          <summary class="px-4 py-3.5 font-semibold cursor-pointer flex justify-between items-center active:bg-zinc-800 text-base">Analyzer — Live Multi-Timeframe RSI</summary>
+          <div class="px-4 pb-5 text-sm text-zinc-300 text-xs space-y-3">
+            <p>Bottom nav <strong>Analyzer</strong> (<code>/dashboard/order-rsi</code>) shows RSI(14) on close for <strong>W1 → M1</strong>.</p>
+
+            <p><strong>Layout:</strong> Table with timeframes as <strong>column headers</strong> (W1 → M1). Four toggleable rows: Bar 0 RSI, Bar 0 data (time/close), Bar 1 RSI, Bar 1 data.</p>
+
+            <p><strong>Zone highlights</strong> (rectangle background, not text color):</p>
+            <ul class="pl-4 list-disc space-y-1">
+              <li>Red: RSI &lt; 40</li>
+              <li>Yellow: 40–44 or 56–60</li>
+              <li>Neutral: 45–55</li>
+              <li>Green: RSI &gt; 60</li>
+            </ul>
+
+            <p><strong>RSI source toggle</strong> (page only, not saved):</p>
+            <ul class="pl-4 list-disc space-y-1">
+              <li><strong>Calculated</strong> — Python Wilder from <code>run_order_rsi.py</code></li>
+              <li><strong>MT5 built-in</strong> — values from <code>GrokDevOrderRsiExport.mq5</code> EA (attach on XAUUSD, Algo Trading ON)</li>
+            </ul>
+
+            <p><strong>Data flow:</strong></p>
+            <div class="bg-zinc-950 p-3 rounded-2xl font-mono text-[11px] leading-relaxed">
+              MT5 terminal<br>
+              ↓ python run_order_rsi.py (tick mode)<br>
+              grok_dev.live_order_rsi (JSON snapshot)<br>
+              ↓ GET /api/market/xauusd/order-rsi/stream (SSE)<br>
+              <a href="file:///E:/Source/grok_dev/frontend/src/app/dashboard/order-rsi.component.ts" target="_blank" class="text-emerald-400 underline">order-rsi.component.ts</a>
+            </div>
+
+            <p>Compare with MT5 Data Window: Bar 0 = forming candle, Bar 1 = previous closed candle. RSI indicator must be <strong>14 / Close</strong>.</p>
+
+            <p>Full guide: <a href="file:///E:/Source/grok_dev/docs/order-rsi-mt5-alignment.md" target="_blank" class="text-emerald-400 underline">docs/order-rsi-mt5-alignment.md</a></p>
           </div>
         </details>
 

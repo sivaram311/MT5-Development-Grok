@@ -3,10 +3,33 @@ import { BehaviorSubject } from 'rxjs';
 import { AuthService } from './auth.service';
 import { environment } from '../../environments/environment';
 
+export type OrderRsiSourceMode = 'python_wilder' | 'mt5_iRSI';
+
 export interface OrderRsiTimeBlock {
   broker: string;
   ny: string;
   ist: string;
+  utc?: string;
+}
+
+export interface OrderRsiMt5Shift {
+  rsi: number | null;
+  close?: number;
+}
+
+export interface OrderRsiMt5Block {
+  available: boolean;
+  shift0: OrderRsiMt5Shift;
+  shift1: OrderRsiMt5Shift;
+}
+
+/** MT5 shift 1 — last completed candle. */
+export interface OrderRsiCompletedBar {
+  barIndex: number;
+  forming: boolean;
+  time: OrderRsiTimeBlock;
+  close: number;
+  rsi: number | null;
 }
 
 export interface OrderRsiTfRow {
@@ -15,8 +38,14 @@ export interface OrderRsiTfRow {
   forming: boolean;
   time: OrderRsiTimeBlock;
   close: number;
+  /** Python Wilder RSI — forming bar (shift 0). */
   rsi: number | null;
   rsiPeriod: number;
+  rsiSource?: string;
+  historyBars?: number;
+  completed?: OrderRsiCompletedBar;
+  /** MT5 built-in iRSI from GrokDevOrderRsiExport EA (when available). */
+  mt5?: OrderRsiMt5Block;
 }
 
 export interface OrderRsiSnapshot {
@@ -28,6 +57,7 @@ export interface OrderRsiSnapshot {
   pushMode?: string;
   asOf: OrderRsiTimeBlock;
   timeframes: Record<string, OrderRsiTfRow>;
+  mt5ExportAvailable?: boolean;
   updatedAt?: string;
 }
 

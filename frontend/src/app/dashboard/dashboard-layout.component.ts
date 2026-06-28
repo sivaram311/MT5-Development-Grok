@@ -179,14 +179,14 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
   primaryNav: NavItem[] = [
     { route: 'overview', label: 'Home', icon: 'home' },
     { route: 'market', label: 'Market', icon: 'market' },
-    { route: 'order-rsi', label: 'Order RSI', icon: 'order-rsi' },
+    { route: 'order-rsi', label: 'Analyzer', icon: 'order-rsi' },
     { route: 'health', label: 'Health', icon: 'health' }
   ];
 
   sidebarItems: NavItem[] = [
     { route: 'overview', label: 'Overview', icon: 'home' },
     { route: 'market', label: 'Market Data', icon: 'market' },
-    { route: 'order-rsi', label: 'Order RSI', icon: 'order-rsi' },
+    { route: 'order-rsi', label: 'Analyzer', icon: 'order-rsi' },
     { route: 'volatility', label: 'Volatility', icon: 'volatility' },
     { route: 'health', label: 'Health', icon: 'health' }
   ];

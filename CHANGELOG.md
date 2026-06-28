@@ -4,6 +4,44 @@ All notable changes to the Grok Dev full-stack application (Spring Boot + Angula
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2026-06-28 (Analyzer + MT5 RSI alignment)
+
+### Added
+- **Analyzer** page (nav label; route `/dashboard/order-rsi`) — TF-column table, four toggleable rows (Bar 0/1 RSI + data).
+- **RSI zone highlights** — colored box around RSI (red / yellow / neutral / green).
+- **RSI source toggle** — Calculated (Python Wilder) vs MT5 built-in (`GrokDevOrderRsiExport` EA).
+- **Dual RSI API** — `mt5.shift0/shift1` + Python `rsi`/`completed`; `mt5ExportAvailable`.
+- **`GrokDevOrderRsiExport.mq5`**, **`mt5_rsi_export.py`**, **`scripts/compare_mt5_rsi.py`**, **`order-rsi-zone.util.ts`**.
+
+### Fixed
+- **Wilder RSI off-by-one** in `rsi_util.py` and `MarketDataService.java` (matches MT5 `iRSI`).
+- **Bar times** — UTC → broker/NY/IST; `BROKER_SERVER_ZONE=Etc/GMT-3` (OctaFX).
+
+### Changed
+- Publisher: **5000-bar** Wilder warm-up; dual Python + MT5 RSI in payload.
+- Sidebar label **Order RSI** → **Analyzer**.
+
+### Documentation
+- `docs/order-rsi-mt5-alignment.md`, README, setup, API docs, in-app Docs.
+
+---
+
+## [Unreleased] - 2026-06-28 (Order RSI MT5 alignment — earlier)
+
+### Changed
+- **Order RSI publisher** — fetches **5000 bars** per timeframe (`ORDER_RSI_HISTORY_BARS`) for accurate Wilder warm-up (was 44 bars).
+- **Order RSI API payload** — each timeframe includes `completed` (shift 1 RSI + time) and `historyBars`.
+- **Order RSI UI** — shows **Bar 0 · forming** and **Bar 1 · MT5 Data Window** side by side with alignment guide.
+
+### Added
+- **`wilder_rsi_forming_and_completed()`** in `rsi_util.py` — shared shift 0 / shift 1 helper.
+- **pytest** coverage for forming vs completed RSI divergence.
+
+### Documentation
+- `docs/operations-log.md`, `docs/api-endpoints.md`, `docs/setup-and-run.md`, `python/mt5_xauusd/README.md` updated for MT5 comparison workflow.
+
+---
+
 ## [Unreleased] - 2026-06-28 (Reliability pass)
 
 ### Added

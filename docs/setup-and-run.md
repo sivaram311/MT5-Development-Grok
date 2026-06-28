@@ -242,9 +242,14 @@ If your MT5 terminal shows a different server time (check Market Watch), set the
 - Windows Task Scheduler: `python/setup_task_scheduler.ps1` (Run as Administrator). Auto-detects Python, startup+logon triggers, robust restarts.
 - File logging enabled automatically in daemon.
 
-### Live Order RSI (real-time trading panel)
+### Live Analyzer panel (Order RSI publisher)
 
-Second Python process — reads MT5 **forming candles** (shift 0) and publishes RSI(14) for W1→M1:
+Second Python process — reads MT5 bars and publishes Wilder RSI(14) on **close** for W1→M1:
+
+- **Bar 0 (forming)** — shift 0, live bid updates the forming close
+- **Bar 1 (closed)** — shift 1, compare with MT5 **Data Window** on the previous bar
+
+Uses **5000 bars** of history per timeframe for Wilder warm-up (matches MT5 terminal closely).
 
 ```powershell
 cd python
@@ -254,13 +259,17 @@ python run_order_rsi.py
 Configure via environment:
 
 ```powershell
-$env:ORDER_RSI_MODE = "tick"      # tick | poll
-$env:ORDER_RSI_TICK_MS = "250"    # how often to read MT5 tick (tick mode)
-$env:ORDER_RSI_POLL_MS = "1000"   # poll/heartbeat interval
-$env:BROKER_SERVER_ZONE = "UTC"   # match grok.market.broker-server-zone
+$env:ORDER_RSI_MODE = "tick"           # tick | poll
+$env:ORDER_RSI_TICK_MS = "250"          # how often to read MT5 tick (tick mode)
+$env:ORDER_RSI_POLL_MS = "1000"         # poll/heartbeat interval
+$env:ORDER_RSI_HISTORY_BARS = "5000"    # Wilder warm-up depth (default 5000)
+$env:ORDER_RSI_RSI_PERIOD = "14"
+$env:BROKER_SERVER_ZONE = "Etc/GMT-3"   # OctaFX server time (match grok.market.broker-server-zone)
 ```
 
-Frontend: bottom nav **Order RSI** → SSE stream `/api/market/xauusd/order-rsi/stream`.
+Frontend: bottom nav **Analyzer** (`/dashboard/order-rsi`) → TF-column table + SSE `/api/market/xauusd/order-rsi/stream`.
+
+**UI features:** four toggleable rows (Bar 0/1 RSI + data), zone-colored RSI boxes, page toggle **Calculated** vs **MT5 built-in**. See [order-rsi-mt5-alignment.md](./order-rsi-mt5-alignment.md).
 
 Requires MT5 terminal logged in (same as data downloader).
 

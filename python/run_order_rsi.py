@@ -10,6 +10,7 @@ Environment:
     ORDER_RSI_TICK_MS=250        tick check interval when mode=tick
     ORDER_RSI_POLL_MS=1000       minimum push interval / poll mode interval
     ORDER_RSI_RSI_PERIOD=14
+    ORDER_RSI_HISTORY_BARS=5000   # Wilder warm-up depth (match MT5 chart history)
     BROKER_SERVER_ZONE=UTC
 """
 import sys

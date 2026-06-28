@@ -191,14 +191,22 @@ curl http://localhost:8081/api/market/xauusd/health
 
 ### Live Order RSI publisher
 
-Separate process for the **Order RSI** dashboard (forming-bar RSI from MT5):
+Separate process for the **Order RSI** dashboard — Wilder RSI(14) on close, **shift 0 + shift 1** per timeframe:
 
 ```powershell
 cd python
 python run_order_rsi.py
 ```
 
-Env: `ORDER_RSI_MODE=tick|poll`, `ORDER_RSI_TICK_MS=250`, `ORDER_RSI_POLL_MS=1000`.
+| Env | Default | Purpose |
+|-----|---------|---------|
+| `ORDER_RSI_MODE` | `tick` | Push on tick change (`poll` = fixed interval) |
+| `ORDER_RSI_TICK_MS` | `250` | Tick poll interval |
+| `ORDER_RSI_POLL_MS` | `1000` | Heartbeat / poll mode interval |
+| `ORDER_RSI_HISTORY_BARS` | `5000` | Bars fetched per TF for Wilder warm-up |
+| `ORDER_RSI_RSI_PERIOD` | `14` | RSI period |
+
+**MT5 alignment:** Terminal RSI **14 / Close**. API sends both Python Wilder and optional `mt5.shift0/shift1` from EA export. **Analyzer** page toggle selects which to display.
 
 ### 5. Robustness (Implemented)
 - Automatic reconnection logic (`ensure_connected` with exponential backoff).

@@ -20,6 +20,7 @@ import pandas as pd
 
 from .config import (
     BROKER_SERVER_ZONE,
+    ORDER_RSI_HISTORY_BARS,
     ORDER_RSI_MODE,
     ORDER_RSI_POLL_MS,
     ORDER_RSI_RSI_PERIOD,
@@ -28,8 +29,9 @@ from .config import (
     SYMBOL,
 )
 from .mt5_client import MT5Client, MAX_MT5_COPY_COUNT
+from .mt5_rsi_export import read_mt5_builtin_export
 from .postgres_client import PostgresClient
-from .rsi_util import wilder_rsi_at_index
+from .rsi_util import wilder_rsi_forming_and_completed
 
 logger = logging.getLogger(__name__)
 
@@ -48,8 +50,24 @@ def _wall_iso(dt: datetime) -> str:
     return dt.strftime("%Y-%m-%dT%H:%M:%S")
 
 
+def _enrich_times_from_utc(utc_dt: datetime) -> Dict[str, str]:
+    """MT5 copy_rates `time` is UTC — convert to broker / NY / IST wall strings."""
+    if utc_dt.tzinfo is None:
+        utc_dt = utc_dt.replace(tzinfo=ZoneInfo("UTC"))
+    ny = ZoneInfo("America/New_York")
+    ist = ZoneInfo("Asia/Kolkata")
+    broker_zone = ZoneInfo(BROKER_SERVER_ZONE)
+    broker = utc_dt.astimezone(broker_zone).replace(tzinfo=None)
+    return {
+        "broker": _wall_iso(broker),
+        "ny": _wall_iso(utc_dt.astimezone(ny).replace(tzinfo=None)),
+        "ist": _wall_iso(utc_dt.astimezone(ist).replace(tzinfo=None)),
+        "utc": _wall_iso(utc_dt.astimezone(ZoneInfo("UTC")).replace(tzinfo=None)),
+    }
+
+
 def _enrich_times(broker_wall: datetime) -> Dict[str, str]:
-    """Broker wall time (naive) → NY + IST wall strings for UI."""
+    """Legacy: treat naive datetime as broker wall (avoid for bar times from MT5)."""
     zone = ZoneInfo(BROKER_SERVER_ZONE)
     ny = ZoneInfo("America/New_York")
     ist = ZoneInfo("Asia/Kolkata")
@@ -68,7 +86,7 @@ class OrderRsiPublisher:
         self.period = ORDER_RSI_RSI_PERIOD
 
     def _fetch_bars(self, tf_key: str, mt5_tf: int) -> Optional[pd.DataFrame]:
-        count = min(self.period + 30, MAX_MT5_COPY_COUNT)
+        count = min(max(self.period + 30, ORDER_RSI_HISTORY_BARS), MAX_MT5_COPY_COUNT)
         rates = mt5.copy_rates_from_pos(SYMBOL, mt5_tf, 0, count)
         if rates is None or len(rates) == 0:
             return None
@@ -85,23 +103,55 @@ class OrderRsiPublisher:
         if live_close is not None:
             closes[-1] = float(live_close)
 
-        bar_time = df["time"].iloc[-1].to_pydatetime()
-        rsi = wilder_rsi_at_index(closes, self.period)
+        bar_time_utc = df["time"].iloc[-1].to_pydatetime().replace(tzinfo=ZoneInfo("UTC"))
+        rsi_forming, rsi_completed = wilder_rsi_forming_and_completed(closes, self.period)
         close = closes[-1]
 
-        return {
+        row: Dict[str, Any] = {
             "timeframe": tf_key,
             "barIndex": 0,
             "forming": True,
-            "time": _enrich_times(bar_time),
+            "time": _enrich_times_from_utc(bar_time_utc),
             "close": round(close, 5),
-            "rsi": round(rsi, 2) if rsi is not None else None,
+            "rsi": round(rsi_forming, 2) if rsi_forming is not None else None,
             "rsiPeriod": self.period,
+            "rsiSource": "python_wilder",
+            "historyBars": len(closes),
         }
 
+        if len(df) >= 2:
+            completed_time_utc = df["time"].iloc[-2].to_pydatetime().replace(tzinfo=ZoneInfo("UTC"))
+            completed_close = float(df["close"].iloc[-2])
+            row["completed"] = {
+                "barIndex": 1,
+                "forming": False,
+                "time": _enrich_times_from_utc(completed_time_utc),
+                "close": round(completed_close, 5),
+                "rsi": round(rsi_completed, 2) if rsi_completed is not None else None,
+            }
+
+        mt5_block = self._mt5_export_block(tf_key)
+        if mt5_block:
+            s0 = mt5_block.get("shift0", {})
+            s1 = mt5_block.get("shift1", {})
+            row["mt5"] = {
+                "available": True,
+                "shift0": {"rsi": s0.get("rsi"), "close": s0.get("close")},
+                "shift1": {"rsi": s1.get("rsi"), "close": s1.get("close")},
+            }
+
+        return row
+
+    def _mt5_export_block(self, tf_key: str) -> Optional[Dict[str, Any]]:
+        export = read_mt5_builtin_export()
+        if not export:
+            return None
+        block = export.get("timeframes", {}).get(tf_key)
+        return block if isinstance(block, dict) else None
+
     def build_snapshot(self, live_close: Optional[float]) -> Dict[str, Any]:
-        now_broker = datetime.now(ZoneInfo(BROKER_SERVER_ZONE)).replace(tzinfo=None)
-        time_block = _enrich_times(now_broker)
+        now_utc = datetime.now(ZoneInfo("UTC"))
+        time_block = _enrich_times_from_utc(now_utc)
 
         timeframes: Dict[str, Any] = {}
         for tf_key in ORDER_RSI_TIMEFRAMES:
@@ -116,6 +166,8 @@ class OrderRsiPublisher:
         if price is None and timeframes.get("M1"):
             price = timeframes["M1"]["close"]
 
+        mt5_export = read_mt5_builtin_export()
+
         return {
             "symbol": SYMBOL,
             "asOf": time_block,
@@ -123,6 +175,7 @@ class OrderRsiPublisher:
             "priceSource": "forming_close",
             "pushMode": ORDER_RSI_MODE,
             "timeframes": timeframes,
+            "mt5ExportAvailable": mt5_export is not None,
             "live": self.mt5.initialized and mt5.terminal_info() is not None,
         }
 

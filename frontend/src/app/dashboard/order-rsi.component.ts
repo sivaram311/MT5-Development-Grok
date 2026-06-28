@@ -5,8 +5,22 @@ import { Subscription } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { PageHeaderComponent } from '../ui/page-header.component';
 import { StatusBadgeComponent } from '../ui/status-badge.component';
-import { OrderRsiSnapshot, OrderRsiStreamService } from '../services/order-rsi-stream.service';
+import {
+  OrderRsiSnapshot,
+  OrderRsiSourceMode,
+  OrderRsiStreamService,
+  OrderRsiTfRow
+} from '../services/order-rsi-stream.service';
 import { formatWallTime, formatAgeMinutes } from '../utils/time.util';
+import { orderRsiZone, orderRsiZoneBoxClass } from '../utils/order-rsi-zone.util';
+
+type OrderRsiRowKey = 'bar0Rsi' | 'bar0Data' | 'bar1Rsi' | 'bar1Data';
+
+interface OrderRsiRowDef {
+  key: OrderRsiRowKey;
+  label: string;
+  sublabel: string;
+}
 
 @Component({
   selector: 'app-order-rsi',
@@ -14,9 +28,9 @@ import { formatWallTime, formatAgeMinutes } from '../utils/time.util';
   imports: [CommonModule, PageHeaderComponent, StatusBadgeComponent],
   template: `
     <app-page-header
-      title="Order RSI"
-      subtitle="Live RSI(14) on the forming candle (shift 0) from MT5 — W1 through M1.">
-      <div actions>
+      title="Analyzer"
+      subtitle="Timeframes as columns — Bar 0 / Bar 1 rows with optional data rows.">
+      <div actions class="flex flex-wrap items-center gap-2">
         <app-status-badge
           [label]="connected ? 'LIVE' : 'OFFLINE'"
           [tone]="connected ? 'success' : 'danger'">
@@ -25,61 +39,161 @@ import { formatWallTime, formatAgeMinutes } from '../utils/time.util';
     </app-page-header>
 
     <div *ngIf="snapshot" class="space-y-4">
-      <!-- Headline price + times -->
-      <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-5">
-        <div class="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <div class="text-[10px] uppercase tracking-wider text-zinc-500">XAUUSD · forming close</div>
-            <div class="text-3xl sm:text-4xl font-semibold tabular-nums text-emerald-400 mt-1">
-              {{ snapshot.price != null ? (snapshot.price | number:'1.2-2') : '—' }}
-            </div>
-          </div>
-          <div class="text-right text-[10px] text-zinc-500 space-y-1 font-mono">
-            <div><span class="text-zinc-600">Broker</span> {{ formatWallTime(snapshot.asOf.broker) }}</div>
-            <div><span class="text-zinc-600">NY</span> {{ formatWallTime(snapshot.asOf.ny) }}</div>
-            <div><span class="text-zinc-600">IST</span> {{ formatWallTime(snapshot.asOf.ist) }}</div>
-          </div>
+      <!-- RSI source -->
+      <div class="flex flex-wrap items-center justify-between gap-3 bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-3">
+        <div class="text-xs text-zinc-500">
+          RSI source
+          <span class="block text-[10px] text-zinc-600 mt-0.5">Page only — not saved</span>
         </div>
-        <div class="mt-3 flex flex-wrap gap-2 text-[10px] text-zinc-500">
-          <span class="px-2 py-1 rounded-full bg-zinc-950 border border-zinc-800">mode: {{ snapshot.pushMode || 'tick' }}</span>
-          <span *ngIf="snapshot.updatedAt" class="px-2 py-1 rounded-full bg-zinc-950 border border-zinc-800">
-            updated {{ formatAgeMinutes(updatedAgeMinutes) }}
-          </span>
+        <div class="flex rounded-xl border border-zinc-700 overflow-hidden text-xs font-medium">
+          <button
+            type="button"
+            class="px-3 py-2 transition-colors"
+            [class.bg-zinc-700]="rsiSourceMode === 'python_wilder'"
+            [class.text-zinc-100]="rsiSourceMode === 'python_wilder'"
+            [class.text-zinc-500]="rsiSourceMode !== 'python_wilder'"
+            (click)="setRsiSource('python_wilder')">
+            Calculated
+          </button>
+          <button
+            type="button"
+            class="px-3 py-2 border-l border-zinc-700 transition-colors"
+            [class.bg-zinc-700]="rsiSourceMode === 'mt5_iRSI'"
+            [class.text-zinc-100]="rsiSourceMode === 'mt5_iRSI'"
+            [class.text-zinc-500]="rsiSourceMode !== 'mt5_iRSI'"
+            (click)="setRsiSource('mt5_iRSI')">
+            MT5 built-in
+          </button>
         </div>
-        <p *ngIf="snapshot.message && !snapshot.live" class="mt-3 text-xs text-amber-300/90">{{ snapshot.message }}</p>
-        <p *ngIf="!snapshot.live" class="mt-2 text-[10px] text-zinc-500 font-mono">python run_order_rsi.py</p>
       </div>
 
-      <!-- RSI grid -->
-      <div class="grid mobile:grid-cols-2 tablet:grid-cols-3 lg:grid-cols-4 gap-3">
-        <div
-          *ngFor="let tf of timeframeOrder"
-          class="bg-zinc-900 border border-zinc-800 rounded-3xl px-4 py-4 min-h-[6.5rem]"
-          [class.border-emerald-700]="rsiTone(tf) === 'success'"
-          [class.border-amber-700]="rsiTone(tf) === 'warning'"
-          [class.border-red-800]="rsiTone(tf) === 'danger'">
-          <div class="flex justify-between items-start gap-2">
-            <div class="font-semibold">{{ tf }}</div>
-            <app-status-badge
-              [label]="rowFor(tf)?.forming ? 'LIVE' : '—'"
-              [tone]="rowFor(tf) ? 'success' : 'neutral'">
-            </app-status-badge>
-          </div>
-          <div class="mt-2 text-2xl font-semibold tabular-nums font-mono"
-            [class.text-emerald-400]="rsiTone(tf) === 'success'"
-            [class.text-amber-400]="rsiTone(tf) === 'warning'"
-            [class.text-red-400]="rsiTone(tf) === 'danger'"
-            [class.text-zinc-500]="!rowFor(tf)?.rsi">
-            {{ rowFor(tf)?.rsi != null ? (rowFor(tf)!.rsi | number:'1.1-1') : '—' }}
-          </div>
-          <ng-container *ngIf="rowFor(tf)?.time as t">
-            <div class="text-[10px] text-zinc-500 mt-1 font-mono">
-              bar {{ formatWallTime(t.broker) }} UTC
-            </div>
-            <div class="text-[10px] text-zinc-600 font-mono">NY {{ formatWallTime(t.ny) }}</div>
-          </ng-container>
+      <p *ngIf="rsiSourceMode === 'mt5_iRSI' && !mt5Available" class="text-xs text-amber-300/90 bg-amber-950/30 border border-amber-800/50 rounded-xl px-4 py-2">
+        MT5 export not available — attach <span class="font-mono">GrokDevOrderRsiExport</span> on XAUUSD and enable Algo Trading.
+      </p>
+
+      <!-- Row visibility -->
+      <div class="bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-3">
+        <div class="text-xs text-zinc-500 mb-2">Show rows</div>
+        <div class="flex flex-wrap gap-2">
+          <button
+            *ngFor="let row of rowDefs"
+            type="button"
+            class="text-[11px] px-2.5 py-1.5 rounded-lg border transition-colors"
+            [ngClass]="rowVisibility[row.key]
+              ? 'border-emerald-700 bg-emerald-950/40 text-emerald-300'
+              : 'border-zinc-700 bg-zinc-950 text-zinc-500'"
+            (click)="toggleRow(row.key)">
+            {{ row.label }}
+          </button>
         </div>
       </div>
+
+      <!-- Price strip -->
+      <div class="bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div class="text-[10px] uppercase tracking-wider text-zinc-500">XAUUSD</div>
+          <div class="text-2xl font-semibold tabular-nums text-zinc-100">
+            {{ snapshot.price != null ? (snapshot.price | number:'1.2-2') : '—' }}
+          </div>
+        </div>
+        <div class="text-[10px] text-zinc-500 font-mono text-right">
+          <div>updated {{ formatAgeMinutes(updatedAgeMinutes) }}</div>
+          <div class="text-zinc-600">{{ rsiSourceMode === 'mt5_iRSI' ? 'MT5 iRSI' : 'Python Wilder' }}</div>
+        </div>
+      </div>
+
+      <!-- Zone legend -->
+      <div class="flex flex-wrap gap-2 text-[10px] text-zinc-500">
+        <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border border-zinc-800">
+          <span class="w-3 h-3 rounded bg-red-950 border border-red-600/70"></span> &lt; 40
+        </span>
+        <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border border-zinc-800">
+          <span class="w-3 h-3 rounded bg-amber-950 border border-amber-600/60"></span> 40–44 / 56–60
+        </span>
+        <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border border-zinc-800">
+          <span class="w-3 h-3 rounded bg-zinc-800 border border-zinc-700"></span> 45–55
+        </span>
+        <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border border-zinc-800">
+          <span class="w-3 h-3 rounded bg-emerald-950 border border-emerald-600/70"></span> &gt; 60
+        </span>
+      </div>
+
+      <!-- Table: TF headers as columns -->
+      <div class="overflow-x-auto rounded-2xl border border-zinc-800 bg-zinc-900">
+        <table class="w-full min-w-[36rem] text-sm border-collapse">
+          <thead>
+            <tr class="border-b border-zinc-800 bg-zinc-950/60">
+              <th class="sticky left-0 z-10 bg-zinc-950 text-left text-[10px] uppercase tracking-wider text-zinc-500 font-medium px-3 py-2.5 min-w-[5.5rem]">
+                Row
+              </th>
+              <th
+                *ngFor="let tf of timeframeOrder"
+                class="text-center text-xs font-semibold text-zinc-200 px-2 py-2.5 min-w-[3.25rem]">
+                {{ tf }}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Row 1: Bar 0 forming RSI -->
+            <tr *ngIf="rowVisibility.bar0Rsi" class="border-b border-zinc-800/80">
+              <th class="sticky left-0 z-10 bg-zinc-900 text-left text-[10px] text-zinc-500 font-normal px-3 py-2 align-middle border-r border-zinc-800/50">
+                <span class="font-medium text-zinc-300">Bar 0</span>
+                <span class="block text-[9px] text-zinc-600">forming · RSI</span>
+              </th>
+              <td *ngFor="let tf of timeframeOrder" class="text-center px-2 py-2">
+                <div
+                  class="inline-flex min-w-[3.25rem] justify-center items-center px-2 py-1.5 rounded-lg border tabular-nums font-mono font-semibold text-zinc-100 text-sm"
+                  [ngClass]="zoneBoxClass(bar0Rsi(tf))">
+                  {{ bar0Rsi(tf) != null ? (bar0Rsi(tf)! | number:'1.1-1') : '—' }}
+                </div>
+              </td>
+            </tr>
+
+            <!-- Row 2: Bar 0 data -->
+            <tr *ngIf="rowVisibility.bar0Data" class="border-b border-zinc-800/80 bg-zinc-950/20">
+              <th class="sticky left-0 z-10 bg-zinc-950 text-left text-[10px] text-zinc-500 font-normal px-3 py-2 align-middle border-r border-zinc-800/50">
+                <span class="font-medium text-zinc-400">Bar 0</span>
+                <span class="block text-[9px] text-zinc-600">data</span>
+              </th>
+              <td *ngFor="let tf of timeframeOrder" class="text-center px-2 py-2 text-[10px] font-mono text-zinc-500 leading-snug">
+                <div *ngIf="rowFor(tf)?.time">{{ formatWallTime(rowFor(tf)!.time.broker) }}</div>
+                <div *ngIf="bar0Close(tf) != null" class="text-zinc-600">{{ bar0Close(tf) | number:'1.2-2' }}</div>
+                <span *ngIf="!rowFor(tf)?.time && bar0Close(tf) == null">—</span>
+              </td>
+            </tr>
+
+            <!-- Row 3: Bar 1 closed RSI -->
+            <tr *ngIf="rowVisibility.bar1Rsi" class="border-b border-zinc-800/80">
+              <th class="sticky left-0 z-10 bg-zinc-900 text-left text-[10px] text-zinc-500 font-normal px-3 py-2 align-middle border-r border-zinc-800/50">
+                <span class="font-medium text-zinc-300">Bar 1</span>
+                <span class="block text-[9px] text-zinc-600">closed · RSI</span>
+              </th>
+              <td *ngFor="let tf of timeframeOrder" class="text-center px-2 py-2">
+                <div
+                  class="inline-flex min-w-[3.25rem] justify-center items-center px-2 py-1.5 rounded-lg border tabular-nums font-mono font-semibold text-zinc-100 text-sm"
+                  [ngClass]="zoneBoxClass(bar1Rsi(tf))">
+                  {{ bar1Rsi(tf) != null ? (bar1Rsi(tf)! | number:'1.1-1') : '—' }}
+                </div>
+              </td>
+            </tr>
+
+            <!-- Row 4: Bar 1 data -->
+            <tr *ngIf="rowVisibility.bar1Data">
+              <th class="sticky left-0 z-10 bg-zinc-950 text-left text-[10px] text-zinc-500 font-normal px-3 py-2 align-middle border-r border-zinc-800/50">
+                <span class="font-medium text-zinc-400">Bar 1</span>
+                <span class="block text-[9px] text-zinc-600">data</span>
+              </th>
+              <td *ngFor="let tf of timeframeOrder" class="text-center px-2 py-2 text-[10px] font-mono text-zinc-500 leading-snug">
+                <div *ngIf="rowFor(tf)?.completed?.time">{{ formatWallTime(rowFor(tf)!.completed!.time.broker) }}</div>
+                <div *ngIf="bar1Close(tf) != null" class="text-zinc-600">{{ bar1Close(tf) | number:'1.2-2' }}</div>
+                <span *ngIf="!rowFor(tf)?.completed?.time && bar1Close(tf) == null">—</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p *ngIf="snapshot.message && !snapshot.live" class="text-xs text-amber-300/90">{{ snapshot.message }}</p>
     </div>
 
     <div *ngIf="!snapshot" class="text-center text-zinc-500 text-sm py-12">Connecting to live Order RSI stream…</div>
@@ -87,8 +201,24 @@ import { formatWallTime, formatAgeMinutes } from '../utils/time.util';
 })
 export class OrderRsiComponent implements OnInit, OnDestroy {
   timeframeOrder = ['W1', 'D1', 'H4', 'H1', 'M15', 'M5', 'M1'];
+
+  rowDefs: OrderRsiRowDef[] = [
+    { key: 'bar0Rsi', label: 'Bar 0 · RSI', sublabel: 'forming' },
+    { key: 'bar0Data', label: 'Bar 0 · data', sublabel: 'time / close' },
+    { key: 'bar1Rsi', label: 'Bar 1 · RSI', sublabel: 'closed' },
+    { key: 'bar1Data', label: 'Bar 1 · data', sublabel: 'time / close' }
+  ];
+
+  rowVisibility: Record<OrderRsiRowKey, boolean> = {
+    bar0Rsi: true,
+    bar0Data: true,
+    bar1Rsi: true,
+    bar1Data: true
+  };
+
   snapshot: OrderRsiSnapshot | null = null;
   connected = false;
+  rsiSourceMode: OrderRsiSourceMode = 'python_wilder';
   formatWallTime = formatWallTime;
   formatAgeMinutes = formatAgeMinutes;
 
@@ -117,6 +247,10 @@ export class OrderRsiComponent implements OnInit, OnDestroy {
     this.stream.stop();
   }
 
+  get mt5Available(): boolean {
+    return this.snapshot?.mt5ExportAvailable === true;
+  }
+
   get updatedAgeMinutes(): number | null {
     if (!this.snapshot?.updatedAt) return null;
     const t = Date.parse(this.snapshot.updatedAt);
@@ -124,15 +258,57 @@ export class OrderRsiComponent implements OnInit, OnDestroy {
     return Math.floor((Date.now() - t) / 60000);
   }
 
-  rowFor(tf: string) {
+  setRsiSource(mode: OrderRsiSourceMode): void {
+    this.rsiSourceMode = mode;
+  }
+
+  toggleRow(key: OrderRsiRowKey): void {
+    this.rowVisibility[key] = !this.rowVisibility[key];
+  }
+
+  rowFor(tf: string): OrderRsiTfRow | undefined {
     return this.snapshot?.timeframes?.[tf];
   }
 
-  rsiTone(tf: string): 'success' | 'warning' | 'danger' | 'neutral' {
-    const rsi = this.rowFor(tf)?.rsi;
-    if (rsi == null) return 'neutral';
-    if (rsi >= 70) return 'danger';
-    if (rsi <= 30) return 'success';
-    return 'warning';
+  bar0Rsi(tf: string): number | null {
+    const row = this.rowFor(tf);
+    if (!row) return null;
+    if (this.rsiSourceMode === 'mt5_iRSI' && row.mt5?.available) {
+      const v = row.mt5.shift0?.rsi;
+      return v != null ? v : null;
+    }
+    return row.rsi ?? null;
+  }
+
+  bar1Rsi(tf: string): number | null {
+    const row = this.rowFor(tf);
+    if (!row) return null;
+    if (this.rsiSourceMode === 'mt5_iRSI' && row.mt5?.available) {
+      const v = row.mt5.shift1?.rsi;
+      return v != null ? v : null;
+    }
+    return row.completed?.rsi ?? null;
+  }
+
+  bar0Close(tf: string): number | null {
+    const row = this.rowFor(tf);
+    if (!row) return null;
+    if (this.rsiSourceMode === 'mt5_iRSI' && row.mt5?.available && row.mt5.shift0?.close != null) {
+      return row.mt5.shift0.close;
+    }
+    return row.close ?? null;
+  }
+
+  bar1Close(tf: string): number | null {
+    const row = this.rowFor(tf);
+    if (!row) return null;
+    if (this.rsiSourceMode === 'mt5_iRSI' && row.mt5?.available && row.mt5.shift1?.close != null) {
+      return row.mt5.shift1.close;
+    }
+    return row.completed?.close ?? null;
+  }
+
+  zoneBoxClass(rsi: number | null): string {
+    return orderRsiZoneBoxClass(orderRsiZone(rsi));
   }
 }
