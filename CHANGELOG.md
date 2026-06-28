@@ -4,6 +4,18 @@ All notable changes to the Grok Dev full-stack application (Spring Boot + Angula
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2026-06-29 (NY Liquidity Sweep Analyzer)
+
+### Added
+- **NY Liquidity Sweep Analyzer** — full stack: Python detection, Postgres storage, Spring API + SSE, Angular page at `/dashboard/ny-liquidity-sweep`
+- `liquidity_sweep_analyzer.py`, `liquidity_sweep_service.py`, `run_ny_liquidity_sweep.py`
+- Tables: `liquidity_setups`, `live_ny_liquidity_sweep`
+- Java: `NyLiquiditySweepService`, `NyLiquiditySweepCalculator`, `NyLiquiditySweepController`, SSE scheduler
+- Angular: chart + historical grid + stats + live RSI panel + alert banner
+- **`frontend/docs/NY_LIQUIDITY_SWEEP_ANALYZER.md`**
+
+---
+
 ## [Unreleased] - 2026-06-29 (Angular performance optimizations)
 
 ### Added

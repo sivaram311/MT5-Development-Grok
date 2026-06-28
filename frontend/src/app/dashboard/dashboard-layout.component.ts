@@ -11,6 +11,7 @@ import { OfflineBannerComponent } from '../ui/offline-banner.component';
 import { PwaUpdateComponent } from '../ui/pwa-update.component';
 import { HealthAlertBannerComponent } from '../ui/health-alert-banner.component';
 import { GannAlertBannerComponent } from '../ui/gann-alert-banner.component';
+import { LiquidityAlertBannerComponent } from '../ui/liquidity-alert-banner.component';
 
 interface NavItem {
   route: string;
@@ -22,12 +23,13 @@ interface NavItem {
   selector: 'app-dashboard-layout',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, RouterModule, BottomSheetComponent, NavIconComponent, OfflineBannerComponent, PwaUpdateComponent, HealthAlertBannerComponent, GannAlertBannerComponent],
+  imports: [CommonModule, RouterModule, BottomSheetComponent, NavIconComponent, OfflineBannerComponent, PwaUpdateComponent, HealthAlertBannerComponent, GannAlertBannerComponent, LiquidityAlertBannerComponent],
   template: `
     <div class="min-h-screen bg-zinc-950 text-zinc-200 flex flex-col">
       <app-offline-banner></app-offline-banner>
       <app-health-alert-banner></app-health-alert-banner>
       <app-gann-alert-banner></app-gann-alert-banner>
+      <app-liquidity-alert-banner></app-liquidity-alert-banner>
       <header class="sticky top-0 z-50 border-b border-zinc-800 bg-zinc-950/95 backdrop-blur-xl pt-[var(--safe-top)]">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
           <div class="flex items-center gap-3 min-w-0">
@@ -152,6 +154,13 @@ interface NavItem {
             Gann Intraday
           </a>
           <a
+            routerLink="ny-liquidity-sweep"
+            (click)="moreSheetOpen = false"
+            class="flex items-center gap-3 min-h-11 px-3 rounded-2xl active:bg-zinc-800 text-sm">
+            <app-nav-icon class="w-5 h-5 text-zinc-400" name="liquidity"></app-nav-icon>
+            NY Liquidity
+          </a>
+          <a
             routerLink="analysis"
             (click)="moreSheetOpen = false"
             class="flex items-center gap-3 min-h-11 px-3 rounded-2xl active:bg-zinc-800 text-sm">
@@ -199,6 +208,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
     { route: 'market', label: 'Market Data', icon: 'market' },
     { route: 'order-rsi', label: 'Analyzer', icon: 'order-rsi' },
     { route: 'gann-intraday', label: 'Gann Intraday', icon: 'gann-intraday' },
+    { route: 'ny-liquidity-sweep', label: 'NY Liquidity', icon: 'liquidity' },
     { route: 'volatility', label: 'Volatility', icon: 'volatility' },
     { route: 'health', label: 'Health', icon: 'health' }
   ];

@@ -33,6 +33,7 @@ import { PageHeaderComponent } from '../ui/page-header.component';
         <a href="#health" class="px-3 py-1 rounded-full bg-zinc-800 border border-zinc-700 active:bg-zinc-700" (click)="onNavChipClick('health', $event)">10. Health</a>
         <a href="#order-rsi" class="px-3 py-1 rounded-full bg-zinc-800 border border-zinc-700 active:bg-zinc-700" (click)="onNavChipClick('order-rsi', $event)">Analyzer</a>
         <a href="#gann-intraday" class="px-3 py-1 rounded-full bg-zinc-800 border border-zinc-700 active:bg-zinc-700" (click)="onNavChipClick('gann-intraday', $event)">Gann Intraday</a>
+        <a href="#ny-liquidity" class="px-3 py-1 rounded-full bg-zinc-800 border border-zinc-700 active:bg-zinc-700" (click)="onNavChipClick('ny-liquidity', $event)">NY Liquidity</a>
         <a href="#flow" class="px-3 py-1 rounded-full bg-zinc-800 border border-zinc-700 active:bg-zinc-700" (click)="onNavChipClick('flow', $event)">11. Full Data Flow</a>
       </div>
 
@@ -298,6 +299,21 @@ import { PageHeaderComponent } from '../ui/page-header.component';
             </div>
 
             <p>Tracker: <a href="file:///E:/Source/grok_dev/docs/gann-intraday-pending-implementation.md" target="_blank" class="text-emerald-400 underline">gann-intraday-pending-implementation.md</a> · API: <a href="file:///E:/Source/grok_dev/docs/api-endpoints.md" target="_blank" class="text-emerald-400 underline">api-endpoints.md</a></p>
+          </div>
+        </details>
+
+        <!-- NY Liquidity Sweep -->
+        <details id="ny-liquidity" class="doc-section bg-zinc-900 border border-zinc-800 rounded-3xl overflow-hidden">
+          <summary class="px-4 py-3.5 font-semibold cursor-pointer flex justify-between items-center active:bg-zinc-800 text-base">NY Liquidity Sweep Analyzer</summary>
+          <div class="px-4 pb-5 text-sm text-zinc-300 text-xs space-y-3 leading-relaxed">
+            <p><strong>Route:</strong> <code>/dashboard/ny-liquidity-sweep</code> — sidebar <strong>NY Liquidity</strong> or phone <strong>More</strong> menu.</p>
+            <p>Detects: liquidity sweep → return to historical structure at similar price → H1/M15 RSI confluence → reversal with entry/SL/TP.</p>
+            <p>Full guide: <a href="file:///E:/Source/grok_dev/frontend/docs/NY_LIQUIDITY_SWEEP_ANALYZER.md" target="_blank" class="text-emerald-400 underline">NY_LIQUIDITY_SWEEP_ANALYZER.md</a></p>
+            <ul class="pl-4 list-disc space-y-1">
+              <li><strong>Scan history</strong> — UI button or <code>python run_ny_liquidity_sweep.py --backfill</code></li>
+              <li><strong>Live</strong> — <code>python run_ny_liquidity_sweep.py --live</code> + SSE banner</li>
+              <li><strong>Chart</strong> — click any row for M5 context + sweep/structure/entry/SL/TP lines</li>
+            </ul>
           </div>
         </details>
 

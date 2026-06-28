@@ -6,6 +6,7 @@ export type NavIconName =
   | 'market'
   | 'order-rsi'
   | 'gann-intraday'
+  | 'liquidity'
   | 'volatility'
   | 'health'
   | 'analysis'
@@ -43,6 +44,10 @@ export type NavIconName =
           <path d="M12 2v20"/>
           <path d="M2 12h20"/>
           <path d="m7 7 10 10M17 7 7 17"/>
+        </g>
+        <g *ngSwitchCase="'liquidity'">
+          <path d="M4 19V5"/>
+          <path d="M4 12h6l2-4 4 8 2-4h2"/>
         </g>
         <path *ngSwitchCase="'volatility'" d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/>
         <path *ngSwitchCase="'health'" d="M12 21s-7-4.5-7-10a4 4 0 0 1 7-2 4 4 0 0 1 7 2c0 5.5-7 10-7 10z"/>

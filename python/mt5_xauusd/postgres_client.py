@@ -206,6 +206,161 @@ class PostgresClient:
                 conn.commit()
         self._with_retry(_run)
 
+    def ensure_liquidity_setups_table(self):
+        query = text(f'''
+            CREATE TABLE IF NOT EXISTS "{SCHEMA}".liquidity_setups (
+                setup_id VARCHAR(64) PRIMARY KEY,
+                setup_date DATE NOT NULL,
+                ny_time VARCHAR(16),
+                ist_time VARCHAR(16),
+                direction VARCHAR(16) NOT NULL,
+                sweep_level NUMERIC(12, 5),
+                structure_level NUMERIC(12, 5),
+                entry NUMERIC(12, 5),
+                sl NUMERIC(12, 5),
+                tp1 NUMERIC(12, 5),
+                tp2 NUMERIC(12, 5),
+                result VARCHAR(16),
+                rr_achieved NUMERIC(8, 2),
+                rsi_htf NUMERIC(8, 2),
+                rsi_ltf NUMERIC(8, 2),
+                notes TEXT,
+                how_spotted TEXT,
+                payload JSONB,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        ''')
+        with self.engine.connect() as conn:
+            conn.execute(query)
+            conn.execute(text(f'CREATE INDEX IF NOT EXISTS idx_liquidity_setups_date ON "{SCHEMA}".liquidity_setups (setup_date DESC)'))
+            conn.commit()
+
+    def upsert_liquidity_setup(self, setup: dict):
+        import json as json_lib
+        query = text(f'''
+            INSERT INTO "{SCHEMA}".liquidity_setups (
+                setup_id, setup_date, ny_time, ist_time, direction,
+                sweep_level, structure_level, entry, sl, tp1, tp2,
+                result, rr_achieved, rsi_htf, rsi_ltf, notes, how_spotted, payload
+            ) VALUES (
+                :setup_id, :setup_date, :ny_time, :ist_time, :direction,
+                :sweep_level, :structure_level, :entry, :sl, :tp1, :tp2,
+                :result, :rr_achieved, :rsi_htf, :rsi_ltf, :notes, :how_spotted, CAST(:payload AS jsonb)
+            )
+            ON CONFLICT (setup_id) DO UPDATE SET
+                result = EXCLUDED.result,
+                rr_achieved = EXCLUDED.rr_achieved,
+                payload = EXCLUDED.payload
+        ''')
+        payload = setup.get("payload") or {}
+        params = {
+            "setup_id": setup["setup_id"],
+            "setup_date": setup["date"],
+            "ny_time": setup.get("ny_time"),
+            "ist_time": setup.get("ist_time"),
+            "direction": setup["direction"],
+            "sweep_level": setup.get("sweep_level"),
+            "structure_level": setup.get("structure_level"),
+            "entry": setup.get("entry"),
+            "sl": setup.get("sl"),
+            "tp1": setup.get("tp1"),
+            "tp2": setup.get("tp2"),
+            "result": setup.get("result"),
+            "rr_achieved": setup.get("rr_achieved"),
+            "rsi_htf": setup.get("rsi_htf"),
+            "rsi_ltf": setup.get("rsi_ltf"),
+            "notes": setup.get("notes"),
+            "how_spotted": setup.get("how_spotted"),
+            "payload": json_lib.dumps(payload),
+        }
+        def _run():
+            with self.engine.connect() as conn:
+                conn.execute(query, params)
+                conn.commit()
+        self._with_retry(_run)
+
+    def fetch_liquidity_setups(self, limit: int = 500) -> list:
+        query = text(f'''
+            SELECT setup_id, setup_date, ny_time, ist_time, direction,
+                   sweep_level, structure_level, entry, sl, tp1, tp2,
+                   result, rr_achieved, rsi_htf, rsi_ltf, notes, how_spotted, payload
+            FROM "{SCHEMA}".liquidity_setups
+            ORDER BY setup_date DESC, ny_time DESC
+            LIMIT :limit
+        ''')
+        with self.engine.connect() as conn:
+            rows = conn.execute(query, {"limit": limit}).fetchall()
+        out = []
+        for r in rows:
+            out.append({
+                "setup_id": r[0],
+                "date": str(r[1]),
+                "ny_time": r[2],
+                "ist_time": r[3],
+                "direction": r[4],
+                "sweep_level": float(r[5]) if r[5] is not None else None,
+                "structure_level": float(r[6]) if r[6] is not None else None,
+                "entry": float(r[7]) if r[7] is not None else None,
+                "sl": float(r[8]) if r[8] is not None else None,
+                "tp1": float(r[9]) if r[9] is not None else None,
+                "tp2": float(r[10]) if r[10] is not None else None,
+                "result": r[11],
+                "rr_achieved": float(r[12]) if r[12] is not None else None,
+                "rsi_htf": float(r[13]) if r[13] is not None else None,
+                "rsi_ltf": float(r[14]) if r[14] is not None else None,
+                "notes": r[15],
+                "how_spotted": r[16],
+                "payload": r[17] or {},
+            })
+        return out
+
+    def ensure_live_ny_liquidity_sweep_table(self):
+        query = text(f'''
+            CREATE TABLE IF NOT EXISTS "{SCHEMA}".live_ny_liquidity_sweep (
+                id SMALLINT PRIMARY KEY DEFAULT 1,
+                payload JSONB NOT NULL,
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                CONSTRAINT live_ny_liquidity_sweep_singleton CHECK (id = 1)
+            )
+        ''')
+        with self.engine.connect() as conn:
+            conn.execute(query)
+            conn.commit()
+
+    def upsert_live_ny_liquidity_sweep(self, payload: dict):
+        import json as json_lib
+        query = text(f'''
+            INSERT INTO "{SCHEMA}".live_ny_liquidity_sweep (id, payload, updated_at)
+            VALUES (1, CAST(:payload AS jsonb), NOW())
+            ON CONFLICT (id) DO UPDATE
+            SET payload = EXCLUDED.payload, updated_at = NOW()
+        ''')
+        def _run():
+            with self.engine.connect() as conn:
+                conn.execute(query, {"payload": json_lib.dumps(payload)})
+                conn.commit()
+        self._with_retry(_run)
+
+    def fetch_candles_chronological(self, timeframe_key: str, limit: int = 5000) -> pd.DataFrame:
+        """Fetch OHLC rows ASC (oldest first) for analysis."""
+        table_name = get_table_name(timeframe_key)
+        query = text(f'''
+            SELECT time, open, high, low, close, tick_volume
+            FROM "{SCHEMA}"."{table_name}"
+            ORDER BY time DESC
+            LIMIT :limit
+        ''')
+        try:
+            with self.engine.connect() as conn:
+                df = pd.read_sql(query, conn, params={"limit": limit})
+        except Exception as exc:
+            if "does not exist" in str(exc).lower():
+                return pd.DataFrame()
+            raise
+        if df.empty:
+            return df
+        return df.sort_values("time").reset_index(drop=True)
+
     def get_last_timestamp(self, table_name: str) -> pd.Timestamp:
         """Get the latest timestamp already stored in the table.
         Returns None if the table does not exist yet (first run).

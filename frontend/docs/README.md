@@ -14,6 +14,7 @@ All documentation is written with **mobile and tablet reading** in mind.
 - [ANGULAR_FRONTEND.md](file:///E:/Source/grok_dev/frontend/docs/ANGULAR_FRONTEND.md) — Routed layout components, custom table wrappers, timezone formatting safety, and column preferences logic.
 - [PERFORMANCE_OPTIMIZATION.md](file:///E:/Source/grok_dev/frontend/docs/PERFORMANCE_OPTIMIZATION.md) — OnPush, SSE throttling, route-aware streams, virtual scroll tuning (June 2026).
 - [GANN_INTRADAY_USAGE_GUIDE.md](file:///E:/Source/grok_dev/frontend/docs/GANN_INTRADAY_USAGE_GUIDE.md) — **How to use** the Gann Intraday page (`/dashboard/gann-intraday`): controls, modules, confluence scoring, tutorials, troubleshooting.
+- [NY_LIQUIDITY_SWEEP_ANALYZER.md](file:///E:/Source/grok_dev/frontend/docs/NY_LIQUIDITY_SWEEP_ANALYZER.md) — NY session liquidity sweep + structure reference + multi-TF RSI analyzer.
 - [DATA_FLOW_AND_INTEGRATION.md](file:///E:/Source/grok_dev/frontend/docs/DATA_FLOW_AND_INTEGRATION.md) — End-to-end trace of a candle from MT5 to display, health checks, and API contracts.
 - [NY_SESSION_ONLY_FEATURE.md](file:///E:/Source/grok_dev/frontend/docs/NY_SESSION_ONLY_FEATURE.md) — Logic behind filtering hours and generating synthetic daily bars from M15 intervals.
 - [TIMEZONE_HANDLING.md](file:///E:/Source/grok_dev/frontend/docs/TIMEZONE_HANDLING.md) — In-depth mapping of broker, New York, and Indian Standard (IST) time offsets.
