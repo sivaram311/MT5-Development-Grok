@@ -127,6 +127,10 @@ Grid-based (REST) intraday Gann study for XAUUSD mean reversion — not SSE.
 
 Orchestrator: [gann-intraday.util.ts](file:///E:/Source/grok_dev/frontend/src/app/utils/gann-intraday.util.ts). Tracker: [gann-intraday-pending-implementation.md](../../docs/gann-intraday-pending-implementation.md).
 
+**Backend:** `GET /api/market/xauusd/gann-intraday` ([GannIntradayController.java](file:///E:/Source/grok_dev/backend/src/main/java/com/grokdev/grokdev/controller/GannIntradayController.java)) — Java calculator + live Postgres snapshot. SSE via [gann-intraday-stream.service.ts](file:///E:/Source/grok_dev/frontend/src/app/services/gann-intraday-stream.service.ts). Dashboard banner: [gann-alert-banner.component.ts](file:///E:/Source/grok_dev/frontend/src/app/ui/gann-alert-banner.component.ts).
+
+**Python:** [run_gann_intraday.py](file:///E:/Source/grok_dev/python/run_gann_intraday.py) · **MT5:** [GrokDevGannScanner.mq5](file:///E:/Source/grok_dev/python/mt5_scripts/GrokDevGannScanner.mq5)
+
 ### LoginComponent
 [login.component.ts](file:///E:/Source/grok_dev/frontend/src/app/login/login.component.ts)
 - Mobile-first sign-in with emerald accent, icon inputs, show/hide password

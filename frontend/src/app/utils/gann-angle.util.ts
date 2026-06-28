@@ -1,8 +1,15 @@
-/** 1×1 Gann angle equilibrium & mean-reversion deviation (intraday approximation). */
+/** 1×1 Gann angle equilibrium, fan lines & mean-reversion alerts. */
 
 import { GridCandle } from './gann-session-pivot.util';
 
 export type GannAngleBias = 'balanced' | 'overextended_up' | 'overextended_down';
+
+export interface GannFanLine {
+  barsAhead: number;
+  oneByOne: number;
+  twoByOne: number;
+  oneByTwo: number;
+}
 
 export interface GannAngleStudy {
   pivotPrice: number;
@@ -16,6 +23,9 @@ export interface GannAngleStudy {
   oneByOneSlope: number;
   bias: GannAngleBias;
   overextended: boolean;
+  angleAlert: boolean;
+  extensionThresholdAtr: number;
+  fanLines: GannFanLine[];
 }
 
 function computeAtr(candles: GridCandle[], period: number): number {
@@ -34,7 +44,6 @@ function computeAtr(candles: GridCandle[], period: number): number {
   return sum / period;
 }
 
-/** 1×1 ≈ one ATR per bar on entry timeframe from session pivot. */
 export function computeGannOneByOne(
   candles: GridCandle[],
   pivotPrice: number,
@@ -50,7 +59,7 @@ export function computeGannOneByOne(
   if (currentPrice == null) return null;
 
   const atr = computeAtr(candles, atrPeriod);
-  const oneByOneSlope = atr > 0 ? atr : (pivotPrice * 0.0003);
+  const oneByOneSlope = atr > 0 ? atr : pivotPrice * 0.0003;
   const barsFromOrigin = Math.max(0, originBarIndex);
   const equilibriumPrice = pivotPrice + barsFromOrigin * oneByOneSlope;
   const deviation = currentPrice - equilibriumPrice;
@@ -59,6 +68,16 @@ export function computeGannOneByOne(
   let bias: GannAngleBias = 'balanced';
   if (deviationAtr >= extensionThresholdAtr) bias = 'overextended_up';
   else if (deviationAtr <= -extensionThresholdAtr) bias = 'overextended_down';
+
+  const fanLines: GannFanLine[] = [];
+  for (let n = 0; n < 13; n++) {
+    fanLines.push({
+      barsAhead: n,
+      oneByOne: round2(pivotPrice + (barsFromOrigin + n) * oneByOneSlope),
+      twoByOne: round2(pivotPrice + (barsFromOrigin + n) * oneByOneSlope * 2),
+      oneByTwo: round2(pivotPrice + (barsFromOrigin + n) * oneByOneSlope * 0.5)
+    });
+  }
 
   return {
     pivotPrice,
@@ -71,7 +90,10 @@ export function computeGannOneByOne(
     barsFromOrigin,
     oneByOneSlope: round2(oneByOneSlope),
     bias,
-    overextended: bias !== 'balanced'
+    overextended: bias !== 'balanced',
+    angleAlert: Math.abs(deviationAtr) >= extensionThresholdAtr,
+    extensionThresholdAtr,
+    fanLines
   };
 }
 
@@ -79,7 +101,6 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
-/** Bars since session open bar on DESC-sorted grid. */
 export function findOriginBarIndex(candles: GridCandle[], sessionStartTime?: string): number {
   if (!sessionStartTime || !candles.length) return Math.min(candles.length - 1, 12);
   const idx = candles.findIndex(c => (c.time ?? c.nyTime) === sessionStartTime);

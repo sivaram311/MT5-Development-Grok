@@ -20,7 +20,7 @@ describe('gann-intraday.util', () => {
   ];
 
   it('builds full intraday study from grid candles', () => {
-    const study = computeGannIntradayStudy('M5', m5, m15, d1, 'nyOpen');
+    const study = computeGannIntradayStudy('M5', m5, m15, d1, { so9PivotKey: 'nyOpen' });
     expect(study).not.toBeNull();
     expect(study!.so9PivotPrice).toBe(3334);
     expect(study!.oddEven.pivot).toBe(3334);
@@ -30,7 +30,7 @@ describe('gann-intraday.util', () => {
   });
 
   it('uses PDH as So9 pivot when selected', () => {
-    const study = computeGannIntradayStudy('M5', m5, m15, d1, 'pdh');
+    const study = computeGannIntradayStudy('M5', m5, m15, d1, { so9PivotKey: 'pdh' });
     expect(study!.so9PivotPrice).toBe(3345);
   });
 });

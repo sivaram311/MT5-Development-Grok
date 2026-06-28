@@ -24,6 +24,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final String SSE_HEALTH_STREAM_PATH = "/api/market/xauusd/health/stream";
     private static final String SSE_ORDER_RSI_STREAM_PATH = "/api/market/xauusd/order-rsi/stream";
+    private static final String SSE_GANN_INTRADAY_STREAM_PATH = "/api/market/xauusd/gann-intraday/stream";
 
     @Autowired
     private JwtUtil jwtUtil;
@@ -75,7 +76,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         // EventSource cannot send Authorization header — query token on SSE streams only.
         if (SSE_HEALTH_STREAM_PATH.equals(request.getRequestURI())
-                || SSE_ORDER_RSI_STREAM_PATH.equals(request.getRequestURI())) {
+                || SSE_ORDER_RSI_STREAM_PATH.equals(request.getRequestURI())
+                || SSE_GANN_INTRADAY_STREAM_PATH.equals(request.getRequestURI())) {
             String queryToken = request.getParameter("access_token");
             if (StringUtils.hasText(queryToken)) {
                 return queryToken;

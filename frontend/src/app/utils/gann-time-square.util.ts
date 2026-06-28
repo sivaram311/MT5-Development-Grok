@@ -1,8 +1,9 @@
-/** Gann time squaring — session elapsed vs price move. */
+/** Gann time squaring — session elapsed vs price move with configurable scale. */
 
 export interface TimeSquareMilestone {
   minutes: number;
   label: string;
+  scaledMove: number;
   priceTarget: number;
   nearSquare: boolean;
 }
@@ -13,6 +14,7 @@ export interface TimeSquareStudy {
   priceMove: number;
   absPriceMove: number;
   ratioPricePerMin: number;
+  scaleFactor: number;
   milestones: TimeSquareMilestone[];
   anyNearSquare: boolean;
 }
@@ -28,6 +30,7 @@ export function computeTimeSquare(
   sessionStartNy: string | undefined,
   sessionOpenPrice: number | null,
   currentPrice: number | null,
+  scaleFactor = 1.0,
   nowMs: number = Date.now()
 ): TimeSquareStudy | null {
   if (sessionOpenPrice == null || currentPrice == null || sessionOpenPrice <= 0) return null;
@@ -43,19 +46,23 @@ export function computeTimeSquare(
 
   const checkpoints = [45, 90, 180];
   const milestones: TimeSquareMilestone[] = checkpoints.map(minutes => {
-    const priceTarget = sessionOpenPrice + (priceMove >= 0 ? minutes : -minutes);
+    const scaled = minutes * scaleFactor;
+    const priceTarget = sessionOpenPrice + (priceMove >= 0 ? scaled : -scaled);
     const nearTime = Math.abs(minutesElapsed - minutes) <= 5;
     const nearPrice = Math.abs(currentPrice - priceTarget) <= Math.max(2, absPriceMove * 0.05);
+    const nearEquality = Math.abs(absPriceMove - scaled) <= Math.max(1.5, scaled * 0.08) && nearTime;
     return {
       minutes,
       label: `${minutes} min`,
+      scaledMove: round2(scaled),
       priceTarget: round2(priceTarget),
-      nearSquare: nearTime || nearPrice
+      nearSquare: nearTime || nearPrice || nearEquality
     };
   });
 
   const anyNearSquare = milestones.some(m => m.nearSquare)
-    || checkpoints.some(m => Math.abs(minutesElapsed - m) <= 3 && Math.abs(absPriceMove - m) <= 3);
+    || checkpoints.some(m =>
+      Math.abs(minutesElapsed - m) <= 3 && Math.abs(absPriceMove - m * scaleFactor) <= 3);
 
   return {
     sessionStart: sessionStartNy,
@@ -63,6 +70,7 @@ export function computeTimeSquare(
     priceMove: round2(priceMove),
     absPriceMove: round2(absPriceMove),
     ratioPricePerMin: round2(ratioPricePerMin),
+    scaleFactor,
     milestones,
     anyNearSquare
   };

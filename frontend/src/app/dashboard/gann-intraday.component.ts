@@ -1,7 +1,10 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
-import { forkJoin } from 'rxjs';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { Subscription, forkJoin } from 'rxjs';
+import { FormsModule } from '@angular/forms';
+import { environment } from '../../environments/environment';
 import { PageHeaderComponent } from '../ui/page-header.component';
 import { SegmentControlComponent } from '../ui/segment-control.component';
 import { StatusBadgeComponent } from '../ui/status-badge.component';
@@ -17,6 +20,8 @@ import {
 import { SessionPivotKey } from '../utils/gann-session-pivot.util';
 import { GannGridRowDef } from '../utils/gann-grid-rows.util';
 import { ReversalSeverity } from '../utils/gann-killzone.util';
+import { GannIntradayStreamService } from '../services/gann-intraday-stream.service';
+import { buildGannAboveRows, buildGannBelowRows } from '../utils/gann-grid-rows.util';
 
 @Component({
   selector: 'app-gann-intraday',
@@ -24,6 +29,7 @@ import { ReversalSeverity } from '../utils/gann-killzone.util';
   imports: [
     CommonModule,
     RouterModule,
+    FormsModule,
     PageHeaderComponent,
     SegmentControlComponent,
     StatusBadgeComponent,
@@ -38,8 +44,8 @@ import { ReversalSeverity } from '../utils/gann-killzone.util';
         <div actions class="flex flex-wrap items-center gap-2">
           <app-status-badge
             *ngIf="study"
-            [label]="offline ? 'OFFLINE DATA' : 'GRID'"
-            [tone]="offline ? 'warning' : 'neutral'">
+            [label]="streamConnected ? 'LIVE' : (offline ? 'OFFLINE DATA' : 'GRID')"
+            [tone]="streamConnected ? 'success' : (offline ? 'warning' : 'neutral')">
           </app-status-badge>
           <a routerLink="../docs" fragment="gann-intraday" class="min-h-11 px-4 text-xs font-semibold rounded-2xl border border-zinc-700 active:bg-zinc-900 inline-flex items-center">
             Docs
@@ -65,6 +71,18 @@ import { ReversalSeverity } from '../utils/gann-killzone.util';
             class="min-h-11 px-4 text-sm font-semibold rounded-2xl border border-emerald-800 text-emerald-400 active:bg-emerald-950 disabled:opacity-50">
             {{ loading ? 'Loading…' : 'Refresh' }}
           </button>
+        </div>
+        <div toolbar class="flex flex-wrap gap-3 mt-2">
+          <label class="text-xs text-zinc-500 flex items-center gap-2">
+            Time scale
+            <input type="range" min="0.5" max="2" step="0.1" [(ngModel)]="timeScaleFactor" (change)="refresh()" class="w-24" />
+            <span class="font-mono text-zinc-300">{{ timeScaleFactor | number:'1.1-1' }}</span>
+          </label>
+          <label class="text-xs text-zinc-500 flex items-center gap-2">
+            ATR alert
+            <input type="range" min="0.75" max="2.5" step="0.05" [(ngModel)]="extensionThresholdAtr" (change)="refresh()" class="w-24" />
+            <span class="font-mono text-zinc-300">{{ extensionThresholdAtr | number:'1.2-2' }}×</span>
+          </label>
         </div>
       </app-page-header>
 
@@ -115,10 +133,14 @@ import { ReversalSeverity } from '../utils/gann-killzone.util';
             <div class="text-lg font-semibold tabular-nums mt-1">{{ study.currentPrice | number:'1.2-2' }}</div>
           </div>
           <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4">
-            <div class="text-[10px] text-zinc-500 uppercase">Killzones active</div>
-            <div class="text-sm font-medium mt-1">
-              {{ activeKillzoneLabels(study) || 'None' }}
+            <div class="text-[10px] text-zinc-500 uppercase">London open</div>
+            <div class="text-lg font-semibold tabular-nums mt-1">
+              {{ study.session.londonSessionOpen != null ? (study.session.londonSessionOpen | number:'1.2-2') : '—' }}
             </div>
+          </div>
+          <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4">
+            <div class="text-[10px] text-zinc-500 uppercase">Killzones active</div>
+            <div class="text-sm font-medium mt-1">{{ activeKillzoneLabels(study) || 'None' }}</div>
           </div>
         </div>
 
@@ -146,6 +168,33 @@ import { ReversalSeverity } from '../utils/gann-killzone.util';
             <div>
               <div class="text-[10px] text-zinc-500 uppercase">Bias</div>
               <app-status-badge class="inline-block mt-1" [label]="biasLabel(study)" [tone]="biasTone(study)"></app-status-badge>
+            </div>
+            <div *ngIf="study.angle.angleAlert">
+              <div class="text-[10px] text-zinc-500 uppercase">1×1 alert</div>
+              <app-status-badge class="inline-block mt-1" label="ATR THRESHOLD" tone="warning"></app-status-badge>
+            </div>
+          </div>
+          <div class="px-4 pb-4 border-t border-zinc-800/50">
+            <div class="text-[10px] text-zinc-500 uppercase py-2">45° fan projection (1×1 / 2×1 / 1×2)</div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-xs">
+                <thead>
+                  <tr class="text-zinc-500">
+                    <th class="text-left py-1">+bars</th>
+                    <th class="text-right py-1">1×1</th>
+                    <th class="text-right py-1">2×1</th>
+                    <th class="text-right py-1">1×2</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let f of study.angle.fanLines | slice:0:6" class="border-t border-zinc-800/40">
+                    <td class="py-1">{{ f.barsAhead }}</td>
+                    <td class="text-right font-mono">{{ f.oneByOne | number:'1.2-2' }}</td>
+                    <td class="text-right font-mono">{{ f.twoByOne | number:'1.2-2' }}</td>
+                    <td class="text-right font-mono">{{ f.oneByTwo | number:'1.2-2' }}</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </section>
@@ -253,10 +302,26 @@ import { ReversalSeverity } from '../utils/gann-killzone.util';
             <div *ngFor="let z of study.killzones" class="px-4 py-3 flex flex-wrap items-center justify-between gap-2">
               <div>
                 <div class="text-sm font-medium">{{ z.label }}</div>
-                <div class="text-[10px] text-zinc-500 mt-0.5">{{ z.window }}</div>
+                <div class="text-[10px] text-zinc-500 mt-0.5">{{ z.window }} · {{ z.istWindow }}</div>
               </div>
               <app-status-badge [label]="z.active ? 'ACTIVE' : 'idle'" [tone]="z.active ? 'success' : 'neutral'"></app-status-badge>
             </div>
+          </div>
+        </section>
+
+        <!-- Filters -->
+        <section *ngIf="study.filters" class="bg-zinc-900 border border-zinc-800 rounded-3xl overflow-hidden">
+          <div class="px-4 py-3 border-b border-zinc-800">
+            <div class="font-medium">Volume &amp; divergence filters</div>
+          </div>
+          <div class="p-4 flex flex-wrap gap-3">
+            <app-status-badge [label]="study.filters.volumeSpike ? 'VOLUME SPIKE' : 'Volume normal'" [tone]="study.filters.volumeSpike ? 'warning' : 'neutral'"></app-status-badge>
+            <app-status-badge
+              *ngIf="study.filters.rsiDivergence"
+              [label]="'RSI ' + study.filters.rsiDivergence + ' div'"
+              tone="warning">
+            </app-status-badge>
+            <app-status-badge *ngIf="!study.filters.rsiDivergence" label="No RSI divergence" tone="neutral"></app-status-badge>
           </div>
         </section>
       </div>
@@ -270,24 +335,45 @@ import { ReversalSeverity } from '../utils/gann-killzone.util';
     </app-pull-to-refresh>
   `
 })
-export class GannIntradayComponent implements OnInit {
+export class GannIntradayComponent implements OnInit, OnDestroy {
   entryTfOptions = ['M5', 'M15'];
-  pivotOptions: SessionPivotKey[] = ['nyOpen', 'pdh', 'pdl', 'prevClose', 'nyHigh', 'nyLow'];
+  pivotOptions: SessionPivotKey[] = [
+    'nyOpen', 'londonOpen', 'pdh', 'pdl', 'prevClose', 'nyHigh', 'nyLow', 'londonHigh', 'londonLow'
+  ];
 
   entryTf = 'M5';
   so9PivotKey: SessionPivotKey = 'nyOpen';
+  timeScaleFactor = 1.0;
+  extensionThresholdAtr = 1.25;
   showOdd = true;
   showEven = true;
 
   study: GannIntradayStudy | null = null;
   loading = false;
   offline = false;
+  streamConnected = false;
   formatWallTime = formatWallTime;
+  private subs = new Subscription();
 
-  constructor(private marketCache: MarketDataCacheService) {}
+  constructor(
+    private http: HttpClient,
+    private marketCache: MarketDataCacheService,
+    private gannStream: GannIntradayStreamService
+  ) {}
 
   ngOnInit(): void {
+    this.gannStream.start();
+    this.subs.add(this.gannStream.connected$.subscribe(c => { this.streamConnected = c; }));
+    this.subs.add(this.gannStream.snapshot$.subscribe(s => {
+      if (s?.live !== false && s?.angle) {
+        this.applyStudy(s as GannIntradayStudy);
+      }
+    }));
     this.refresh();
+  }
+
+  ngOnDestroy(): void {
+    this.subs.unsubscribe();
   }
 
   setPivot(key: string): void {
@@ -297,6 +383,28 @@ export class GannIntradayComponent implements OnInit {
 
   refresh(): void {
     this.loading = true;
+    const params = new HttpParams()
+      .set('entry_tf', this.entryTf)
+      .set('so9_pivot', this.so9PivotKey)
+      .set('time_scale', String(this.timeScaleFactor))
+      .set('atr_threshold', String(this.extensionThresholdAtr))
+      .set('prefer_live', 'false');
+
+    this.http.get<GannIntradayStudy>(`${environment.apiUrl}/market/xauusd/gann-intraday`, { params }).subscribe({
+      next: data => {
+        this.loading = false;
+        if (data && (data as any).angle) {
+          this.applyStudy(data);
+          this.gannStream.pushAlertFromStudy(this.study);
+        } else {
+          this.refreshFromGrid();
+        }
+      },
+      error: () => this.refreshFromGrid()
+    });
+  }
+
+  private refreshFromGrid(): void {
     forkJoin({
       entry: this.marketCache.fetchGridWithFallback(this.entryTf, 120, false),
       m15: this.marketCache.fetchGridWithFallback('M15', 120, false),
@@ -305,19 +413,54 @@ export class GannIntradayComponent implements OnInit {
       next: ({ entry, m15, d1 }) => {
         this.loading = false;
         this.offline = entry.offline || m15.offline || d1.offline;
-        this.study = computeGannIntradayStudy(
+        const computed = computeGannIntradayStudy(
           this.entryTf,
           entry.rows || [],
           m15.rows || [],
           d1.rows || [],
-          this.so9PivotKey
+          {
+            so9PivotKey: this.so9PivotKey,
+            timeScaleFactor: this.timeScaleFactor,
+            extensionThresholdAtr: this.extensionThresholdAtr
+          }
         );
+        if (computed) {
+          this.applyStudy(computed);
+          this.gannStream.pushAlertFromStudy(this.study);
+        } else {
+          this.study = null;
+        }
       },
       error: () => {
         this.loading = false;
         this.study = null;
       }
     });
+  }
+
+  private applyStudy(raw: GannIntradayStudy): void {
+    if (!raw.oddEvenAboveRows?.length) {
+      raw.oddEvenAboveRows = buildGannAboveRows(true, true);
+      raw.oddEvenBelowRows = buildGannBelowRows(true, true);
+    }
+    if (raw.fineAbove?.length && !raw.fineAbove[0].kind) {
+      raw.fineAbove = raw.fineAbove.map((l: any) => ({
+        label: l.label,
+        price: l.price,
+        angleHint: l.angleHint ?? '45°',
+        kind: 'fine' as const
+      }));
+      raw.fineBelow = raw.fineBelow.map((l: any) => ({
+        label: l.label,
+        price: l.price,
+        angleHint: l.angleHint ?? '45°',
+        kind: 'fine' as const
+      }));
+    }
+    if (!raw.filters) {
+      raw.filters = { volumeSpike: false, rsiDivergence: '' };
+    }
+    this.study = raw;
   }
 
   get aboveOddEvenRows(): GannGridRowDef[] {
@@ -353,16 +496,19 @@ export class GannIntradayComponent implements OnInit {
     return Math.abs(price - this.study.currentPrice) <= tol ? 'text-emerald-300 font-semibold' : '';
   }
 
-  pivotLabel(key: SessionPivotKey): string {
-    const map: Record<SessionPivotKey, string> = {
+  pivotLabel(key: SessionPivotKey | string): string {
+    const map: Record<string, string> = {
       pdh: 'PDH',
       pdl: 'PDL',
       prevClose: 'Prev close',
       nyOpen: 'NY open',
       nyHigh: 'NY high',
-      nyLow: 'NY low'
+      nyLow: 'NY low',
+      londonOpen: 'London open',
+      londonHigh: 'London high',
+      londonLow: 'London low'
     };
-    return map[key];
+    return map[key] ?? key;
   }
 
   activeKillzoneLabels(study: GannIntradayStudy): string {

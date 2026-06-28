@@ -4,6 +4,21 @@ All notable changes to the Grok Dev full-stack application (Spring Boot + Angula
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2026-06-28 (Gann Intraday phase 2 — API, SSE, filters)
+
+### Added
+- **REST API** `GET /api/market/xauusd/gann-intraday` — server-side study (Java calculator + grid fallback)
+- **SSE** `/gann-intraday/stream` — live push from `live_gann_intraday` table
+- **Python publisher** `run_gann_intraday.py` + `gann_intraday_util.py`
+- **London session** pivots & killzone; **IST window** labels on killzones
+- **1×1 fan lines** (1×1 / 2×1 / 1×2) on page + API
+- **Configurable** time scale & ATR alert threshold
+- **Volume spike** & **RSI divergence** filters in confluence scoring
+- **Gann alert banner** on dashboard (high/medium reversal)
+- **MQL5** `GrokDevGannScanner.mq5` — exports scanner JSON to Common Files
+
+---
+
 ## [Unreleased] - 2026-06-28 (Gann Intraday page)
 
 ### Added

@@ -1,12 +1,16 @@
-/** Session reference pivots for intraday Gann (PDH/PDL, NY session). */
+/** Session reference pivots for intraday Gann (PDH/PDL, London/NY session). */
 
 export interface GridCandle {
   time?: string;
   nyTime?: string;
+  istTime?: string;
   open?: number;
   high?: number;
   low?: number;
   close?: number;
+  tickVolume?: number;
+  tick_volume?: number;
+  rsi?: number;
 }
 
 export interface SessionPivots {
@@ -18,7 +22,16 @@ export interface SessionPivots {
   nySessionHigh: number | null;
   nySessionLow: number | null;
   nySessionStart?: string;
+  londonSessionOpen: number | null;
+  londonSessionHigh: number | null;
+  londonSessionLow: number | null;
+  londonSessionStart?: string;
 }
+
+const NY_START = 8 * 60;
+const NY_END = 17 * 60;
+const LONDON_START = 3 * 60;
+const LONDON_END = 5 * 60;
 
 function parseNyParts(nyTime: string | undefined): { date: string; hour: number; minute: number } | null {
   if (!nyTime) return null;
@@ -27,7 +40,31 @@ function parseNyParts(nyTime: string | undefined): { date: string; hour: number;
   return { date: m[1], hour: parseInt(m[2], 10), minute: parseInt(m[3], 10) };
 }
 
-/** Previous completed D1 bar + today's NY-session range from M15 nyTime. */
+function applySessionRange(
+  bars: GridCandle[],
+  prefix: 'ny' | 'london'
+): Pick<SessionPivots, 'nySessionOpen' | 'nySessionHigh' | 'nySessionLow' | 'nySessionStart' | 'londonSessionOpen' | 'londonSessionHigh' | 'londonSessionLow' | 'londonSessionStart'> {
+  const empty = {
+    nySessionOpen: null, nySessionHigh: null, nySessionLow: null, nySessionStart: undefined,
+    londonSessionOpen: null, londonSessionHigh: null, londonSessionLow: null, londonSessionStart: undefined
+  };
+  if (!bars.length) return empty;
+
+  const ordered = [...bars].reverse();
+  const first = ordered[0];
+  const open = first.open ?? first.close ?? null;
+  const start = first.nyTime ?? first.time;
+  const high = Math.max(...bars.map(b => b.high ?? b.close ?? 0));
+  const low = Math.min(...bars.map(b => b.low ?? b.close ?? Infinity));
+  const lowVal = Number.isFinite(low) ? low : null;
+
+  if (prefix === 'ny') {
+    return { ...empty, nySessionOpen: open, nySessionHigh: high, nySessionLow: lowVal, nySessionStart: start };
+  }
+  return { ...empty, londonSessionOpen: open, londonSessionHigh: high, londonSessionLow: lowVal, londonSessionStart: start };
+}
+
+/** Previous completed D1 bar + London/NY session ranges from M15 nyTime. */
 export function computeSessionPivots(d1: GridCandle[], m15: GridCandle[]): SessionPivots | null {
   if (!d1?.length) return null;
 
@@ -37,30 +74,25 @@ export function computeSessionPivots(d1: GridCandle[], m15: GridCandle[]): Sessi
   const prevClose = prev.close ?? 0;
   if (pdh == null || pdl == null || prevClose <= 0) return null;
 
-  let nySessionOpen: number | null = null;
-  let nySessionHigh: number | null = null;
-  let nySessionLow: number | null = null;
-  let nySessionStart: string | undefined;
+  let sessionExtras = applySessionRange([], 'ny');
 
   if (m15?.length) {
     const latestNy = parseNyParts(m15[0].nyTime ?? m15[0].time);
     const sessionDate = latestNy?.date;
     if (sessionDate) {
-      const sessionBars = m15.filter(c => {
+      const nyBars: GridCandle[] = [];
+      const londonBars: GridCandle[] = [];
+      for (const c of m15) {
         const p = parseNyParts(c.nyTime ?? c.time);
-        if (!p || p.date !== sessionDate) return false;
+        if (!p || p.date !== sessionDate) continue;
         const mins = p.hour * 60 + p.minute;
-        return mins >= 8 * 60 && mins <= 17 * 60;
-      });
-      if (sessionBars.length) {
-        const ordered = [...sessionBars].reverse();
-        const first = ordered[0];
-        nySessionOpen = first.open ?? first.close ?? null;
-        nySessionStart = first.nyTime ?? first.time;
-        nySessionHigh = Math.max(...sessionBars.map(b => b.high ?? b.close ?? 0));
-        nySessionLow = Math.min(...sessionBars.map(b => b.low ?? b.close ?? Infinity));
-        if (!Number.isFinite(nySessionLow!)) nySessionLow = null;
+        if (mins >= NY_START && mins <= NY_END) nyBars.push(c);
+        if (mins >= LONDON_START && mins < LONDON_END) londonBars.push(c);
       }
+      sessionExtras = {
+        ...applySessionRange(nyBars, 'ny'),
+        ...applySessionRange(londonBars, 'london')
+      };
     }
   }
 
@@ -69,14 +101,21 @@ export function computeSessionPivots(d1: GridCandle[], m15: GridCandle[]): Sessi
     pdl,
     prevClose,
     prevDayTime: prev.time,
-    nySessionOpen,
-    nySessionHigh,
-    nySessionLow,
-    nySessionStart
+    nySessionOpen: sessionExtras.nySessionOpen,
+    nySessionHigh: sessionExtras.nySessionHigh,
+    nySessionLow: sessionExtras.nySessionLow,
+    nySessionStart: sessionExtras.nySessionStart,
+    londonSessionOpen: sessionExtras.londonSessionOpen,
+    londonSessionHigh: sessionExtras.londonSessionHigh,
+    londonSessionLow: sessionExtras.londonSessionLow,
+    londonSessionStart: sessionExtras.londonSessionStart
   };
 }
 
-export type SessionPivotKey = 'pdh' | 'pdl' | 'prevClose' | 'nyOpen' | 'nyHigh' | 'nyLow';
+export type SessionPivotKey =
+  | 'pdh' | 'pdl' | 'prevClose'
+  | 'nyOpen' | 'nyHigh' | 'nyLow'
+  | 'londonOpen' | 'londonHigh' | 'londonLow';
 
 export function sessionPivotPrice(pivots: SessionPivots, key: SessionPivotKey): number | null {
   switch (key) {
@@ -86,6 +125,9 @@ export function sessionPivotPrice(pivots: SessionPivots, key: SessionPivotKey): 
     case 'nyOpen': return pivots.nySessionOpen;
     case 'nyHigh': return pivots.nySessionHigh;
     case 'nyLow': return pivots.nySessionLow;
+    case 'londonOpen': return pivots.londonSessionOpen;
+    case 'londonHigh': return pivots.londonSessionHigh;
+    case 'londonLow': return pivots.londonSessionLow;
     default: return null;
   }
 }

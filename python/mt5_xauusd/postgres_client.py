@@ -179,6 +179,33 @@ class PostgresClient:
                 conn.commit()
         self._with_retry(_run)
 
+    def ensure_live_gann_intraday_table(self):
+        query = text(f'''
+            CREATE TABLE IF NOT EXISTS "{SCHEMA}".live_gann_intraday (
+                id SMALLINT PRIMARY KEY DEFAULT 1,
+                payload JSONB NOT NULL,
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                CONSTRAINT live_gann_intraday_singleton CHECK (id = 1)
+            )
+        ''')
+        with self.engine.connect() as conn:
+            conn.execute(query)
+            conn.commit()
+
+    def upsert_live_gann_intraday(self, payload: dict):
+        import json as json_lib
+        query = text(f'''
+            INSERT INTO "{SCHEMA}".live_gann_intraday (id, payload, updated_at)
+            VALUES (1, CAST(:payload AS jsonb), NOW())
+            ON CONFLICT (id) DO UPDATE
+            SET payload = EXCLUDED.payload, updated_at = NOW()
+        ''')
+        def _run():
+            with self.engine.connect() as conn:
+                conn.execute(query, {"payload": json_lib.dumps(payload)})
+                conn.commit()
+        self._with_retry(_run)
+
     def get_last_timestamp(self, table_name: str) -> pd.Timestamp:
         """Get the latest timestamp already stored in the table.
         Returns None if the table does not exist yet (first run).

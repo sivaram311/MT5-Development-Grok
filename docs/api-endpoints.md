@@ -216,6 +216,30 @@ Python push modes (env):
 | `ORDER_RSI_TICK_MS` | `250` | Tick check interval |
 | `ORDER_RSI_POLL_MS` | `1000` | Poll / heartbeat interval |
 
+### GET `/api/market/xauusd/gann-intraday`
+
+Gann intraday study for XAUUSD mean reversion — session pivots, 1×1 angle, So9, time squaring, killzones, reversal alert.
+
+**Query params:**
+
+| Param | Default | Description |
+|-------|---------|-------------|
+| `entry_tf` | `M5` | Entry timeframe (`M5`, `M15`) |
+| `so9_pivot` | `nyOpen` | Pivot source (`nyOpen`, `londonOpen`, `pdh`, `pdl`, …) |
+| `time_scale` | `1.0` | Gann time–price scale factor |
+| `atr_threshold` | `1.25` | 1×1 overextension alert threshold (× ATR) |
+| `prefer_live` | `true` | Use `live_gann_intraday` snapshot when available |
+
+Returns computed study from grid when live snapshot unavailable (`source: computed`).
+
+**Run live publisher:** `python run_gann_intraday.py` (Stack Pilot: `python-gann-intraday`).
+
+### GET `/api/market/xauusd/gann-intraday/stream`
+
+SSE — emits `gannIntraday` events when `live_gann_intraday.updated_at` changes (poll `grok.gann-intraday.stream-poll-ms`, default 500ms).
+
+Requires Bearer token **or** `?access_token=<jwt>`.
+
 ## Other Endpoints
 
 ### GET `/api/welcome`

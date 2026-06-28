@@ -261,6 +261,7 @@ import { PageHeaderComponent } from '../ui/page-header.component';
             </div>
 
             <p>Tracker &amp; future work: <a href="file:///E:/Source/grok_dev/docs/gann-intraday-pending-implementation.md" target="_blank" class="text-emerald-400 underline">docs/gann-intraday-pending-implementation.md</a></p>
+            <p><strong>API:</strong> <code>GET /api/market/xauusd/gann-intraday</code> · SSE <code>/gann-intraday/stream</code> · Python <code>run_gann_intraday.py</code> · MT5 <code>GrokDevGannScanner.mq5</code></p>
           </div>
         </details>
 

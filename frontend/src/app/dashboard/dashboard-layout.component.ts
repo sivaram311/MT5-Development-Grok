@@ -8,7 +8,9 @@ import { NavIconComponent, NavIconName } from '../ui/nav-icon.component';
 import { OfflineBannerComponent } from '../ui/offline-banner.component';
 import { PwaUpdateComponent } from '../ui/pwa-update.component';
 import { HealthAlertBannerComponent } from '../ui/health-alert-banner.component';
+import { GannAlertBannerComponent } from '../ui/gann-alert-banner.component';
 import { HealthStreamService } from '../services/health-stream.service';
+import { GannIntradayStreamService } from '../services/gann-intraday-stream.service';
 
 interface NavItem {
   route: string;
@@ -19,11 +21,12 @@ interface NavItem {
 @Component({
   selector: 'app-dashboard-layout',
   standalone: true,
-  imports: [CommonModule, RouterModule, BottomSheetComponent, NavIconComponent, OfflineBannerComponent, PwaUpdateComponent, HealthAlertBannerComponent],
+  imports: [CommonModule, RouterModule, BottomSheetComponent, NavIconComponent, OfflineBannerComponent, PwaUpdateComponent, HealthAlertBannerComponent, GannAlertBannerComponent],
   template: `
     <div class="min-h-screen bg-zinc-950 text-zinc-200 flex flex-col">
       <app-offline-banner></app-offline-banner>
       <app-health-alert-banner></app-health-alert-banner>
+      <app-gann-alert-banner></app-gann-alert-banner>
       <header class="sticky top-0 z-50 border-b border-zinc-800 bg-zinc-950/95 backdrop-blur-xl pt-[var(--safe-top)]">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
           <div class="flex items-center gap-3 min-w-0">
@@ -210,7 +213,8 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
     private authService: AuthService,
     private router: Router,
     private timeframeContext: TimeframeContextService,
-    private healthStream: HealthStreamService
+    private healthStream: HealthStreamService,
+    private gannStream: GannIntradayStreamService
   ) {
     this.currentUser = this.authService.getCurrentUser();
     this.timeframeContext.timeframe$.subscribe(tf => {
@@ -220,10 +224,12 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.healthStream.start();
+    this.gannStream.start();
   }
 
   ngOnDestroy(): void {
     this.healthStream.stop();
+    this.gannStream.stop();
   }
 
   logout() {
