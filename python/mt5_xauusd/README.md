@@ -161,13 +161,19 @@ We now use per-timeframe intervals by default (see above). This was implemented 
 
 You can still force uniform polling if desired.
 
+### MT5 incremental fetch
+
+- **Do not** use `copy_rates_from(..., count=100000)` — returns empty on some terminals.
+- Incremental catch-up uses **`copy_rates_range(from, now)`**; recent tail uses `copy_rates_from_pos` with count ≤ **10000**.
+
 ### 4. Monitoring & Observability (Implemented)
 - `sync_status` table with last_candle_time per timeframe.
 - Spring Boot: `GET /api/market/xauusd/sync-status` and `GET /api/market/xauusd/health`
 - Health returns "UP" or "DEGRADED" + per-TF details.
 - Dedicated **Health Dashboard** in Angular dashboard with color-coded cards per timeframe, freshness, and age.
 - **SSE push:** `GET /api/market/xauusd/health/stream` (dashboard banner on DEGRADED/DOWN)
-- **`touch_sync_status`** — daemon updates `last_synced` even when no new bars arrive (liveness)
+- **`touch_sync_status`** — daemon liveness: updates `last_synced`; if candle rows exist, also sets `last_candle_time` from `MAX(time)` in the table
+- **`backfill_sync_status`** — called on daemon/one-shot startup to seed `sync_status` from existing tables
 
 ### Tests
 

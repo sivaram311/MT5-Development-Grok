@@ -24,6 +24,10 @@ import java.util.stream.Collectors;
 @Service
 public class MarketDataService {
 
+    private static final List<String> HEALTH_TIMEFRAMES = List.of("D1", "H4", "H1", "M15", "M5", "M1");
+    /** Daemon considered live when last_synced is within this many minutes. */
+    private static final long SYNC_LIVENESS_MINUTES = 15L;
+
     private final JdbcTemplate jdbcTemplate;
 
     private static final String SCHEMA = "grok_dev";
@@ -257,13 +261,51 @@ public class MarketDataService {
             return row;
         }).stream().collect(Collectors.toMap(
             m -> (String) m.get("timeframe"),
-            m -> m
+            m -> m,
+            (a, b) -> a
         ));
     }
 
-    private boolean isFreshForTimeframe(String tf, java.time.LocalDateTime lastCandle) {
-        if (lastCandle == null) return false;
-        long ageMinutes = java.time.Duration.between(lastCandle, java.time.LocalDateTime.now()).toMinutes();
+    /**
+     * Fallback when sync_status.last_candle_time is null but candle rows exist.
+     */
+    private LocalDateTime getMaxCandleTimeFromTable(String tf) {
+        String tableName = "XAUUSD_" + tf.toUpperCase();
+        String sql = String.format("SELECT MAX(time) AS max_time FROM %s.\"%s\"", SCHEMA, tableName);
+        try {
+            return jdbcTemplate.query(sql, rs -> {
+                if (rs.next() && rs.getTimestamp("max_time") != null) {
+                    return rs.getTimestamp("max_time").toLocalDateTime();
+                }
+                return null;
+            });
+        } catch (Exception ex) {
+            return null;
+        }
+    }
+
+    private long candleAgeMinutes(LocalDateTime lastCandle) {
+        if (lastCandle == null) {
+            return Long.MAX_VALUE;
+        }
+        ZoneId zone = ZoneId.of(brokerServerZoneId);
+        ZonedDateTime candle = lastCandle.atZone(zone);
+        return java.time.Duration.between(candle, ZonedDateTime.now(zone)).toMinutes();
+    }
+
+    private long syncAgeMinutes(Object lastSyncedTs) {
+        if (!(lastSyncedTs instanceof java.sql.Timestamp)) {
+            return Long.MAX_VALUE;
+        }
+        java.time.Instant synced = ((java.sql.Timestamp) lastSyncedTs).toInstant();
+        return java.time.Duration.between(synced, java.time.Instant.now()).toMinutes();
+    }
+
+    private boolean isSyncLive(Object lastSyncedTs) {
+        return syncAgeMinutes(lastSyncedTs) < SYNC_LIVENESS_MINUTES;
+    }
+
+    private long freshnessThresholdMinutes(String tf) {
         Map<String, Long> thresholdsMin = Map.of(
             "M1", 2L,
             "M5", 7L,
@@ -272,8 +314,14 @@ public class MarketDataService {
             "H4", 4 * 60 + 30L,
             "D1", 25 * 60L
         );
-        long thresh = thresholdsMin.getOrDefault(tf, 60L);
-        return ageMinutes < thresh;
+        return thresholdsMin.getOrDefault(tf, 60L);
+    }
+
+    private boolean isFreshForTimeframe(String tf, LocalDateTime lastCandle) {
+        if (lastCandle == null) {
+            return false;
+        }
+        return candleAgeMinutes(lastCandle) < freshnessThresholdMinutes(tf);
     }
 
     /**
@@ -285,38 +333,89 @@ public class MarketDataService {
         Map<String, Object> health = new HashMap<>();
         Map<String, Object> rawStatus = getSyncStatus();
 
-        boolean allFresh = true;
         int freshCount = 0;
+        int syncLiveCount = 0;
         Map<String, Object> details = new HashMap<>();
 
-        for (Map.Entry<String, Object> entry : rawStatus.entrySet()) {
-            String tf = entry.getKey();
+        for (String tf : HEALTH_TIMEFRAMES) {
             @SuppressWarnings("unchecked")
-            Map<String, Object> info = (Map<String, Object>) entry.getValue();
+            Map<String, Object> info = rawStatus.containsKey(tf)
+                    ? (Map<String, Object>) rawStatus.get(tf)
+                    : new HashMap<>();
+
             Object lastTs = info.get("lastCandleTime");
             Object lastSyncedTs = info.get("lastSynced");
+            boolean backfilledFromTable = false;
 
-            java.time.LocalDateTime lastCandle = null;
+            LocalDateTime lastCandle = null;
             if (lastTs instanceof java.sql.Timestamp) {
                 lastCandle = ((java.sql.Timestamp) lastTs).toLocalDateTime();
             }
 
+            if (lastCandle == null) {
+                LocalDateTime tableMax = getMaxCandleTimeFromTable(tf);
+                if (tableMax != null) {
+                    lastCandle = tableMax;
+                    lastTs = java.sql.Timestamp.valueOf(tableMax);
+                    backfilledFromTable = true;
+                }
+            }
+
+            boolean syncLive = isSyncLive(lastSyncedTs);
+            if (syncLive) {
+                syncLiveCount++;
+            }
+
+            long ageMinutes = candleAgeMinutes(lastCandle);
+            long thresholdMinutes = freshnessThresholdMinutes(tf);
             boolean fresh = isFreshForTimeframe(tf, lastCandle);
-            if (fresh) freshCount++;
-            else allFresh = false;
+            if (fresh) {
+                freshCount++;
+            }
 
             Map<String, Object> detail = new HashMap<>();
             detail.put("lastCandleTime", lastTs);
             detail.put("lastSynced", lastSyncedTs);
             detail.put("fresh", fresh);
+            detail.put("syncLive", syncLive);
+            detail.put("ageMinutes", ageMinutes == Long.MAX_VALUE ? null : ageMinutes);
+            detail.put("thresholdMinutes", thresholdMinutes);
+            if (backfilledFromTable) {
+                detail.put("source", "table_max");
+            }
             details.put(tf, detail);
         }
 
-        health.put("status", allFresh ? "UP" : (freshCount > 0 ? "DEGRADED" : "DOWN"));
+        int total = HEALTH_TIMEFRAMES.size();
+        boolean pipelineLive = syncLiveCount > 0;
+        boolean anyCandleData = details.values().stream()
+                .anyMatch(d -> ((Map<?, ?>) d).get("lastCandleTime") != null);
+
+        String status;
+        String message;
+        if (!pipelineLive) {
+            status = "DOWN";
+            message = "Downloader not syncing — check MT5 login and python run_data_downloader.py";
+        } else if (freshCount == total) {
+            status = "UP";
+            message = "All timeframes fresh";
+        } else if (anyCandleData) {
+            status = "DEGRADED";
+            message = "Pipeline live — " + freshCount + "/" + total + " timeframes fresh (market closed or candles aging)";
+        } else {
+            status = "DOWN";
+            message = "No candle data in database yet";
+        }
+
+        health.put("status", status);
+        health.put("message", message);
+        health.put("pipelineLive", pipelineLive);
+        health.put("syncLiveCount", syncLiveCount);
         health.put("freshCount", freshCount);
-        health.put("total", rawStatus.size() > 0 ? rawStatus.size() : 6);
+        health.put("total", total);
         health.put("details", details);
-        health.put("checkedAt", java.time.LocalDateTime.now());
+        health.put("checkedAt", LocalDateTime.now());
+        health.put("brokerTimeZone", brokerServerZoneId);
         return health;
     }
 }

@@ -67,6 +67,8 @@ Real freshness age thresholds are evaluated inside `isFreshForTimeframe` on the 
 
 The `/health` endpoint returns the aggregate pipeline status (`UP`, `DEGRADED`, `DOWN`), a count of fresh timeframes, and a detail map containing each timeframe's `lastCandleTime`, `lastSynced` timestamp, and `fresh` status.
 
+If `sync_status.last_candle_time` is null but candle rows exist, the service falls back to `MAX(time)` from `grok_dev.XAUUSD_{TF}` (detail field `source: "table_max"`). Python daemon startup runs `backfill_sync_status()` to keep the table in sync.
+
 ### Health SSE Stream (Push Notifications)
 
 [HealthStreamController.java](file:///E:/Source/grok_dev/backend/src/main/java/com/grokdev/grokdev/controller/HealthStreamController.java) exposes:

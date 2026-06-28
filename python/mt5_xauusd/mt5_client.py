@@ -25,6 +25,9 @@ COMMON_MT5_PATHS = [
 
 logger = logging.getLogger(__name__)
 
+# MT5 Python API returns empty arrays when copy_rates_from count is too large (observed: 100000 → 0 bars).
+MAX_MT5_COPY_COUNT = 10000
+
 
 class MT5Client:
     def __init__(self):
@@ -175,10 +178,8 @@ class MT5Client:
             logger.error("MT5 not initialized")
             return pd.DataFrame()
 
-        # Convert to MT5 time (seconds since epoch)
-        from_time = int(since.timestamp())
-
-        rates = mt5.copy_rates_from(SYMBOL, timeframe, from_time, 100000)  # large count
+        date_from = since.to_pydatetime() if hasattr(since, "to_pydatetime") else since
+        rates = mt5.copy_rates_range(SYMBOL, timeframe, date_from, datetime.now())
 
         if rates is None or len(rates) == 0:
             return pd.DataFrame()
@@ -214,11 +215,10 @@ class MT5Client:
             return pd.DataFrame()
 
         if since is not None:
-            # For larger gaps or catch-up, use copy_rates_from
-            from_time = int(since.timestamp())
-            rates = mt5.copy_rates_from(SYMBOL, timeframe, from_time, 100000)
+            date_from = since.to_pydatetime() if hasattr(since, "to_pydatetime") else since
+            rates = mt5.copy_rates_range(SYMBOL, timeframe, date_from, datetime.now())
         else:
-            rates = mt5.copy_rates_from_pos(SYMBOL, timeframe, 0, count)
+            rates = mt5.copy_rates_from_pos(SYMBOL, timeframe, 0, min(count, MAX_MT5_COPY_COUNT))
 
         if rates is None or len(rates) == 0:
             return pd.DataFrame()

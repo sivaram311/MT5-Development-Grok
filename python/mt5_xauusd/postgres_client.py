@@ -96,7 +96,15 @@ class PostgresClient:
             conn.commit()
 
     def touch_sync_status(self, timeframe: str):
-        """Update last_synced only — proves daemon liveness even when no new bars."""
+        """Update last_synced; backfill last_candle_time from stored candles when missing."""
+        table_name = get_table_name(timeframe)
+        last_candle = self.get_last_timestamp(table_name)
+        if last_candle is not None:
+            candle_ts = last_candle.to_pydatetime() if hasattr(last_candle, "to_pydatetime") else last_candle
+            self.update_sync_status(timeframe, candle_ts)
+            logger.debug("touch_sync_status(%s): backfilled last_candle_time=%s from table", timeframe, candle_ts)
+            return
+
         query = text(f'''
             INSERT INTO "{SCHEMA}".sync_status (timeframe, last_synced, last_candle_time)
             VALUES (:tf, NOW(), NULL)
@@ -108,6 +116,20 @@ class PostgresClient:
                 conn.execute(query, {"tf": timeframe})
                 conn.commit()
         self._with_retry(_run)
+        logger.debug("touch_sync_status(%s): liveness only (no candles in table yet)", timeframe)
+
+    def backfill_sync_status(self, timeframes: list):
+        """Seed sync_status.last_candle_time from MAX(time) in each candle table."""
+        for tf in timeframes:
+            table_name = get_table_name(tf)
+            last_candle = self.get_last_timestamp(table_name)
+            if last_candle is not None:
+                candle_ts = last_candle.to_pydatetime() if hasattr(last_candle, "to_pydatetime") else last_candle
+                self.update_sync_status(tf, candle_ts)
+                logger.info("Backfilled sync_status for %s → last_candle_time=%s", tf, candle_ts)
+            else:
+                self.touch_sync_status(tf)
+                logger.info("No candles yet for %s; sync_status liveness row only", tf)
 
     def update_sync_status(self, timeframe: str, last_candle_time):
         """Update the last sync info for a timeframe."""

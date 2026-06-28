@@ -112,6 +112,10 @@ Returns:
 
 Uses real per-TF freshness thresholds (see MarketDataService).
 
+- **`lastCandleTime`** comes from `sync_status.last_candle_time`. If null, the backend falls back to `MAX(time)` from `grok_dev.XAUUSD_{TF}` and sets `details[TF].source = "table_max"`.
+- **`touch_sync_status`** (Python daemon liveness) now also backfills `last_candle_time` from stored candles when no new bars arrive.
+- **`freshCount`** may be 0 when candles exist but are older than thresholds (status `DOWN`/`DEGRADED`) — cards show **STALE** with last candle date, not **NO DATA**.
+
 Powers the dedicated Angular Health Dashboard. The dashboard shell also subscribes to the SSE stream below for push alerts.
 
 ### GET `/api/market/xauusd/health/stream`

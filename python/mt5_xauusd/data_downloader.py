@@ -115,6 +115,8 @@ class XAUUSDDownloader:
         for tf in timeframes:
             self.pg_client.create_table_if_not_exists(f"XAUUSD_{tf}")
 
+        self.pg_client.backfill_sync_status(timeframes)
+
         try:
             if not self.mt5_client.initialize():
                 logger.error("Could not connect to MT5. Aborting.")
@@ -152,6 +154,8 @@ class XAUUSDDownloader:
         for tf in timeframes:
             self.pg_client.create_table_if_not_exists(f"XAUUSD_{tf}")
 
+        self.pg_client.backfill_sync_status(timeframes)
+
         last_poll = {tf: 0 for tf in timeframes}
 
         try:
@@ -181,9 +185,10 @@ class XAUUSDDownloader:
                             self.pg_client.save_data(df, tf_key)
                             latest_time = df['time'].max()
                             self.pg_client.update_sync_status(tf_key, latest_time)
-                            logger.info("Synced %s new completed %s candles", len(df), tf_key)
+                            logger.info("Synced %s new completed %s candles (latest=%s)", len(df), tf_key, latest_time)
                         else:
                             self.pg_client.touch_sync_status(tf_key)
+                            logger.debug("No new completed candles for %s (daemon alive)", tf_key)
 
                         last_poll[tf_key] = now
                     except Exception as e:

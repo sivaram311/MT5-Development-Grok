@@ -87,6 +87,121 @@ No automation — login was always manual despite dev-only demo credentials.
 
 ---
 
+## 2026-06-28 — Timeframe freshness shows 0 / 6 (null lastCandleTime)
+
+### Symptom
+
+Overview and Health dashboard showed **`0 / 6 timeframes fresh`**. Per-TF cards showed **NO DATA** or empty “Last candle” despite candle tables containing rows (e.g. M1 grid returned data).
+
+Backend log (`E:\Source\stack-pilot\logs\backend.log`):
+
+```
+Writing [{total=6, details={}, freshCount=0, status=UP}]
+```
+
+Later (after daemon ran):
+
+```
+GET /api/market/xauusd/health → all TFs: lastSynced set, lastCandleTime=null, fresh=false
+```
+
+### Root cause
+
+**`sync_status.last_candle_time` was never populated** while the Python daemon only called `touch_sync_status()` on empty incremental polls. That method updated `last_synced` but left `last_candle_time` NULL (or never set it on first insert).
+
+The backend health check treats `last_candle_time == null` as **not fresh** (`isFreshForTimeframe` returns false), so `freshCount` stayed **0** even when `XAUUSD_*` tables held candles.
+
+Secondary bug: when `sync_status` was empty, health returned `status=UP` with `freshCount=0` because the “all fresh” flag defaulted true before the loop.
+
+**Note:** After backfill, `freshCount` may still be **0** if the latest stored candle is older than per-TF thresholds (e.g. last M1 bar from 2026-06-19 vs today 2026-06-28 → correctly **STALE/DOWN** until MT5 ingests newer bars).
+
+### Changes
+
+| Area | Change | Why |
+|------|--------|-----|
+| `postgres_client.py` | `touch_sync_status` backfills from `MAX(time)` in candle table; new `backfill_sync_status()` | Keep `last_candle_time` aligned with stored data |
+| `data_downloader.py` | Call `backfill_sync_status` on daemon/one-shot startup | Repair existing DBs on restart |
+| `MarketDataService.java` | Fallback to `MAX(time)` from `XAUUSD_*` when sync row null; always iterate 6 TFs; fix status when none fresh | Accurate health even before Python restart |
+| `docs/api-endpoints.md`, `python/mt5_xauusd/README.md` | Document backfill + `source: table_max` detail field | Operator clarity |
+
+### Verification
+
+- `python -c "… backfill_sync_status(TIMEFRAMES)"` → all six TFs get `last_candle_time`.
+- `GET /api/market/xauusd/health` → `details.M1.lastCandleTime` populated; cards show **STALE** with dates (not NO DATA).
+- `mvn test` passes.
+
+**Operator action:** Restart **python-downloader** and **backend** via Stack Pilot so startup backfill and Java fallback are active.
+
+---
+
+## 2026-06-28 — Health freshCount 0 despite live daemon (MT5 fetch bug)
+
+### Symptom
+
+`/api/market/xauusd/health` returned:
+
+```json
+{ "freshCount": 0, "status": "DOWN", "lastSynced": "2026-06-28…", "lastCandleTime": "2026-06-18…" }
+```
+
+Daemon was alive (`last_synced` updating every poll) but candle timestamps stuck ~10 days old.
+
+### Root cause
+
+Incremental sync used `mt5.copy_rates_from(..., count=100000)`. On this MT5/OctaFX build, **count=100000 returns 0 bars**; count≤10000 works. The daemon therefore always hit the empty branch → `touch_sync_status()` only → no new rows in Postgres.
+
+Verified in Python REPL:
+
+- `copy_rates_from(..., 100000)` → **0 bars**
+- `copy_rates_range(since, now)` → **7886 M1 bars** (2026-06-19 → 2026-06-26)
+- `copy_rates_from_pos(0, 5)` → latest bars exist in terminal
+
+After fix + one-shot sync, `lastCandleTime` moves to **2026-06-26** (latest available in MT5). **`freshCount` may still be 0 on weekends** when the last bar is older than per-TF thresholds (M1 &lt; 2 min, etc.) — that is expected until the market reopens.
+
+### Changes
+
+| Area | Change | Why |
+|------|--------|-----|
+| `mt5_client.py` | Use `copy_rates_range` for incremental; cap `copy_rates_from_pos` at 10000 | Reliable catch-up from MT5 |
+| `data_downloader.py` | Log latest candle time on successful sync | Easier log diagnosis |
+| `docs/operations-log.md`, `python/mt5_xauusd/README.md` | Document MT5 count limit | Prevent regression |
+
+### Verification
+
+- One-shot incremental sync: M1 +7887 rows, M5 +1577, … latest `lastCandleTime` ≈ 2026-06-26.
+- Health API shows updated `lastCandleTime` (not 2026-06-18).
+- Restart **python-downloader** in Stack Pilot to pick up `mt5_client.py` fix.
+
+---
+
+## 2026-06-28 — Health page shows DOWN while pipeline is live
+
+### Symptom
+
+Health UI showed red **DOWN**, **0 / 6 fresh**, all cards **STALE**, but **Synced** timestamps were current (Jun 28). Confusing when the downloader was running and last candles were from Friday (market closed).
+
+Angular `date` pipe also shifted UTC candle times to browser local (IST), e.g. `18:29 UTC` displayed as `23:59`.
+
+### Root cause
+
+Overall status was derived only from `freshCount`. When all candles were older than tight thresholds (expected on weekends), status became **DOWN** even with live `last_synced`.
+
+### Changes
+
+| Area | Change | Why |
+|------|--------|-----|
+| `MarketDataService.java` | `pipelineLive` from recent `last_synced`; status DOWN only when pipeline dead; DEGRADED when live but stale; per-TF `ageMinutes` | Accurate aggregate status |
+| `health.component.ts` | `formatBrokerTime` (UTC wall clock), age labels, PIPELINE LIVE badge, contextual copy | Match market grid timezone rules |
+| `health-stream.service.ts` | Alert on DOWN only (not weekend DEGRADED) | Reduce false alarms |
+| `time.util.ts` | `formatAgeMinutes()` | Readable card ages |
+
+### Verification
+
+- Live daemon + stale Friday candles → **DEGRADED** + **PIPELINE LIVE**, not DOWN.
+- Cards show `Last: Jun 26 18:29 UTC` and `Age: 1d … ago`.
+
+---
+
 ## Template (copy for future entries)
 
 ```markdown

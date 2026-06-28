@@ -228,7 +228,8 @@ export class OverviewComponent implements OnInit, AfterViewInit, OnDestroy {
         if (this.healthStatus === 'UP') this.healthTone = 'success';
         else if (this.healthStatus === 'DEGRADED') this.healthTone = 'warning';
         else if (this.healthStatus === 'DOWN') this.healthTone = 'danger';
-        this.freshLabel = `${health?.freshCount ?? 0} / ${health?.total ?? 6} timeframes fresh`;
+        this.freshLabel = health?.message
+          || `${health?.freshCount ?? 0} / ${health?.total ?? 6} timeframes fresh`;
         done();
       },
       error: () => {

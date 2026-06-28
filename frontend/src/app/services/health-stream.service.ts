@@ -41,13 +41,22 @@ export class HealthStreamService implements OnDestroy {
         const status = String(data.status || 'UNKNOWN');
         this.statusSubject.next(status);
 
-        if (this.lastStatus && status !== this.lastStatus && (status === 'DEGRADED' || status === 'DOWN')) {
+        if (this.lastStatus && status !== this.lastStatus && status === 'DOWN') {
           hapticTap();
           this.alertSubject.next({
-            status: status as HealthAlert['status'],
-            message: status === 'DOWN'
-              ? 'Market data pipeline is down. Check Health page.'
-              : 'Market data pipeline degraded. Some timeframes may be stale.',
+            status: 'DOWN',
+            message: data.message || 'Market data pipeline is down. Check Health page.',
+            freshCount: data.freshCount,
+            total: data.total,
+            checkedAt: data.checkedAt
+          });
+        }
+
+        if (this.lastStatus && status !== this.lastStatus && status === 'DEGRADED' && !data.pipelineLive) {
+          hapticTap();
+          this.alertSubject.next({
+            status: 'DEGRADED',
+            message: data.message || 'Market data pipeline degraded.',
             freshCount: data.freshCount,
             total: data.total,
             checkedAt: data.checkedAt

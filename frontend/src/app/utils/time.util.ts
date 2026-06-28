@@ -25,3 +25,17 @@ export function formatBrokerTime(dt: string | null | undefined): string {
   }
   return s;
 }
+
+/** Human-readable age for health cards (minutes from backend). */
+export function formatAgeMinutes(minutes: number | null | undefined): string {
+  if (minutes == null || !Number.isFinite(minutes) || minutes < 0) return '—';
+  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 24 * 60) {
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return m > 0 ? `${h}h ${m}m ago` : `${h}h ago`;
+  }
+  const days = Math.floor(minutes / (24 * 60));
+  const hours = Math.floor((minutes % (24 * 60)) / 60);
+  return hours > 0 ? `${days}d ${hours}h ago` : `${days}d ago`;
+}
