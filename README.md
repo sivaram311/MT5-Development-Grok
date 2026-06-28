@@ -159,7 +159,7 @@ Second Python process (`python run_order_rsi.py`) publishes forming-bar RSI for 
 
 **Run via Stack Pilot:** start service `python-order-rsi` after MT5 is logged in.
 
-**Optional MT5 verify:** attach EA `python/mt5_scripts/GrokDevOrderRsiExport.mq5` on XAUUSD (Algo Trading ON).
+**Optional MT5 verify:** attach EA `python/mt5_scripts/GrokDevOrderRsiExport.mq5` v2 on XAUUSD (Algo Trading ON). See [order-rsi-mt5-alignment.md](docs/order-rsi-mt5-alignment.md).
 
 Full guide: [docs/order-rsi-mt5-alignment.md](docs/order-rsi-mt5-alignment.md)
 

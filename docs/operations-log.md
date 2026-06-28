@@ -125,7 +125,7 @@ Secondary: bar `time` from `copy_rates` is **UTC** but was labeled as broker wal
 | `rsi_util.py` | Correct Wilder loop: first RSI at bar `period`, smooth from `period+1` |
 | `MarketDataService.java` | Same Wilder fix for grid RSI |
 | `order_rsi_service.py` | Bar times from UTC → broker/NY/IST; optional read of `GrokDevOrderRsiExport.mq5` JSON |
-| `mt5_scripts/GrokDevOrderRsiExport.mq5` | EA writes MT5 `iRSI` shift 0/1 to Common Files for verification |
+| `mt5_scripts/GrokDevOrderRsiExport.mq5` | EA v2 — atomic MT5 `iRSI` shift 0/1 export to Common Files |
 | Config | `BROKER_SERVER_ZONE=Etc/GMT-3` (OctaFX) in Python, backend, Stack Pilot |
 
 ### Verification

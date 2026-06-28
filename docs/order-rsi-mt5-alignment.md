@@ -122,10 +122,34 @@ Old **bar 0** (85.89 on M1) equaled MT5 **bar 1**, not bar 0 — hence the misma
 
 Python MetaTrader5 package has no `iRSI` API. The app reads MT5 terminal values via EA export:
 
-1. EA source: `python/mt5_scripts/GrokDevOrderRsiExport.mq5` (compiled to `MQL5/Experts/`).
+1. EA source: `python/mt5_scripts/GrokDevOrderRsiExport.mq5` (**v2.0** — compile to `MQL5/Experts/`).
 2. Attach to any **XAUUSD** chart; enable **Algo Trading**.
-3. EA writes `Terminal/Common/Files/grok_dev_order_rsi_mt5.json` every second.
+3. EA writes `Terminal/Common/Files/grok_dev_order_rsi_mt5.json` (atomic temp + move).
 4. Publisher includes `timeframes.{TF}.mt5` in the API; use **MT5 built-in** toggle on the **Analyzer** page.
+
+### EA v2.0 settings (recommended)
+
+| Input | Default | Purpose |
+|-------|---------|---------|
+| `InpSymbol` | `XAUUSD` | Symbol (validated on attach) |
+| `InpPeriod` | `14` | RSI period — must match chart iRSI |
+| `InpTimerSec` | `2` | How often export is attempted |
+| `InpNewBarOnly` | `false` | `true` = write only when M1 bar changes (less I/O; forming-bar RSI updates less often) |
+| `InpEnableFileLog` | `false` | Log errors to `grok_dev_order_rsi_log.txt` in Common Files |
+
+**For live Bar 0 RSI comparison:** keep `InpNewBarOnly = false` and `InpTimerSec = 2`–`5`.
+
+**Power-saving mode:** `InpNewBarOnly = true` and raise Python staleness: `MT5_RSI_EXPORT_MAX_AGE=120`.
+
+### v2.0 improvements
+
+| Feature | Benefit |
+|---------|---------|
+| Atomic write (`.tmp` → `FileMove`) | Python never reads partial JSON |
+| Symbol validation on `OnInit` | Clear error if symbol missing |
+| Guaranteed `IndicatorRelease` | No iRSI handle leaks |
+| Optional file log | Production debugging |
+| `updatedAt` in **UTC** (`TimeGMT`) | Matches `mt5_rsi_export.py` freshness check |
 
 Compare script:
 

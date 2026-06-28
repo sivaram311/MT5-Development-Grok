@@ -220,7 +220,7 @@ import { PageHeaderComponent } from '../ui/page-header.component';
             <p><strong>RSI source toggle</strong> (page only, not saved):</p>
             <ul class="pl-4 list-disc space-y-1">
               <li><strong>Calculated</strong> — Python Wilder from <code>run_order_rsi.py</code></li>
-              <li><strong>MT5 built-in</strong> — values from <code>GrokDevOrderRsiExport.mq5</code> EA (attach on XAUUSD, Algo Trading ON)</li>
+              <li><strong>MT5 built-in</strong> — values from <code>GrokDevOrderRsiExport.mq5</code> v2 EA (atomic JSON export; attach on XAUUSD, Algo Trading ON)</li>
             </ul>
 
             <p><strong>Data flow:</strong></p>

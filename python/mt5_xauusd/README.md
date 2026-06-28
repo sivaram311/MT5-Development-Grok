@@ -205,8 +205,11 @@ python run_order_rsi.py
 | `ORDER_RSI_POLL_MS` | `1000` | Heartbeat / poll mode interval |
 | `ORDER_RSI_HISTORY_BARS` | `5000` | Bars fetched per TF for Wilder warm-up |
 | `ORDER_RSI_RSI_PERIOD` | `14` | RSI period |
+| `MT5_RSI_EXPORT_MAX_AGE` | `30` | Max age (seconds) for EA JSON before `mt5ExportAvailable` is false |
 
-**MT5 alignment:** Terminal RSI **14 / Close**. API sends both Python Wilder and optional `mt5.shift0/shift1` from EA export. **Analyzer** page toggle selects which to display.
+**MT5 alignment:** Terminal RSI **14 / Close**. API sends both Python Wilder and optional `mt5.shift0/shift1` from **GrokDevOrderRsiExport.mq5 v2** (atomic write to Common Files). **Analyzer** page toggle selects which to display.
+
+**EA attach:** compile `mt5_scripts/GrokDevOrderRsiExport.mq5` → Experts; attach on XAUUSD; Algo Trading ON. Defaults: timer 2s, `InpNewBarOnly=false` for live forming-bar RSI. See [order-rsi-mt5-alignment.md](../../docs/order-rsi-mt5-alignment.md).
 
 **Classic S/R:** `pivot_util.classic_floor_pivots()` — snapshot `sr` keys match UI row labels.
 

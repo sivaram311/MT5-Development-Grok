@@ -136,7 +136,7 @@ Live **Order RSI** snapshot — Wilder RSI(14) on **close**, with both MT5 bar s
 | `timeframes.{TF}.completed.rsi` | Python Wilder — **shift 1** (last closed) |
 | `timeframes.{TF}.mt5.shift0.rsi` | MT5 built-in `iRSI` shift 0 (when EA export fresh) |
 | `timeframes.{TF}.mt5.shift1.rsi` | MT5 built-in `iRSI` shift 1 |
-| `mt5ExportAvailable` | `true` when `GrokDevOrderRsiExport.mq5` JSON is fresh |
+| `mt5ExportAvailable` | `true` when `GrokDevOrderRsiExport.mq5` v2 JSON is fresh (default max age 30s; env `MT5_RSI_EXPORT_MAX_AGE`) |
 | `timeframes.{TF}.historyBars` | Bars used for Wilder warm-up (default **5000**) |
 | `timeframes.{TF}.sr` | Classic floor pivots from **Bar 0** H/L/C (`s3`…`r3`, `pivot`) |
 | `timeframes.{TF}.completed.sr` | Classic floor pivots from **Bar 1** H/L/C |
