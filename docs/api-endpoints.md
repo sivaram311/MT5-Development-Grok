@@ -138,8 +138,10 @@ Live **Order RSI** snapshot — Wilder RSI(14) on **close**, with both MT5 bar s
 | `timeframes.{TF}.mt5.shift1.rsi` | MT5 built-in `iRSI` shift 1 |
 | `mt5ExportAvailable` | `true` when `GrokDevOrderRsiExport.mq5` JSON is fresh |
 | `timeframes.{TF}.historyBars` | Bars used for Wilder warm-up (default **5000**) |
+| `timeframes.{TF}.sr` | Classic floor pivots from **Bar 0** H/L/C (`s3`…`r3`, `pivot`) |
+| `timeframes.{TF}.completed.sr` | Classic floor pivots from **Bar 1** H/L/C |
 
-Frontend **Analyzer** page (`/dashboard/order-rsi`) toggles display between Python and MT5 values (page-only, not saved).
+Frontend **Analyzer** page (`/dashboard/order-rsi`) toggles display between Python and MT5 RSI values (page-only, not saved). **B0SR** / **B1SR** chips toggle S/R row groups.
 
 ```json
 {
@@ -150,7 +152,11 @@ Frontend **Analyzer** page (`/dashboard/order-rsi`) toggles display between Pyth
   "timeframes": {
     "M5": {
       "rsi": 72.82,
-      "completed": { "rsi": 65.86 },
+      "sr": { "s3": 4170.12, "s2": 4178.45, "s1": 4182.10, "pivot": 4185.33, "r1": 4188.56, "r2": 4192.01, "r3": 4198.44 },
+      "completed": {
+        "rsi": 65.86,
+        "sr": { "s3": 4165.00, "s2": 4172.50, "s1": 4176.20, "pivot": 4180.00, "r1": 4183.80, "r2": 4187.50, "r3": 4193.00 }
+      },
       "mt5": {
         "available": true,
         "shift0": { "rsi": 72.82 },
@@ -168,7 +174,7 @@ Timeframes: **W1, D1, H4, H1, M15, M5, M1** — all read live from MT5 (W1 is no
 
 **MT5 alignment:** Terminal RSI **14 / Close**. Match **Bar 1** → Data Window bar index 1; **Bar 0** → bar index 0. See [order-rsi-mt5-alignment.md](./order-rsi-mt5-alignment.md).
 
-**UI:** **Analyzer** nav item — TF-column table, zone-colored RSI boxes, toggleable rows, page toggle (**Calculated** vs **MT5 built-in**).
+**UI:** **Analyzer** nav item — TF-column table, zone-colored RSI boxes, **B0SR** / **B1SR** classic pivot rows, toggleable row chips, page toggle (**Calculated** vs **MT5 built-in**).
 
 Python env:
 

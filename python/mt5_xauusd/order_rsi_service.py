@@ -31,6 +31,7 @@ from .config import (
 from .mt5_client import MT5Client, MAX_MT5_COPY_COUNT
 from .mt5_rsi_export import read_mt5_builtin_export
 from .postgres_client import PostgresClient
+from .pivot_util import classic_floor_pivots
 from .rsi_util import wilder_rsi_forming_and_completed
 
 logger = logging.getLogger(__name__)
@@ -106,6 +107,8 @@ class OrderRsiPublisher:
         bar_time_utc = df["time"].iloc[-1].to_pydatetime().replace(tzinfo=ZoneInfo("UTC"))
         rsi_forming, rsi_completed = wilder_rsi_forming_and_completed(closes, self.period)
         close = closes[-1]
+        high0 = float(df["high"].iloc[-1])
+        low0 = float(df["low"].iloc[-1])
 
         row: Dict[str, Any] = {
             "timeframe": tf_key,
@@ -119,16 +122,26 @@ class OrderRsiPublisher:
             "historyBars": len(closes),
         }
 
+        sr0 = classic_floor_pivots(high0, low0, close)
+        if sr0:
+            row["sr"] = sr0
+
         if len(df) >= 2:
             completed_time_utc = df["time"].iloc[-2].to_pydatetime().replace(tzinfo=ZoneInfo("UTC"))
             completed_close = float(df["close"].iloc[-2])
-            row["completed"] = {
+            completed_high = float(df["high"].iloc[-2])
+            completed_low = float(df["low"].iloc[-2])
+            completed_block: Dict[str, Any] = {
                 "barIndex": 1,
                 "forming": False,
                 "time": _enrich_times_from_utc(completed_time_utc),
                 "close": round(completed_close, 5),
                 "rsi": round(rsi_completed, 2) if rsi_completed is not None else None,
             }
+            sr1 = classic_floor_pivots(completed_high, completed_low, completed_close)
+            if sr1:
+                completed_block["sr"] = sr1
+            row["completed"] = completed_block
 
         mt5_block = self._mt5_export_block(tf_key)
         if mt5_block:

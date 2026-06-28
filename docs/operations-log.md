@@ -12,6 +12,21 @@ Format for each entry:
 
 ---
 
+## 2026-06-28 — Analyzer classic S/R pivots (B0SR / B1SR)
+
+### Changes
+
+| Area | Change |
+|------|--------|
+| `pivot_util.py` | Classic floor pivots from bar H/L/C |
+| `order_rsi_service.py` | Adds `sr` on forming bar, `completed.sr` on closed bar per TF |
+| `order-rsi.component.ts` | Seven S/R rows per bar group; **B0SR** / **B1SR** visibility chips |
+| Docs | API, alignment guide, README, in-app Docs |
+
+**Verification:** `pytest python/tests/test_pivot_util.py`; restart `python-order-rsi` in Stack Pilot for live data.
+
+---
+
 ## 2026-06-28 — Analyzer table UI + nav rename
 
 ### Changes

@@ -5,6 +5,18 @@ import { environment } from '../../environments/environment';
 
 export type OrderRsiSourceMode = 'python_wilder' | 'mt5_iRSI';
 
+export type OrderRsiSrLevelKey = 's3' | 's2' | 's1' | 'pivot' | 'r1' | 'r2' | 'r3';
+
+export interface OrderRsiSrLevels {
+  s3: number;
+  s2: number;
+  s1: number;
+  pivot: number;
+  r1: number;
+  r2: number;
+  r3: number;
+}
+
 export interface OrderRsiTimeBlock {
   broker: string;
   ny: string;
@@ -30,6 +42,8 @@ export interface OrderRsiCompletedBar {
   time: OrderRsiTimeBlock;
   close: number;
   rsi: number | null;
+  /** Classic floor pivots from Bar 1 H/L/C. */
+  sr?: OrderRsiSrLevels;
 }
 
 export interface OrderRsiTfRow {
@@ -43,6 +57,8 @@ export interface OrderRsiTfRow {
   rsiPeriod: number;
   rsiSource?: string;
   historyBars?: number;
+  /** Classic floor pivots from Bar 0 H/L/C. */
+  sr?: OrderRsiSrLevels;
   completed?: OrderRsiCompletedBar;
   /** MT5 built-in iRSI from GrokDevOrderRsiExport EA (when available). */
   mt5?: OrderRsiMt5Block;

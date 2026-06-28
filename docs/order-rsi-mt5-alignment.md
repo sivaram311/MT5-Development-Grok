@@ -10,8 +10,29 @@ Bottom nav **Analyzer** (`/dashboard/order-rsi`) shows a **table** — timeframe
 | 2 · Bar 0 · data | Bar time + close (toggle to hide) |
 | 3 · Bar 1 · RSI | Zone-colored RSI boxes (closed) |
 | 4 · Bar 1 · data | Bar time + close (toggle to hide) |
+| 5–11 · **B0SR** | Classic floor pivots from **Bar 0** H/L/C: S3, S2, S1, Pivot, R1, R2, R3 |
+| 12–18 · **B1SR** | Classic floor pivots from **Bar 1** H/L/C: S3, S2, S1, Pivot, R1, R2, R3 |
 
-**Show rows** chips on the page toggle each row on/off (page only, not saved).
+**Show rows** chips on the page toggle each row group on/off (page only, not saved). **B0SR** and **B1SR** each show or hide all seven S/R levels together.
+
+### Classic floor pivots (S/R)
+
+Computed in `run_order_rsi.py` from each bar's **high, low, close**:
+
+| Level | Formula |
+|-------|---------|
+| Pivot | (H + L + C) / 3 |
+| R1 | 2×P − L |
+| S1 | 2×P − H |
+| R2 | P + (H − L) |
+| S2 | P − (H − L) |
+| R3 | H + 2×(P − L) |
+| S3 | L − 2×(H − P) |
+
+- **B0SR** — Bar 0 (forming) current H/L/C; updates as the candle forms.
+- **B1SR** — Bar 1 (last closed) H/L/C.
+
+API fields: `timeframes.{TF}.sr` (Bar 0), `timeframes.{TF}.completed.sr` (Bar 1).
 
 ### RSI zone highlights (colored box around value)
 

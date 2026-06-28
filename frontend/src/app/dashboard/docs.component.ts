@@ -198,7 +198,11 @@ import { PageHeaderComponent } from '../ui/page-header.component';
           <div class="px-4 pb-5 text-sm text-zinc-300 text-xs space-y-3">
             <p>Bottom nav <strong>Analyzer</strong> (<code>/dashboard/order-rsi</code>) shows RSI(14) on close for <strong>W1 → M1</strong>.</p>
 
-            <p><strong>Layout:</strong> Table with timeframes as <strong>column headers</strong> (W1 → M1). Four toggleable rows: Bar 0 RSI, Bar 0 data (time/close), Bar 1 RSI, Bar 1 data.</p>
+            <p><strong>Layout:</strong> Table with timeframes as <strong>column headers</strong> (W1 → M1). Rows: Bar 0/1 RSI + data; <strong>B0SR</strong> / <strong>B1SR</strong> classic pivot levels (S3–R3).</p>
+
+            <p><strong>Show rows</strong> chips: Bar 0/1 RSI and data individually; <strong>B0SR</strong> and <strong>B1SR</strong> each toggle all seven S/R levels together.</p>
+
+            <p><strong>Classic S/R</strong> — floor pivots from each bar's H/L/C (computed in <code>run_order_rsi.py</code>). B0SR = forming bar; B1SR = last closed bar.</p>
 
             <p><strong>Zone highlights</strong> (rectangle background, not text color):</p>
             <ul class="pl-4 list-disc space-y-1">

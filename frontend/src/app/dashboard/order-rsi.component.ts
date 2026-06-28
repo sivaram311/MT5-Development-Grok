@@ -8,18 +8,23 @@ import { StatusBadgeComponent } from '../ui/status-badge.component';
 import {
   OrderRsiSnapshot,
   OrderRsiSourceMode,
+  OrderRsiSrLevelKey,
   OrderRsiStreamService,
   OrderRsiTfRow
 } from '../services/order-rsi-stream.service';
 import { formatWallTime, formatAgeMinutes } from '../utils/time.util';
 import { orderRsiZone, orderRsiZoneBoxClass } from '../utils/order-rsi-zone.util';
 
-type OrderRsiRowKey = 'bar0Rsi' | 'bar0Data' | 'bar1Rsi' | 'bar1Data';
+type OrderRsiRowKey = 'bar0Rsi' | 'bar0Data' | 'bar1Rsi' | 'bar1Data' | 'b0sr' | 'b1sr';
 
 interface OrderRsiRowDef {
   key: OrderRsiRowKey;
   label: string;
-  sublabel: string;
+}
+
+interface SrRowDef {
+  level: OrderRsiSrLevelKey;
+  label: string;
 }
 
 @Component({
@@ -29,7 +34,7 @@ interface OrderRsiRowDef {
   template: `
     <app-page-header
       title="Analyzer"
-      subtitle="Timeframes as columns — Bar 0 / Bar 1 rows with optional data rows.">
+      subtitle="Timeframes as columns — RSI, bar data, and classic S/R pivots (Bar 0 / Bar 1).">
       <div actions class="flex flex-wrap items-center gap-2">
         <app-status-badge
           [label]="connected ? 'LIVE' : 'OFFLINE'"
@@ -162,6 +167,24 @@ interface OrderRsiRowDef {
               </td>
             </tr>
 
+            <!-- Bar 0 classic S/R -->
+            <ng-container *ngIf="rowVisibility.b0sr">
+              <tr
+                *ngFor="let sr of srRowDefs"
+                class="border-b border-zinc-800/80"
+                [ngClass]="srRowBgClass(sr.level)">
+                <th class="sticky left-0 z-10 bg-zinc-900 text-left text-[10px] text-zinc-500 font-normal px-3 py-2 align-middle border-r border-zinc-800/50">
+                  <span class="font-medium" [ngClass]="srLevelClass(sr.level)">{{ sr.label }}</span>
+                  <span class="block text-[9px] text-zinc-600">B0 · SR</span>
+                </th>
+                <td *ngFor="let tf of timeframeOrder" class="text-center px-2 py-2">
+                  <span class="tabular-nums font-mono text-xs" [ngClass]="srLevelClass(sr.level)">
+                    {{ srLevel(tf, 'bar0', sr.level) != null ? (srLevel(tf, 'bar0', sr.level)! | number:'1.2-2') : '—' }}
+                  </span>
+                </td>
+              </tr>
+            </ng-container>
+
             <!-- Row 3: Bar 1 closed RSI -->
             <tr *ngIf="rowVisibility.bar1Rsi" class="border-b border-zinc-800/80">
               <th class="sticky left-0 z-10 bg-zinc-900 text-left text-[10px] text-zinc-500 font-normal px-3 py-2 align-middle border-r border-zinc-800/50">
@@ -178,7 +201,7 @@ interface OrderRsiRowDef {
             </tr>
 
             <!-- Row 4: Bar 1 data -->
-            <tr *ngIf="rowVisibility.bar1Data">
+            <tr *ngIf="rowVisibility.bar1Data" class="border-b border-zinc-800/80 bg-zinc-950/20">
               <th class="sticky left-0 z-10 bg-zinc-950 text-left text-[10px] text-zinc-500 font-normal px-3 py-2 align-middle border-r border-zinc-800/50">
                 <span class="font-medium text-zinc-400">Bar 1</span>
                 <span class="block text-[9px] text-zinc-600">data</span>
@@ -189,6 +212,24 @@ interface OrderRsiRowDef {
                 <span *ngIf="!rowFor(tf)?.completed?.time && bar1Close(tf) == null">—</span>
               </td>
             </tr>
+
+            <!-- Bar 1 classic S/R -->
+            <ng-container *ngIf="rowVisibility.b1sr">
+              <tr
+                *ngFor="let sr of srRowDefs"
+                class="border-b border-zinc-800/80 last:border-b-0"
+                [ngClass]="srRowBgClass(sr.level)">
+                <th class="sticky left-0 z-10 bg-zinc-900 text-left text-[10px] text-zinc-500 font-normal px-3 py-2 align-middle border-r border-zinc-800/50">
+                  <span class="font-medium" [ngClass]="srLevelClass(sr.level)">{{ sr.label }}</span>
+                  <span class="block text-[9px] text-zinc-600">B1 · SR</span>
+                </th>
+                <td *ngFor="let tf of timeframeOrder" class="text-center px-2 py-2">
+                  <span class="tabular-nums font-mono text-xs" [ngClass]="srLevelClass(sr.level)">
+                    {{ srLevel(tf, 'bar1', sr.level) != null ? (srLevel(tf, 'bar1', sr.level)! | number:'1.2-2') : '—' }}
+                  </span>
+                </td>
+              </tr>
+            </ng-container>
           </tbody>
         </table>
       </div>
@@ -203,17 +244,31 @@ export class OrderRsiComponent implements OnInit, OnDestroy {
   timeframeOrder = ['W1', 'D1', 'H4', 'H1', 'M15', 'M5', 'M1'];
 
   rowDefs: OrderRsiRowDef[] = [
-    { key: 'bar0Rsi', label: 'Bar 0 · RSI', sublabel: 'forming' },
-    { key: 'bar0Data', label: 'Bar 0 · data', sublabel: 'time / close' },
-    { key: 'bar1Rsi', label: 'Bar 1 · RSI', sublabel: 'closed' },
-    { key: 'bar1Data', label: 'Bar 1 · data', sublabel: 'time / close' }
+    { key: 'bar0Rsi', label: 'Bar 0 · RSI' },
+    { key: 'bar0Data', label: 'Bar 0 · data' },
+    { key: 'b0sr', label: 'B0SR' },
+    { key: 'bar1Rsi', label: 'Bar 1 · RSI' },
+    { key: 'bar1Data', label: 'Bar 1 · data' },
+    { key: 'b1sr', label: 'B1SR' }
+  ];
+
+  srRowDefs: SrRowDef[] = [
+    { level: 's3', label: 'S3' },
+    { level: 's2', label: 'S2' },
+    { level: 's1', label: 'S1' },
+    { level: 'pivot', label: 'Pivot' },
+    { level: 'r1', label: 'R1' },
+    { level: 'r2', label: 'R2' },
+    { level: 'r3', label: 'R3' }
   ];
 
   rowVisibility: Record<OrderRsiRowKey, boolean> = {
     bar0Rsi: true,
     bar0Data: true,
+    b0sr: true,
     bar1Rsi: true,
-    bar1Data: true
+    bar1Data: true,
+    b1sr: true
   };
 
   snapshot: OrderRsiSnapshot | null = null;
@@ -306,6 +361,26 @@ export class OrderRsiComponent implements OnInit, OnDestroy {
       return row.mt5.shift1.close;
     }
     return row.completed?.close ?? null;
+  }
+
+  srLevel(tf: string, bar: 'bar0' | 'bar1', level: OrderRsiSrLevelKey): number | null {
+    const row = this.rowFor(tf);
+    if (!row) return null;
+    const block = bar === 'bar0' ? row.sr : row.completed?.sr;
+    const value = block?.[level];
+    return value != null ? value : null;
+  }
+
+  srLevelClass(level: OrderRsiSrLevelKey): string {
+    if (level.startsWith('s')) return 'text-sky-300';
+    if (level.startsWith('r')) return 'text-rose-300';
+    return 'text-amber-300';
+  }
+
+  srRowBgClass(level: OrderRsiSrLevelKey): string {
+    if (level.startsWith('s')) return 'bg-sky-950/10';
+    if (level.startsWith('r')) return 'bg-rose-950/10';
+    return 'bg-amber-950/10';
   }
 
   zoneBoxClass(rsi: number | null): string {

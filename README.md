@@ -70,7 +70,7 @@ Then restart the backend. The seeder will recreate them.
 - **Volatility explorer** — sortable grid with per-TF preference sync
 - **Health dashboard** — per-TF freshness cards + **SSE push alerts** when pipeline degrades
 - **Analysis Lab** — RSI storm scanner + Gann level studies (octave + Square-of-9)
-- **Analyzer** — live multi-TF RSI(14) table (W1→M1), zone highlights, toggleable rows, Python vs MT5 source — route `/dashboard/order-rsi`; see [docs/order-rsi-mt5-alignment.md](docs/order-rsi-mt5-alignment.md)
+- **Analyzer** — live multi-TF RSI(14) table (W1→M1), zone highlights, classic S/R pivots (B0SR/B1SR), toggleable rows, Python vs MT5 source — route `/dashboard/order-rsi`; see [docs/order-rsi-mt5-alignment.md](docs/order-rsi-mt5-alignment.md)
 - **User preferences** — PATCH merge to `/api/auth/preferences` (grid, market UI, volatility)
 - **Playwright e2e** — login, manifest, auth-guard smoke tests (`npm run e2e`)
 
@@ -153,7 +153,7 @@ All documentation was written with priority given to readability on small screen
 
 Second Python process (`python run_order_rsi.py`) publishes forming-bar RSI for **W1, D1, H4, H1, M15, M5, M1** into `grok_dev.live_order_rsi`.
 
-**Frontend:** bottom nav **Analyzer** (`/dashboard/order-rsi`) — table with timeframes as columns, four toggleable rows (Bar 0/1 RSI + data), zone-colored RSI boxes, page toggle **Calculated** vs **MT5 built-in**.
+**Frontend:** bottom nav **Analyzer** (`/dashboard/order-rsi`) — table with timeframes as columns, toggleable rows (Bar 0/1 RSI + data, **B0SR** / **B1SR** classic pivot levels), zone-colored RSI boxes, page toggle **Calculated** vs **MT5 built-in**.
 
 **Run via Stack Pilot:** start service `python-order-rsi` after MT5 is logged in.
 

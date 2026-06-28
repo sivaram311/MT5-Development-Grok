@@ -4,6 +4,18 @@ All notable changes to the Grok Dev full-stack application (Spring Boot + Angula
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2026-06-28 (Analyzer classic S/R pivots)
+
+### Added
+- **Classic floor pivots** in Order RSI publisher — `sr` (Bar 0) and `completed.sr` (Bar 1) per timeframe.
+- **Analyzer UI** — **B0SR** / **B1SR** row groups (S3–R3), toggled together via Show rows chips.
+- **`pivot_util.py`** + pytest coverage.
+
+### Documentation
+- Alignment guide, API docs, README, in-app Docs updated for S/R rows.
+
+---
+
 ## [Unreleased] - 2026-06-28 (Analyzer + MT5 RSI alignment)
 
 ### Added
