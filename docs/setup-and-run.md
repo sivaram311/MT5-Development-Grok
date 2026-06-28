@@ -264,6 +264,28 @@ Frontend: bottom nav **Order RSI** → SSE stream `/api/market/xauusd/order-rsi/
 
 Requires MT5 terminal logged in (same as data downloader).
 
+### Stack Pilot (all four services)
+
+Use [Stack Pilot](https://github.com/sivaram311/MT5-Development-Grok) sibling repo at `E:\Source\stack-pilot` to start/stop the full stack from one dashboard (`http://localhost:8091`):
+
+| Service | Command | Log file |
+|---------|---------|----------|
+| **python-downloader** | `python run_data_downloader.py` | `logs/python.log` |
+| **python-order-rsi** | `python run_order_rsi.py` | `logs/order-rsi.log` |
+| **backend** | `mvn spring-boot:run` | `logs/backend.log` |
+| **frontend** | `npm run start` | `logs/frontend.log` |
+
+```powershell
+cd E:\Source\stack-pilot
+mvn spring-boot:run
+```
+
+Open http://localhost:8091 → **Start All** (or start **python-order-rsi** individually after MT5 is logged in).
+
+Order RSI env vars (`ORDER_RSI_MODE`, `ORDER_RSI_TICK_MS`, etc.) are set in `stack-pilot/src/main/resources/application.yml` under `stackpilot.services.python-order-rsi.environment`. Edit and restart Stack Pilot to apply.
+
+See `stack-pilot/docs/implementation_plan.md` for API endpoints and architecture.
+
 See root [CHANGELOG.md](../../CHANGELOG.md) for all application changes (updated with every modification).
 
 ## Architecture Overview

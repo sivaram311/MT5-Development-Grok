@@ -216,6 +216,7 @@ Trader needed multi-timeframe RSI on the **current forming candle** (shift 0) wi
 | Backend | `GET /order-rsi` + SSE `/order-rsi/stream` (250ms DB poll, push on change) |
 | Frontend | Bottom nav **Order RSI** page + `OrderRsiStreamService` |
 | Config | `ORDER_RSI_MODE=tick\|poll`, `ORDER_RSI_TICK_MS`, `ORDER_RSI_POLL_MS` |
+| Stack Pilot | Service **`python-order-rsi`** in `E:\Source\stack-pilot` (`run_order_rsi.py`, log `logs/order-rsi.log`) |
 
 RSI uses Wilder(14) on MT5 bars including forming bar; price = forming **close** updated from tick.
 
