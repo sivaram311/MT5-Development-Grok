@@ -72,10 +72,12 @@ import { formatWallTime, formatAgeMinutes } from '../utils/time.util';
             [class.text-zinc-500]="!rowFor(tf)?.rsi">
             {{ rowFor(tf)?.rsi != null ? (rowFor(tf)!.rsi | number:'1.1-1') : '—' }}
           </div>
-          <div class="text-[10px] text-zinc-500 mt-1 font-mono" *ngIf="rowFor(tf)?.time as t">
-            bar {{ formatWallTime(t.broker) }} UTC
-          </div>
-          <div class="text-[10px] text-zinc-600 font-mono">NY {{ formatWallTime(rowFor(tf)?.time?.ny) }}</div>
+          <ng-container *ngIf="rowFor(tf)?.time as t">
+            <div class="text-[10px] text-zinc-500 mt-1 font-mono">
+              bar {{ formatWallTime(t.broker) }} UTC
+            </div>
+            <div class="text-[10px] text-zinc-600 font-mono">NY {{ formatWallTime(t.ny) }}</div>
+          </ng-container>
         </div>
       </div>
     </div>
