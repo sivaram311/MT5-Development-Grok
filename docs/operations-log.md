@@ -202,6 +202,25 @@ Overall status was derived only from `freshCount`. When all candles were older t
 
 ---
 
+## 2026-06-28 — Order RSI live panel (W1→M1, forming bar)
+
+### Symptom
+
+Trader needed multi-timeframe RSI on the **current forming candle** (shift 0) with live price and broker/NY/IST times — not available in Analysis storm scanner (single TF, completed bars only).
+
+### Implementation
+
+| Layer | Change |
+|-------|--------|
+| Python `run_order_rsi.py` | MT5 tick/poll publisher → `grok_dev.live_order_rsi` JSON snapshot |
+| Backend | `GET /order-rsi` + SSE `/order-rsi/stream` (250ms DB poll, push on change) |
+| Frontend | Bottom nav **Order RSI** page + `OrderRsiStreamService` |
+| Config | `ORDER_RSI_MODE=tick\|poll`, `ORDER_RSI_TICK_MS`, `ORDER_RSI_POLL_MS` |
+
+RSI uses Wilder(14) on MT5 bars including forming bar; price = forming **close** updated from tick.
+
+---
+
 ## Template (copy for future entries)
 
 ```markdown

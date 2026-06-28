@@ -126,6 +126,46 @@ Requires Bearer token **or** `?access_token=<jwt>` (EventSource cannot send Auth
 
 Example client URL: `/api/market/xauusd/health/stream?access_token=eyJ...`
 
+### GET `/api/market/xauusd/order-rsi`
+
+Live **Order RSI** snapshot (forming bar / MT5 shift 0, RSI Wilder 14):
+
+```json
+{
+  "symbol": "XAUUSD",
+  "live": true,
+  "price": 4188.67,
+  "priceSource": "forming_close",
+  "pushMode": "tick",
+  "asOf": { "broker": "2026-06-28T08:30:00", "ny": "...", "ist": "..." },
+  "timeframes": {
+    "W1": { "barIndex": 0, "forming": true, "close": 4188.67, "rsi": 52.1, "time": { "broker": "...", "ny": "...", "ist": "..." } },
+    "D1": { ... },
+    "M1": { ... }
+  },
+  "updatedAt": "2026-06-28T08:30:01.123Z"
+}
+```
+
+Requires Python publisher: `python run_order_rsi.py` (writes `grok_dev.live_order_rsi`).
+
+Timeframes: **W1, D1, H4, H1, M15, M5, M1** — all read live from MT5 (W1 is not stored in historical sync tables).
+
+### GET `/api/market/xauusd/order-rsi/stream`
+
+Server-Sent Events (`text/event-stream`). Emits `orderRsi` events whenever the Postgres snapshot changes (backend polls every `grok.order-rsi.stream-poll-ms`, default 250ms).
+
+Requires Bearer token **or** `?access_token=<jwt>`.
+
+Python push modes (env):
+
+| Variable | Default | Meaning |
+|----------|---------|---------|
+| `ORDER_RSI_MODE` | `tick` | Push when tick price changes |
+| `ORDER_RSI_MODE` | `poll` | Push every `ORDER_RSI_POLL_MS` |
+| `ORDER_RSI_TICK_MS` | `250` | Tick check interval |
+| `ORDER_RSI_POLL_MS` | `1000` | Poll / heartbeat interval |
+
 ## Other Endpoints
 
 ### GET `/api/welcome`

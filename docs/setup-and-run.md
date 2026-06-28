@@ -242,6 +242,28 @@ If your MT5 terminal shows a different server time (check Market Watch), set the
 - Windows Task Scheduler: `python/setup_task_scheduler.ps1` (Run as Administrator). Auto-detects Python, startup+logon triggers, robust restarts.
 - File logging enabled automatically in daemon.
 
+### Live Order RSI (real-time trading panel)
+
+Second Python process — reads MT5 **forming candles** (shift 0) and publishes RSI(14) for W1→M1:
+
+```powershell
+cd python
+python run_order_rsi.py
+```
+
+Configure via environment:
+
+```powershell
+$env:ORDER_RSI_MODE = "tick"      # tick | poll
+$env:ORDER_RSI_TICK_MS = "250"    # how often to read MT5 tick (tick mode)
+$env:ORDER_RSI_POLL_MS = "1000"   # poll/heartbeat interval
+$env:BROKER_SERVER_ZONE = "UTC"   # match grok.market.broker-server-zone
+```
+
+Frontend: bottom nav **Order RSI** → SSE stream `/api/market/xauusd/order-rsi/stream`.
+
+Requires MT5 terminal logged in (same as data downloader).
+
 See root [CHANGELOG.md](../../CHANGELOG.md) for all application changes (updated with every modification).
 
 ## Architecture Overview

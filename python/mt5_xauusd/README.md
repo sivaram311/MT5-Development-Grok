@@ -189,6 +189,17 @@ Run the health check:
 curl http://localhost:8081/api/market/xauusd/health
 ```
 
+### Live Order RSI publisher
+
+Separate process for the **Order RSI** dashboard (forming-bar RSI from MT5):
+
+```powershell
+cd python
+python run_order_rsi.py
+```
+
+Env: `ORDER_RSI_MODE=tick|poll`, `ORDER_RSI_TICK_MS=250`, `ORDER_RSI_POLL_MS=1000`.
+
 ### 5. Robustness (Implemented)
 - Automatic reconnection logic (`ensure_connected` with exponential backoff).
 - The daemon recovers from temporary MT5 disconnects.

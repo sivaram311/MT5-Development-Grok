@@ -63,6 +63,16 @@ DB_CONFIG = {
 # Schema used by Spring Boot
 SCHEMA = "grok_dev"
 
+# Broker wall-clock zone for live order RSI timestamps (match backend grok.market.broker-server-zone)
+BROKER_SERVER_ZONE = os.getenv("BROKER_SERVER_ZONE", "UTC")
+
+# ====================== Live Order RSI publisher ======================
+ORDER_RSI_TIMEFRAMES = ["W1", "D1", "H4", "H1", "M15", "M5", "M1"]
+ORDER_RSI_MODE = os.getenv("ORDER_RSI_MODE", "tick").lower()  # tick | poll
+ORDER_RSI_TICK_MS = int(os.getenv("ORDER_RSI_TICK_MS", "250"))
+ORDER_RSI_POLL_MS = int(os.getenv("ORDER_RSI_POLL_MS", "1000"))
+ORDER_RSI_RSI_PERIOD = int(os.getenv("ORDER_RSI_RSI_PERIOD", "14"))
+
 # Table naming: XAUUSD_{Timeframe}
 def get_table_name(timeframe_key: str) -> str:
     return f"XAUUSD_{timeframe_key}"

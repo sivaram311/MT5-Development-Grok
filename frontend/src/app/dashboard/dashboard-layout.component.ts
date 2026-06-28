@@ -134,6 +134,13 @@ interface NavItem {
       <app-bottom-sheet [open]="moreSheetOpen" title="More" (close)="moreSheetOpen = false">
         <div class="space-y-1 pb-2">
           <a
+            routerLink="volatility"
+            (click)="moreSheetOpen = false"
+            class="flex items-center gap-3 min-h-11 px-3 rounded-2xl active:bg-zinc-800 text-sm">
+            <app-nav-icon class="w-5 h-5 text-zinc-400" name="volatility"></app-nav-icon>
+            Volatility
+          </a>
+          <a
             routerLink="analysis"
             (click)="moreSheetOpen = false"
             class="flex items-center gap-3 min-h-11 px-3 rounded-2xl active:bg-zinc-800 text-sm">
@@ -172,13 +179,14 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
   primaryNav: NavItem[] = [
     { route: 'overview', label: 'Home', icon: 'home' },
     { route: 'market', label: 'Market', icon: 'market' },
-    { route: 'volatility', label: 'Volatility', icon: 'volatility' },
+    { route: 'order-rsi', label: 'Order RSI', icon: 'order-rsi' },
     { route: 'health', label: 'Health', icon: 'health' }
   ];
 
   sidebarItems: NavItem[] = [
     { route: 'overview', label: 'Overview', icon: 'home' },
     { route: 'market', label: 'Market Data', icon: 'market' },
+    { route: 'order-rsi', label: 'Order RSI', icon: 'order-rsi' },
     { route: 'volatility', label: 'Volatility', icon: 'volatility' },
     { route: 'health', label: 'Health', icon: 'health' }
   ];
