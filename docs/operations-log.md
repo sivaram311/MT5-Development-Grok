@@ -60,6 +60,33 @@ Contributing factors:
 
 ---
 
+## 2026-06-28 — Auto-login on login page (dev testing)
+
+### Symptom
+
+During active testing, manually entering `admin` / `admin123` on every visit slowed iteration.
+
+### Root cause
+
+No automation — login was always manual despite dev-only demo credentials.
+
+### Changes
+
+| Area | Change | Why |
+|------|--------|-----|
+| `environment.ts` | `autoLogin: true` + default credentials | Dev/testing skips manual auth |
+| `environment.prod.ts` | `autoLogin: false` | Production must not auto-sign-in |
+| `login.component.ts` | Auto-login on init; redirect if session valid; `?noAutoLogin=1` escape hatch | Seamless dev UX; e2e/manual override |
+| `e2e/login.spec.ts` | Use `noAutoLogin=1` for form tests; mock API for auto-login guard test | Keep Playwright stable |
+
+### Verification
+
+- Visit `/login` in dev → redirects to `/dashboard` without manual submit.
+- Visit `/login?noAutoLogin=1` → form stays visible.
+- Production build uses `autoLogin: false`.
+
+---
+
 ## Template (copy for future entries)
 
 ```markdown

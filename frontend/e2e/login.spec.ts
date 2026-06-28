@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Login page', () => {
   test('renders sign-in form and branding', async ({ page }) => {
-    await page.goto('/login');
+    await page.goto('/login?noAutoLogin=1');
 
     await expect(page.getByRole('heading', { name: 'Grok Dev' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
@@ -19,7 +19,7 @@ test.describe('Login page', () => {
   });
 
   test('enables submit when credentials entered', async ({ page }) => {
-    await page.goto('/login');
+    await page.goto('/login?noAutoLogin=1');
     await page.locator('#username').fill('admin');
     await page.locator('#password').fill('secret');
     await expect(page.getByRole('button', { name: /Continue to dashboard/i })).toBeEnabled();
@@ -27,8 +27,22 @@ test.describe('Login page', () => {
 });
 
 test.describe('Auth guard', () => {
-  test('redirects unauthenticated users from dashboard to login', async ({ page }) => {
+  test('auto-signs in when unauthenticated user hits dashboard (dev autoLogin)', async ({ page }) => {
+    await page.route('**/api/auth/login', async route => {
+      await route.fulfill({
+        json: {
+          accessToken: 'e2e-access-token',
+          refreshToken: 'e2e-refresh-token',
+          username: 'admin',
+          authenticated: true
+        }
+      });
+    });
+    await page.route('**/api/auth/me', async route => {
+      await route.fulfill({ json: { username: 'admin', authenticated: true, roles: ['ROLE_ADMIN'] } });
+    });
+
     await page.goto('/dashboard');
-    await expect(page).toHaveURL(/\/login/);
+    await expect(page).toHaveURL(/\/dashboard/);
   });
 });

@@ -30,7 +30,9 @@ import { environment } from '../../environments/environment';
           <div class="bg-zinc-900/80 backdrop-blur-sm border border-zinc-800/80 rounded-3xl p-6 sm:p-8 shadow-2xl shadow-black/30">
             <div class="mb-6">
               <h2 class="text-lg font-semibold text-white">Sign in</h2>
-              <p class="text-zinc-500 text-sm mt-1">Access your trading dashboard</p>
+              <p class="text-zinc-500 text-sm mt-1">
+                {{ autoLoginPending ? 'Signing in automatically for testing…' : 'Access your trading dashboard' }}
+              </p>
             </div>
 
             <div *ngIf="sessionMessage" class="mb-4 flex gap-2.5 text-amber-200 text-sm bg-amber-950/40 border border-amber-800/40 p-3.5 rounded-2xl" role="alert">
@@ -137,9 +139,11 @@ export class LoginComponent implements OnInit {
   password = '';
   showPassword = false;
   isLoading = false;
+  autoLoginPending = false;
   errorMessage = '';
   sessionMessage = '';
   showDemoHint = environment.showDemoHint;
+  private autoLoginAttempted = false;
 
   constructor(
     private authService: AuthService,
@@ -148,17 +152,35 @@ export class LoginComponent implements OnInit {
   ) {}
 
   ngOnInit() {
+    if (this.authService.isAuthenticated()) {
+      this.router.navigate(['/dashboard']);
+      return;
+    }
+
     this.route.queryParamMap.subscribe(params => {
       if (params.get('reason') === 'session_expired') {
         this.sessionMessage = 'Your session expired. Please sign in again.';
+      }
+
+      const skipAutoLogin = params.get('noAutoLogin') === '1';
+      if (environment.autoLogin && !skipAutoLogin && !this.autoLoginAttempted) {
+        this.tryAutoLogin();
       }
     });
   }
 
   fillDemoCredentials() {
-    this.username = 'admin';
-    this.password = 'admin123';
+    const creds = environment.autoLoginCredentials;
+    this.username = creds.username || 'admin';
+    this.password = creds.password || 'admin123';
     this.errorMessage = '';
+  }
+
+  private tryAutoLogin() {
+    this.autoLoginAttempted = true;
+    this.fillDemoCredentials();
+    this.autoLoginPending = true;
+    this.onLogin();
   }
 
   onLogin() {
@@ -176,6 +198,7 @@ export class LoginComponent implements OnInit {
     this.authService.login(this.username, this.password).subscribe({
       next: response => {
         this.isLoading = false;
+        this.autoLoginPending = false;
         if (response?.accessToken) {
           this.router.navigate(['/dashboard']);
         } else {
@@ -184,6 +207,7 @@ export class LoginComponent implements OnInit {
       },
       error: err => {
         this.isLoading = false;
+        this.autoLoginPending = false;
         this.errorMessage = err.error?.message || 'Invalid credentials. Please try again.';
       }
     });
