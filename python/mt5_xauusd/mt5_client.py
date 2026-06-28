@@ -11,6 +11,7 @@ from typing import Optional
 import logging
 
 from .config import MT5_PATH, SYMBOL, BATCH_SIZE, DEBUG
+from .candle_util import drop_forming_bar, filter_after_since
 
 # Common MT5 installation paths to try if MT5_PATH is None
 COMMON_MT5_PATHS = [
@@ -189,7 +190,7 @@ class MT5Client:
         df = df[columns]
 
         # Filter strictly after 'since' to avoid duplicates
-        df = df[df['time'] > since].reset_index(drop=True)
+        df = filter_after_since(df, since)
         return df
 
     def get_last_bar_time(self, timeframe: int) -> Optional[datetime]:
@@ -228,11 +229,9 @@ class MT5Client:
         columns = ['time', 'open', 'high', 'low', 'close', 'tick_volume', 'spread', 'real_volume']
         df = df[columns]
 
-        # Drop the current (incomplete) candle - this is the key for "only completed candles"
-        if len(df) > 1:
-            df = df.iloc[:-1]
+        df = drop_forming_bar(df)
 
         if since is not None:
-            df = df[df['time'] > since].reset_index(drop=True)
+            df = filter_after_since(df, since)
 
         return df

@@ -104,13 +104,19 @@ import { environment } from '../../environments/environment';
             </form>
           </div>
 
-          <div *ngIf="showDemoHint" class="mt-5 text-center">
+          <div *ngIf="showDemoHint" class="mt-5 text-center space-y-2">
             <div class="inline-flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs px-4 py-2.5 bg-zinc-900/60 border border-zinc-800 rounded-2xl text-zinc-500">
               <span>Demo credentials</span>
               <span class="font-mono text-emerald-400/90">admin</span>
               <span class="text-zinc-600">/</span>
               <span class="font-mono text-emerald-400/90">admin123</span>
             </div>
+            <button
+              type="button"
+              (click)="fillDemoCredentials()"
+              class="text-xs font-medium text-emerald-400/90 active:text-emerald-300 underline underline-offset-2">
+              Use demo credentials
+            </button>
           </div>
         </div>
       </div>
@@ -149,7 +155,16 @@ export class LoginComponent implements OnInit {
     });
   }
 
+  fillDemoCredentials() {
+    this.username = 'admin';
+    this.password = 'admin123';
+    this.errorMessage = '';
+  }
+
   onLogin() {
+    this.username = this.username.trim();
+    this.password = this.password.trim();
+
     if (!this.username || !this.password) {
       this.errorMessage = 'Please enter username and password';
       return;

@@ -43,21 +43,26 @@ public class AuthController {
     @PostMapping("/login")
     @Transactional
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
-        String username = loginRequest != null ? loginRequest.getUsername() : "<null>";
-        String password = loginRequest != null ? loginRequest.getPassword() : "<null>";
+        String username = loginRequest != null && loginRequest.getUsername() != null
+                ? loginRequest.getUsername().trim() : "";
+        String password = loginRequest != null && loginRequest.getPassword() != null
+                ? loginRequest.getPassword().trim() : "";
         log.info("=== LOGIN ATTEMPT START ===");
         log.info("Received login request - username='{}', passwordLength={}, passwordPreview='{}'", 
             username, 
-            password != null ? password.length() : 0,
-            password != null && password.length() > 0 ? password.substring(0, Math.min(3, password.length())) + "***" : "<empty>");
+            password.length(),
+            password.length() > 0 ? password.substring(0, Math.min(3, password.length())) + "***" : "<empty>");
+
+        if (username.isEmpty() || password.isEmpty()) {
+            log.warn("LOGIN REJECTED - empty username or password after trim");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "Invalid username or password"));
+        }
 
         try {
             log.info("Calling authenticationManager.authenticate for '{}'", username);
             Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                    loginRequest.getUsername(), 
-                    loginRequest.getPassword()
-                )
+                new UsernamePasswordAuthenticationToken(username, password)
             );
 
             log.info("authenticationManager.authenticate SUCCEEDED for '{}'", username);
@@ -108,8 +113,8 @@ public class AuthController {
             log.debug("Full success response keys: {}", response.keySet());
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            log.error("!!! LOGIN FAILED for username='{}' - real exception: {} - {}", 
-                username, e.getClass().getSimpleName(), e.getMessage(), e);
+            log.error("!!! LOGIN FAILED for username='{}', passwordLength={} - exception: {} - {}", 
+                username, password.length(), e.getClass().getSimpleName(), e.getMessage(), e);
             Map<String, Object> error = new HashMap<>();
             error.put("message", "Invalid username or password");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);

@@ -57,9 +57,9 @@ def main():
         help="Run in continuous mode: keep syncing only newly completed candles forever"
     )
     parser.add_argument(
-        "--poll-seconds", type=int, default=CONTINUOUS_POLL_SECONDS,
-        help="Override poll interval (seconds) for all timeframes in --daemon mode. "
-             "By default each timeframe uses its own efficient interval from config "
+        "--poll-seconds", type=int, default=None,
+        help="Force uniform poll interval (seconds) for all timeframes in --daemon mode. "
+             "Omit to use per-TF intervals from config "
              "(M1:15s, M5:30s, M15:60s, H1:180s, H4:600s, D1:1800s)."
     )
     args = parser.parse_args()

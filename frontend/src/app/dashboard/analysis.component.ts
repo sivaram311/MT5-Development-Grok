@@ -7,7 +7,7 @@ import { SegmentControlComponent } from '../ui/segment-control.component';
 import { StatusBadgeComponent } from '../ui/status-badge.component';
 import { EmptyStateComponent } from '../ui/empty-state.component';
 import { PullToRefreshComponent } from '../ui/pull-to-refresh.component';
-import { environment } from '../../environments/environment';
+import { MarketDataCacheService } from '../services/market-data-cache.service';
 import { formatWallTime } from '../utils/time.util';
 import { computeGannStudy, GannLevel, GannStudy, nearestGannLevels } from '../utils/gann.util';
 
@@ -134,7 +134,7 @@ export class AnalysisComponent implements OnInit {
   loading = false;
   formatWallTime = formatWallTime;
 
-  constructor(private http: HttpClient) {}
+  constructor(private marketCache: MarketDataCacheService) {}
 
   ngOnInit() {
     this.refresh();
@@ -155,11 +155,11 @@ export class AnalysisComponent implements OnInit {
 
   scanRsi() {
     this.loading = true;
-    const url = `${environment.apiUrl}/market/xauusd/${this.selectedTf}/grid?limit=120&ny_session_only=false`;
-    this.http.get<any[]>(url).subscribe({
-      next: rows => {
+    this.marketCache.fetchGridWithFallback(this.selectedTf, 120, false).subscribe({
+      next: result => {
         this.loading = false;
-        this.storms = (rows || [])
+        const rows = result.rows || [];
+        this.storms = rows
           .filter(r => r.rsi != null && (r.rsi >= 70 || r.rsi <= 30))
           .map(r => ({
             time: r.time,
@@ -178,11 +178,11 @@ export class AnalysisComponent implements OnInit {
 
   scanGann() {
     this.loading = true;
-    const url = `${environment.apiUrl}/market/xauusd/${this.gannTf}/grid?limit=120&ny_session_only=false`;
-    this.http.get<any[]>(url).subscribe({
-      next: rows => {
+    const limit = this.gannTf === 'D1' ? 120 : 120;
+    this.marketCache.fetchGridWithFallback(this.gannTf, limit, false).subscribe({
+      next: result => {
         this.loading = false;
-        this.gannStudy = computeGannStudy(rows || [], this.gannTf === 'D1' ? 90 : 60);
+        this.gannStudy = computeGannStudy(result.rows || [], this.gannTf === 'D1' ? 90 : 60);
         this.nearestLevels = this.gannStudy ? nearestGannLevels(this.gannStudy, 4) : [];
       },
       error: () => {

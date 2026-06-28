@@ -8,10 +8,12 @@
 - Shared UI kit in [src/app/ui/](file:///E:/Source/grok_dev/frontend/src/app/ui/)
 - [preferences.service.ts](file:///E:/Source/grok_dev/frontend/src/app/services/preferences.service.ts) — backend-synced column layout (PATCH merge)
 - [health-stream.service.ts](file:///E:/Source/grok_dev/frontend/src/app/services/health-stream.service.ts) — SSE pipeline alerts
+- [market-data-cache.service.ts](file:///E:/Source/grok_dev/frontend/src/app/services/market-data-cache.service.ts) — `fetchGridWithFallback()` with IndexedDB offline
 - HttpClient + RxJS for API communications
 - PWA manifest: [manifest.webmanifest](file:///E:/Source/grok_dev/frontend/src/assets/manifest.webmanifest)
 - **@angular/service-worker** — production app-shell caching ([PWA_AND_OFFLINE.md](file:///E:/Source/grok_dev/frontend/docs/PWA_AND_OFFLINE.md))
-- **Playwright** e2e tests in [e2e/](file:///E:/Source/grok_dev/frontend/e2e/) — run with `npm run e2e`
+- **Playwright** e2e tests in [e2e/](file:///E:/Source/grok_dev/frontend/e2e/) — login, manifest, auth guard, dashboard nav (`npm run e2e`)
+- Reliability plan: [RELIABILITY_IMPLEMENTATION_PLAN.md](../../docs/RELIABILITY_IMPLEMENTATION_PLAN.md)
 
 ## Mobile & Tablet Design Principles
 

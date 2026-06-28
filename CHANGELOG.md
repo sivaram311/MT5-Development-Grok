@@ -4,7 +4,37 @@ All notable changes to the Grok Dev full-stack application (Spring Boot + Angula
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - 2026-06-28
+## [Unreleased] - 2026-06-28 (Reliability pass)
+
+### Added
+- **Reliability implementation plan** — [docs/RELIABILITY_IMPLEMENTATION_PLAN.md](docs/RELIABILITY_IMPLEMENTATION_PLAN.md)
+- **Python pytest suite** — `python/tests/` for candle filter and poll scheduling
+- **`candle_util.py`** — testable completed-candle helpers
+- **Spring profiles** — `dev` / `prod` with env-based `DB_*`, `JWT_SECRET`, explicit CORS origins
+- **`GlobalExceptionHandler`** — consistent JSON error responses
+- **`HealthSnapshotService` + `HealthStreamScheduler`** — shared SSE broadcaster with 15s health cache
+- **Frontend `fetchGridWithFallback`** — unified HTTP + IndexedDB offline path
+- **E2E dashboard tests** — authenticated shell + bottom nav (`e2e/dashboard.spec.ts`)
+
+### Changed
+- **Python daemon polling** — `--poll-seconds` default is `None`; per-TF intervals from config apply by default
+- **Postgres client** — `pool_pre_ping`, retry wrapper, `touch_sync_status()` for daemon liveness
+- **`sync_status`** updated in one-shot downloads and on empty daemon polls
+- **`DEBUG`** env flag in Python config (default false)
+- **JWT filter** — scoped `access_token` query param to SSE health stream only; JWT parse errors no longer 500
+- **`DataSeeder`** — `@Profile("dev")` only
+- **Volatility** — virtual-scrolled mobile cards; offline cache via shared market service
+- **Analysis** — uses `MarketDataCacheService` with offline fallback
+- **Production Angular build** — `fileReplacements` for `environment.prod.ts`
+- Documentation updated across Python, backend, frontend, and API guides
+
+### Fixed
+- **AuthControllerTest** — `@AutoConfigureMockMvc(addFilters = false)` for slice test
+- **`JwtUtil.validateToken`** — returns false for expired/malformed tokens instead of throwing
+
+---
+
+## [Unreleased] - 2026-06-28 (Mobile-first PWA)
 
 ### Mobile-First UI Completion & Optional Follow-Ups
 

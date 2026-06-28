@@ -70,6 +70,22 @@ mvn spring-boot:run
 ```
 API available at http://localhost:8081
 
+**Profiles:** Default is `dev` (`spring.profiles.active=dev`) — enables SQL logging and `DataSeeder` (admin/user1). For production:
+
+```powershell
+$env:SPRING_PROFILES_ACTIVE="prod"
+$env:JWT_SECRET="your-long-secret"
+$env:DB_PASSWORD="your-db-password"
+mvn spring-boot:run
+```
+
+## 2b. Python tests (optional)
+```powershell
+cd python
+pip install -r requirements.txt
+pytest tests/ -q
+```
+
 ## 3. Frontend
 ```bash
 cd frontend
@@ -81,7 +97,7 @@ Open http://localhost:4200 (configured to run on http://localhost:4200 and bind 
 ## Login
 - **admin / admin123**
 
-**Important**: The admin user is **automatically created and its password re-hashed** every time the application starts by `DataSeeder.java`.
+**Important**: In **dev** profile, `DataSeeder` ensures `admin` / `admin123` on startup. In **prod** profile, the seeder does not run — create users manually.
 
 This is done in `src/main/java/com/grokdev/grokdev/config/DataSeeder.java` using the live `PasswordEncoder` bean.
 

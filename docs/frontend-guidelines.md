@@ -60,7 +60,7 @@ Located in `frontend/src/app/ui/`:
 
 - [timeframe-context.service.ts](file:///E:/Source/grok_dev/frontend/src/app/services/timeframe-context.service.ts) — global active timeframe
 - [network-status.service.ts](file:///E:/Source/grok_dev/frontend/src/app/services/network-status.service.ts) — offline/API banners
-- [market-data-cache.service.ts](file:///E:/Source/grok_dev/frontend/src/app/services/market-data-cache.service.ts) — in-memory + IndexedDB grid cache
+- [market-data-cache.service.ts](file:///E:/Source/grok_dev/frontend/src/app/services/market-data-cache.service.ts) — `fetchGridWithFallback()` (HTTP + IndexedDB offline)
 - [health-stream.service.ts](file:///E:/Source/grok_dev/frontend/src/app/services/health-stream.service.ts) — SSE pipeline health alerts
 - [preferences.service.ts](file:///E:/Source/grok_dev/frontend/src/app/services/preferences.service.ts) — PATCH partial preference merge
 

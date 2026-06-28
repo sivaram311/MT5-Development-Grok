@@ -1,5 +1,6 @@
 package com.grokdev.grokdev.security;
 
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -10,6 +11,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -20,12 +22,22 @@ import java.io.IOException;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
+    private static final String SSE_HEALTH_STREAM_PATH = "/api/market/xauusd/health/stream";
+
     @Autowired
     private JwtUtil jwtUtil;
 
     @Autowired
     @Lazy
     private UserDetailsService userDetailsService;
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getServletPath();
+        return path.startsWith("/api/auth/login")
+                || path.startsWith("/api/auth/refresh")
+                || path.startsWith("/api/auth/logout");
+    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -35,15 +47,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String jwt = parseJwt(request);
 
         if (jwt != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            String username = jwtUtil.extractUsername(jwt);
+            try {
+                String username = jwtUtil.extractUsername(jwt);
+                UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
-            UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-
-            if (jwtUtil.validateToken(jwt, userDetails)) {
-                UsernamePasswordAuthenticationToken authToken =
-                        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authToken);
+                if (jwtUtil.validateToken(jwt, userDetails)) {
+                    UsernamePasswordAuthenticationToken authToken =
+                            new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                }
+            } catch (JwtException | UsernameNotFoundException | IllegalArgumentException ex) {
+                SecurityContextHolder.clearContext();
             }
         }
 
@@ -57,10 +72,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return headerAuth.substring(7);
         }
 
-        // EventSource cannot send Authorization header; allow token query param for SSE streams.
-        String queryToken = request.getParameter("access_token");
-        if (StringUtils.hasText(queryToken)) {
-            return queryToken;
+        // EventSource cannot send Authorization header — query token only on SSE health stream.
+        if (SSE_HEALTH_STREAM_PATH.equals(request.getRequestURI())) {
+            String queryToken = request.getParameter("access_token");
+            if (StringUtils.hasText(queryToken)) {
+                return queryToken;
+            }
         }
 
         return null;

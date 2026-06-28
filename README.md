@@ -173,10 +173,24 @@ This is a **minimal** script that tries to open:
 
 Full guide + troubleshooting → **`docs/setup-and-run.md`**
 
-## Next Steps (suggested)
-- Full authenticated e2e flow (login → dashboard with running backend)
-- Docker support for backend + Postgres + frontend
-- Production Postgres config + environment variables for JWT secrets
+## Reliability & testing
+
+See [RELIABILITY_IMPLEMENTATION_PLAN.md](docs/RELIABILITY_IMPLEMENTATION_PLAN.md) for the cross-stack hardening roadmap.
+
+```powershell
+cd python && pytest tests/ -q
+cd backend && mvn test
+cd frontend && npm run e2e
+```
+
+**Backend profiles:** Default `dev` (seeder + verbose logs). Production: `SPRING_PROFILES_ACTIVE=prod` with `JWT_SECRET`, `DB_*` env vars.
+
+**Python daemon:** Per-TF poll intervals apply by default; use `--poll-seconds 45` only to force uniform polling.
+
+## Next steps (suggested)
+
+- Full authenticated e2e against live backend (login → market grid)
+- Docker compose for backend + Postgres + frontend
 - API rate limiting
 
 Generated for you by Grok.

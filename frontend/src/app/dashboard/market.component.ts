@@ -310,28 +310,20 @@ export class MarketComponent implements OnInit, OnDestroy {
   loadData(fromPull = false) {
     this.isLoading = true;
     this.usingCachedData = false;
-    const key = this.marketCache.cacheKey(this.selectedTimeframe, 500, this.nySessionOnly);
-    this.marketCache.fetchGrid(this.selectedTimeframe, 500, this.nySessionOnly).subscribe({
-      next: data => {
-        this.gridData = data || [];
+    this.marketCache.fetchGridWithFallback(this.selectedTimeframe, 500, this.nySessionOnly).subscribe({
+      next: result => {
+        this.gridData = result.rows || [];
+        this.usingCachedData = result.offline;
         this.selectedRow = this.gridData[0] ?? null;
         this.isLoading = false;
         this.ptr?.completeRefresh();
       },
       error: () => {
-        this.marketCache.getOfflineGrid(key).then(cached => {
-          if (cached?.length) {
-            this.gridData = cached;
-            this.usingCachedData = true;
-            this.selectedRow = this.gridData[0] ?? null;
-          } else {
-            this.gridData = [];
-            this.selectedRow = null;
-            this.emptyMessage = 'Failed to load data. Check that the backend is running on port 8081.';
-          }
-          this.isLoading = false;
-          this.ptr?.completeRefresh();
-        });
+        this.gridData = [];
+        this.selectedRow = null;
+        this.emptyMessage = 'Failed to load data. Check that the backend is running on port 8081.';
+        this.isLoading = false;
+        this.ptr?.completeRefresh();
       }
     });
   }

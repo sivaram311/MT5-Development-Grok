@@ -16,7 +16,9 @@ The sync process is orchestrated by the script [run_data_downloader.py](file:///
    df = df.iloc[:-1] if len(df) > 1 else df
    ```
 3. **Database Write**: The database helper [postgres_client.py](file:///E:/Source/grok_dev/python/mt5_xauusd/postgres_client.py) inserts the dataframe rows into the corresponding timeframe table (`XAUUSD_D1`, `XAUUSD_M15`, etc.) using an `ON CONFLICT DO NOTHING` statement on the `time` primary key.
-4. **Sync Status Logging**: After writing a batch, the script updates the `sync_status` table with the latest candle timestamp.
+4. **Sync Status Logging**: After each sync (one-shot or daemon), the script updates `sync_status` with `last_synced` and `last_candle_time`. Empty daemon polls still touch `last_synced` to prove liveness.
+
+**Poll scheduling:** Daemon mode uses per-TF intervals from `TIMEFRAME_POLL_INTERVALS` unless `--poll-seconds` is explicitly set. See [RELIABILITY_IMPLEMENTATION_PLAN.md](../../docs/RELIABILITY_IMPLEMENTATION_PLAN.md).
 
 ### 2. API Retrieval (Spring Boot Backend)
 When the user views the grid, the frontend calls the grid API endpoint exposed in [MarketDataController.java](file:///E:/Source/grok_dev/backend/src/main/java/com/grokdev/grokdev/controller/MarketDataController.java).
@@ -36,7 +38,7 @@ When the user views the grid, the frontend calls the grid API endpoint exposed i
   6. The Wilder's RSI calculation is executed directly on the closing prices of the resulting daily series, and the newest rows are returned.
 
 ### 3. Frontend Render (Angular UI)
-1. **Call APIs**: The component [market.component.ts](file:///E:/Source/grok_dev/frontend/src/app/dashboard/market.component.ts) triggers the HTTP GET request with the appropriate timeframe, limit, and session flags.
+1. **Call APIs**: Components use [MarketDataCacheService](file:///E:/Source/grok_dev/frontend/src/app/services/market-data-cache.service.ts) `fetchGridWithFallback()` — memory cache, HTTP, then IndexedDB offline fallback (Market, Volatility, Analysis).
 2. **Safe Local Time Display**: The grid table avoids using native JavaScript `Date` pipes, which would parse strings in the browser's local timezone. Instead, it utilizes `formatWallTime()` to print the exact timezone digits calculated on the server.
 3. **Interactive Control**: The user toggles the "NY Session Only" checkbox or switches the timeframe, triggering an immediate API refresh.
 

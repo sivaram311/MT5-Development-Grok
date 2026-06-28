@@ -20,7 +20,9 @@ export class AuthInterceptor implements HttpInterceptor {
     const token = this.authService.getToken();
     let request = req;
 
-    if (token) {
+    const isAuthEndpoint = req.url.includes('/auth/login') || req.url.includes('/auth/refresh');
+
+    if (token && !isAuthEndpoint) {
       if (this.authService.isTokenExpiringSoon(token, 5)) {
         return this.handleProactiveRefresh(request, next);
       }

@@ -50,9 +50,11 @@ cd E:\Source\grok_dev\python
 # One-time historical + catch-up (recommended first run)
 python -m mt5_xauusd.main
 
-# Continuous sync: keep updating DB with every newly *completed* candle
-# Defaults: all timeframes + 45s interval
+# Continuous sync: per-TF smart intervals (M1:15s … D1:1800s) — default when --poll-seconds omitted
 python -m mt5_xauusd.main --daemon
+
+# Force uniform interval for all timeframes (optional override)
+python -m mt5_xauusd.main --daemon --poll-seconds 45
 
 # Using the convenience wrapper (same defaults)
 python run_data_downloader.py
@@ -163,8 +165,17 @@ You can still force uniform polling if desired.
 - `sync_status` table with last_candle_time per timeframe.
 - Spring Boot: `GET /api/market/xauusd/sync-status` and `GET /api/market/xauusd/health`
 - Health returns "UP" or "DEGRADED" + per-TF details.
-- Dedicated **Health Dashboard** in Angular Welcome page with color-coded cards per timeframe, freshness, and age.
-- Shows how long since last completed candle.
+- Dedicated **Health Dashboard** in Angular dashboard with color-coded cards per timeframe, freshness, and age.
+- **SSE push:** `GET /api/market/xauusd/health/stream` (dashboard banner on DEGRADED/DOWN)
+- **`touch_sync_status`** — daemon updates `last_synced` even when no new bars arrive (liveness)
+
+### Tests
+
+```powershell
+cd python
+pip install -r requirements.txt
+pytest tests/ -q
+```
 
 Run the health check:
 ```powershell

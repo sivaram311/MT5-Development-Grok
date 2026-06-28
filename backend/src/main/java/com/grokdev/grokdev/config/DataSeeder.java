@@ -5,12 +5,14 @@ import com.grokdev.grokdev.model.User;
 import com.grokdev.grokdev.repository.ProjectRepository;
 import com.grokdev.grokdev.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Profile;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
+@Profile("dev")
 public class DataSeeder implements CommandLineRunner {
 
     @Autowired

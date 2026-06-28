@@ -16,7 +16,8 @@ All documentation is written with **mobile and tablet reading** in mind.
 - [TIMEZONE_HANDLING.md](file:///E:/Source/grok_dev/frontend/docs/TIMEZONE_HANDLING.md) — In-depth mapping of broker, New York, and Indian Standard (IST) time offsets.
 - [MOBILE_TABLET_UX.md](file:///E:/Source/grok_dev/frontend/docs/MOBILE_TABLET_UX.md) — Realme P2 Pro and Realme Pad 2 layout rules, grids, and touch constraints.
 - [PWA_AND_OFFLINE.md](file:///E:/Source/grok_dev/frontend/docs/PWA_AND_OFFLINE.md) — Installable PWA, service worker app-shell cache, pull-to-refresh haptics.
-- [UI_IMPLEMENTATION_PLAN.md](file:///E:/Source/grok_dev/frontend/docs/UI_IMPLEMENTATION_PLAN.md) — Completed Phases A–D roadmap + optional follow-ups (e2e, PATCH, Gann, SSE).
+- [UI_IMPLEMENTATION_PLAN.md](file:///E:/Source/grok_dev/frontend/docs/UI_IMPLEMENTATION_PLAN.md) — Completed UI roadmap
+- [RELIABILITY_IMPLEMENTATION_PLAN.md](../../docs/RELIABILITY_IMPLEMENTATION_PLAN.md) — Data pipeline + security hardening (Phase 1–2)
 - [DESIGN_TOKENS.md](file:///E:/Source/grok_dev/frontend/docs/DESIGN_TOKENS.md) — Shared colors, spacing, breakpoints, typography.
 
 **E2E tests:** Playwright suite in [frontend/e2e/](../e2e/) — `npm run e2e` from the frontend folder.

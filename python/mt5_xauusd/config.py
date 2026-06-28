@@ -68,8 +68,8 @@ def get_table_name(timeframe_key: str) -> str:
     return f"XAUUSD_{timeframe_key}"
 
 # ====================== General Settings ======================
-# Enable debug logging
-DEBUG = True
+# Enable debug logging (env: DEBUG=true|false)
+DEBUG = os.getenv("DEBUG", "false").lower() in ("1", "true", "yes")
 
 # Whether to create tables if they don't exist
 CREATE_TABLES_IF_NOT_EXIST = True

@@ -164,6 +164,22 @@ Deep-merge partial preferences (preferred): `{ "preferences": "{\"grid\": {\"D1\
 }
 ```
 
+Requires Bearer token **or** `?access_token=<jwt>` on the SSE stream path only (EventSource limitation).
+
+**CORS:** Backend allows explicit origins from `grok.cors.allowed-origins` (default `http://localhost:4200`). Set in `application.properties` or env for production.
+
+### Spring profiles
+
+| Profile | When |
+|---------|------|
+| `dev` (default) | Local development; runs `DataSeeder`, verbose logs |
+| `prod` | Deployment; set `JWT_SECRET`, `DB_URL`, `DB_USER`, `DB_PASSWORD` |
+
+```powershell
+$env:SPRING_PROFILES_ACTIVE="prod"
+mvn spring-boot:run
+```
+
 ### GET `/api/auth/me`
 Requires Bearer access token.
 

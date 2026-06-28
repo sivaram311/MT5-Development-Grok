@@ -1,15 +1,14 @@
 import { Component, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { ScrollingModule } from '@angular/cdk/scrolling';
-import { environment } from '../../environments/environment';
 import { PageHeaderComponent } from '../ui/page-header.component';
 import { SegmentControlComponent } from '../ui/segment-control.component';
 import { PullToRefreshComponent } from '../ui/pull-to-refresh.component';
 import { EmptyStateComponent } from '../ui/empty-state.component';
 import { PreferencesService } from '../services/preferences.service';
 import { TimeframeContextService } from '../services/timeframe-context.service';
+import { MarketDataCacheService } from '../services/market-data-cache.service';
 import { formatWallTime } from '../utils/time.util';
 
 interface VolatilityRow {
@@ -98,6 +97,7 @@ interface SortColumn {
             <span class="text-xs font-semibold text-zinc-400 tracking-wider">{{ selectedTimeframe }} · {{ gridData.length }} rows</span>
             <span class="text-[10px] bg-zinc-800 px-2 py-0.5 rounded text-zinc-500">{{ sortLabel }}</span>
             <span *ngIf="prefsSavedHint" class="text-[10px] text-emerald-500">Preferences saved</span>
+            <span *ngIf="usingCachedData" class="text-[10px] text-amber-400">Offline cache</span>
           </div>
           <button
             type="button"
@@ -110,25 +110,29 @@ interface SortColumn {
 
         <app-empty-state *ngIf="isLoading" [loading]="true" loadingMessage="Loading volatility data…"></app-empty-state>
 
-        <div *ngIf="!isLoading && displayRows.length && viewMode === 'cards'" class="tablet:hidden p-3 space-y-2 max-h-[70vh] overflow-y-auto">
-          <div *ngFor="let row of displayRows" class="bg-zinc-900 border border-zinc-800 rounded-3xl p-4">
-            <div class="flex justify-between items-start">
-              <div>
-                <div class="text-xs font-medium text-zinc-300">{{ row.dayOfWeek }}</div>
-                <div class="font-mono text-[10px] text-zinc-500">{{ formatWallTime(row.time) }}</div>
-              </div>
-              <div class="text-right">
-                <div class="text-lg font-semibold tabular-nums" [class.text-amber-400]="isHighlyVolatile(row.diff)">{{ row.diff | number:'1.2-2' }}</div>
-                <div class="text-[10px] text-zinc-500">H-L range</div>
+        <div *ngIf="!isLoading && displayRows.length && viewMode === 'cards'" class="tablet:hidden p-3">
+          <cdk-virtual-scroll-viewport itemSize="148" class="h-[70vh] w-full">
+            <div *cdkVirtualFor="let row of displayRows" class="pb-2">
+              <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-4">
+                <div class="flex justify-between items-start">
+                  <div>
+                    <div class="text-xs font-medium text-zinc-300">{{ row.dayOfWeek }}</div>
+                    <div class="font-mono text-[10px] text-zinc-500">{{ formatWallTime(row.time) }}</div>
+                  </div>
+                  <div class="text-right">
+                    <div class="text-lg font-semibold tabular-nums" [class.text-amber-400]="isHighlyVolatile(row.diff)">{{ row.diff | number:'1.2-2' }}</div>
+                    <div class="text-[10px] text-zinc-500">H-L range</div>
+                  </div>
+                </div>
+                <div class="grid grid-cols-4 gap-2 mt-3 text-center text-xs font-mono">
+                  <div><div class="text-zinc-500 text-[10px]">O</div>{{ row.open | number:'1.2-2' }}</div>
+                  <div><div class="text-emerald-500 text-[10px]">H</div>{{ row.high | number:'1.2-2' }}</div>
+                  <div><div class="text-red-500 text-[10px]">L</div>{{ row.low | number:'1.2-2' }}</div>
+                  <div><div class="text-zinc-500 text-[10px]">C</div>{{ row.close | number:'1.2-2' }}</div>
+                </div>
               </div>
             </div>
-            <div class="grid grid-cols-4 gap-2 mt-3 text-center text-xs font-mono">
-              <div><div class="text-zinc-500 text-[10px]">O</div>{{ row.open | number:'1.2-2' }}</div>
-              <div><div class="text-emerald-500 text-[10px]">H</div>{{ row.high | number:'1.2-2' }}</div>
-              <div><div class="text-red-500 text-[10px]">L</div>{{ row.low | number:'1.2-2' }}</div>
-              <div><div class="text-zinc-500 text-[10px]">C</div>{{ row.close | number:'1.2-2' }}</div>
-            </div>
-          </div>
+          </cdk-virtual-scroll-viewport>
         </div>
 
         <div *ngIf="!isLoading && displayRows.length && (viewMode === 'table' || isTabletUp)" class="overflow-x-auto">
@@ -193,6 +197,7 @@ export class VolatilityComponent implements OnInit {
   limit = 90;
   nySessionOnly = false;
   isLoading = false;
+  usingCachedData = false;
   prefsSavedHint = false;
   viewMode: 'cards' | 'table' = 'cards';
   isTabletUp = false;
@@ -219,7 +224,7 @@ export class VolatilityComponent implements OnInit {
   private mediaQuery?: MediaQueryList;
 
   constructor(
-    private http: HttpClient,
+    private marketCache: MarketDataCacheService,
     private preferences: PreferencesService,
     private timeframeContext: TimeframeContextService
   ) {}
@@ -272,17 +277,17 @@ export class VolatilityComponent implements OnInit {
 
   loadData(fromPull = false) {
     this.isLoading = true;
-    const url = `${environment.apiUrl}/market/xauusd/${this.selectedTimeframe}/grid?limit=${this.limit}&ny_session_only=${this.nySessionOnly}`;
-
-    this.http.get<any[]>(url).subscribe({
-      next: (data) => {
+    this.usingCachedData = false;
+    this.marketCache.fetchGridWithFallback(this.selectedTimeframe, this.limit, this.nySessionOnly).subscribe({
+      next: result => {
         this.isLoading = false;
-        this.processData(data || []);
+        this.usingCachedData = result.offline;
+        this.processData(result.rows || []);
         if (fromPull) {
           this.ptr?.completeRefresh();
         }
       },
-      error: (err) => {
+      error: err => {
         this.isLoading = false;
         console.error('Failed to load volatility grid data', err);
         this.gridData = [];

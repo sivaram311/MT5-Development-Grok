@@ -6,12 +6,15 @@ Handles connection and data insertion for XAUUSD tables in grok_dev schema.
 from sqlalchemy import create_engine, text, Table, Column, TIMESTAMP, Numeric, BigInteger, Integer, MetaData
 from sqlalchemy.dialects.postgresql import insert
 import pandas as pd
-from typing import Dict
+from typing import Dict, Callable, TypeVar
 import logging
+import time
 
 from .config import DB_CONFIG, SCHEMA, get_table_name
 
 logger = logging.getLogger(__name__)
+
+T = TypeVar('T')
 
 
 class PostgresClient:
@@ -24,8 +27,27 @@ class PostgresClient:
             f"postgresql+psycopg2://{DB_CONFIG['user']}:{DB_CONFIG['password']}"
             f"@{DB_CONFIG['host']}:{DB_CONFIG['port']}/{DB_CONFIG['database']}"
         )
-        engine = create_engine(url, echo=False)
+        engine = create_engine(
+            url,
+            echo=False,
+            pool_pre_ping=True,
+            pool_recycle=3600,
+        )
         return engine
+
+    def _with_retry(self, operation: Callable[[], T], attempts: int = 3) -> T:
+        last_error = None
+        for attempt in range(1, attempts + 1):
+            try:
+                return operation()
+            except Exception as exc:
+                last_error = exc
+                if attempt >= attempts:
+                    break
+                delay = 2 ** (attempt - 1)
+                logger.warning(f"DB operation failed (attempt {attempt}/{attempts}): {exc}. Retrying in {delay}s…")
+                time.sleep(delay)
+        raise last_error
 
     def ensure_schema_exists(self):
         """Make sure the schema exists."""
@@ -73,6 +95,20 @@ class PostgresClient:
             conn.execute(query)
             conn.commit()
 
+    def touch_sync_status(self, timeframe: str):
+        """Update last_synced only — proves daemon liveness even when no new bars."""
+        query = text(f'''
+            INSERT INTO "{SCHEMA}".sync_status (timeframe, last_synced, last_candle_time)
+            VALUES (:tf, NOW(), NULL)
+            ON CONFLICT (timeframe) DO UPDATE
+            SET last_synced = NOW()
+        ''')
+        def _run():
+            with self.engine.connect() as conn:
+                conn.execute(query, {"tf": timeframe})
+                conn.commit()
+        self._with_retry(_run)
+
     def update_sync_status(self, timeframe: str, last_candle_time):
         """Update the last sync info for a timeframe."""
         query = text(f'''
@@ -81,9 +117,11 @@ class PostgresClient:
             ON CONFLICT (timeframe) DO UPDATE
             SET last_synced = NOW(), last_candle_time = :last_candle
         ''')
-        with self.engine.connect() as conn:
-            conn.execute(query, {"tf": timeframe, "last_candle": last_candle_time})
-            conn.commit()
+        def _run():
+            with self.engine.connect() as conn:
+                conn.execute(query, {"tf": timeframe, "last_candle": last_candle_time})
+                conn.commit()
+        self._with_retry(_run)
 
     def get_sync_status(self):
         """Return dict of timeframe -> last_candle_time."""
@@ -126,9 +164,11 @@ class PostgresClient:
         stmt = insert(table).values(records)
         stmt = stmt.on_conflict_do_nothing(index_elements=['time'])
 
-        with self.engine.begin() as conn:
-            conn.execute(stmt)
+        def _run():
+            with self.engine.begin() as conn:
+                conn.execute(stmt)
 
+        self._with_retry(_run)
         logger.info(f"Upserted {len(df)} rows into {SCHEMA}.{table_name}")
 
     def save_data(self, df: pd.DataFrame, timeframe_key: str):

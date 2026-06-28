@@ -75,7 +75,25 @@ The `/health` endpoint returns the aggregate pipeline status (`UP`, `DEGRADED`, 
 - Event name: `health` — JSON payload matches the `/health` response shape
 - Requires authentication (Bearer header or `?access_token=` query param for EventSource clients)
 
-The Angular dashboard subscribes on login and shows a banner when status transitions to `DEGRADED` or `DOWN`.
+EventSource limitation is real, but the fallback is restricted to `/api/market/xauusd/health/stream` only (not all routes). Prefer short-lived SSE-scoped tokens in a future pass.
+
+## Spring Profiles
+
+| Profile | Purpose |
+|---------|---------|
+| `dev` (default) | SQL logging, debug logs, `DataSeeder` runs |
+| `prod` | Quiet logs; set `JWT_SECRET`, `DB_*` via environment |
+
+Activate: `SPRING_PROFILES_ACTIVE=prod mvn spring-boot:run`
+
+## Shared Health SSE
+
+- [HealthStreamScheduler.java](file:///E:/Source/grok_dev/backend/src/main/java/com/grokdev/grokdev/config/HealthStreamScheduler.java) — one scheduler broadcasts to all SSE clients
+- [HealthSnapshotService.java](file:///E:/Source/grok_dev/backend/src/main/java/com/grokdev/grokdev/service/HealthSnapshotService.java) — 15s cached health snapshot
+
+## Error Handling
+
+[GlobalExceptionHandler.java](file:///E:/Source/grok_dev/backend/src/main/java/com/grokdev/grokdev/config/GlobalExceptionHandler.java) returns `{ message, status, timestamp }` for unhandled errors and validation failures.
 
 ## Endpoints Used by Angular
 
@@ -99,21 +117,16 @@ The frontend communicates with the backend via the following APIs:
 1. **Login**: User authenticates via [AuthController.java](file:///E:/Source/grok_dev/backend/src/main/java/com/grokdev/grokdev/controller/AuthController.java) using BCrypt. A JWT access token (24-hour lifetime) and refresh token (7-day lifetime) are generated.
 2. **Angular Storage**: Tokens are stored securely in the browser's local storage.
 3. **Interceptor**: The Angular interceptor [auth.interceptor.ts](file:///E:/Source/grok_dev/frontend/src/app/interceptors/auth.interceptor.ts) automatically adds `Authorization: Bearer <token>` to request headers.
-4. **Validation**: The backend filter [JwtAuthenticationFilter.java](file:///E:/Source/grok_dev/backend/src/main/java/com/grokdev/grokdev/security/JwtAuthenticationFilter.java) validates the JWT on every protected request. Also accepts `access_token` query parameter for SSE streams.
+4. **Validation**: JWT filter validates Bearer tokens; `access_token` query param is accepted **only** on `/api/market/xauusd/health/stream`.
 5. **Token Refresh**: If the access token is expiring soon (less than 5 minutes) or a `401 Unauthorized` is returned, a refresh request is automatically made to get a new access token.
 
 ## CORS Configuration
 
-CORS is configured globally in [SecurityConfig.java](file:///E:/Source/grok_dev/backend/src/main/java/com/grokdev/grokdev/config/SecurityConfig.java) using origin pattern matching:
-```java
-configuration.setAllowedOriginPatterns(Arrays.asList("*"));
-configuration.setAllowCredentials(true);
-```
-Controller classes use the `@CrossOrigin` annotation without parameters (defaulting to allow all origins), permitting requests from any client host name, LAN IP, or public IP address.
+Explicit allowed origins from `grok.cors.allowed-origins` in [application.properties](file:///E:/Source/grok_dev/backend/src/main/resources/application.properties) (default `http://localhost:4200,http://127.0.0.1:4200`). Configured in [SecurityConfig.java](file:///E:/Source/grok_dev/backend/src/main/java/com/grokdev/grokdev/config/SecurityConfig.java).
 
-## Production Considerations (Pending Tasks)
+## Production Considerations
 
-- Move JWT secrets and database credentials to secure environment variables.
-- Configure proper API rate limiting (e.g. Bucket4j).
-- Enable HTTPS (SSL/TLS termination).
-- Fine-tune connection pool properties for JDBC operations.
+- Set `SPRING_PROFILES_ACTIVE=prod` and env vars: `JWT_SECRET`, `DB_URL`, `DB_USER`, `DB_PASSWORD`
+- Configure API rate limiting (e.g. Bucket4j)
+- Enable HTTPS (SSL/TLS termination)
+- Fine-tune JDBC connection pool for production load
