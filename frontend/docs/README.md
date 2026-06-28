@@ -9,6 +9,7 @@ All documentation is written with **mobile and tablet reading** in mind.
 - [TECHNICAL_OVERVIEW.md](file:///E:/Source/grok_dev/frontend/docs/TECHNICAL_OVERVIEW.md) — High-level architecture, three-layer diagrams, and design trade-offs.
 - [DATABASE_SCHEMA.md](file:///E:/Source/grok_dev/frontend/docs/DATABASE_SCHEMA.md) — Dynamic Postgres schemas, tables, index columns, and security fields.
 - [PYTHON_MT5_DOWNLOADER.md](file:///E:/Source/grok_dev/frontend/docs/PYTHON_MT5_DOWNLOADER.md) — MetaTrader 5 integration, candle completion rules, and daemon sync loops.
+- [mt5_scripts/README.md](file:///E:/Source/grok_dev/python/mt5_scripts/README.md) — **MQL5 Expert Advisors** (Order RSI + Gann scanner): install, compile, deploy.
 - [SPRINGBOOT_BACKEND.md](file:///E:/Source/grok_dev/frontend/docs/SPRINGBOOT_BACKEND.md) — REST controllers, raw JDBC execution, freshness math, security config, and preference APIs.
 - [ANGULAR_FRONTEND.md](file:///E:/Source/grok_dev/frontend/docs/ANGULAR_FRONTEND.md) — Routed layout components, custom table wrappers, timezone formatting safety, and column preferences logic.
 - [GANN_INTRADAY_USAGE_GUIDE.md](file:///E:/Source/grok_dev/frontend/docs/GANN_INTRADAY_USAGE_GUIDE.md) — **How to use** the Gann Intraday page (`/dashboard/gann-intraday`): controls, modules, confluence scoring, tutorials, troubleshooting.

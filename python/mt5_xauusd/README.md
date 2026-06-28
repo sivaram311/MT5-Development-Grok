@@ -209,7 +209,7 @@ python run_order_rsi.py
 
 **MT5 alignment:** Terminal RSI **14 / Close**. API sends both Python Wilder and optional `mt5.shift0/shift1` from **GrokDevOrderRsiExport.mq5 v2** (atomic write to Common Files). **Analyzer** page toggle selects which to display.
 
-**EA attach:** compile `mt5_scripts/GrokDevOrderRsiExport.mq5` → Experts; attach on XAUUSD; Algo Trading ON. Defaults: timer 2s, `InpNewBarOnly=false` for live forming-bar RSI. See [order-rsi-mt5-alignment.md](../../docs/order-rsi-mt5-alignment.md).
+**EA attach:** use pre-built `mt5_scripts/GrokDevOrderRsiExport.ex5` or compile from `.mq5` — see [mt5_scripts/README.md](../mt5_scripts/README.md). Defaults: timer 2s, `InpNewBarOnly=false`. Alignment: [order-rsi-mt5-alignment.md](../../docs/order-rsi-mt5-alignment.md).
 
 **Classic S/R:** `pivot_util.classic_floor_pivots()` — snapshot `sr` keys match UI row labels.
 

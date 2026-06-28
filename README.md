@@ -133,6 +133,7 @@ Rich technical documentation lives **inside the Angular project**:
   - [UI_IMPLEMENTATION_PLAN.md](file:///E:/Source/grok_dev/frontend/docs/UI_IMPLEMENTATION_PLAN.md) (Completed UI roadmap)
   - [DATA_FLOW_AND_INTEGRATION.md](file:///E:/Source/grok_dev/frontend/docs/DATA_FLOW_AND_INTEGRATION.md) (Ingestion tracing)
 - Root docs: [docs/frontend-guidelines.md](docs/frontend-guidelines.md), [docs/api-endpoints.md](docs/api-endpoints.md), [docs/setup-and-run.md](docs/setup-and-run.md), [docs/order-rsi-mt5-alignment.md](docs/order-rsi-mt5-alignment.md)
+- **MQL5 EAs:** [python/mt5_scripts/README.md](python/mt5_scripts/README.md) (install, compile, Order RSI + Gann scanner)
 
 A condensed, mobile-friendly version of the docs is also available inside the live app (tap **Docs** in the bottom navigation on phones) — see [docs.component.ts](file:///E:/Source/grok_dev/frontend/src/app/dashboard/docs.component.ts). 
 
@@ -159,7 +160,7 @@ Second Python process (`python run_order_rsi.py`) publishes forming-bar RSI for 
 
 **Run via Stack Pilot:** start service `python-order-rsi` after MT5 is logged in.
 
-**Optional MT5 verify:** attach EA `python/mt5_scripts/GrokDevOrderRsiExport.mq5` v2 on XAUUSD (Algo Trading ON). See [order-rsi-mt5-alignment.md](docs/order-rsi-mt5-alignment.md).
+**Optional MT5 verify:** pre-built EA `python/mt5_scripts/GrokDevOrderRsiExport.ex5` — copy to MT5 `Experts`, attach on XAUUSD (Algo Trading ON). **MQL5 guide:** [python/mt5_scripts/README.md](python/mt5_scripts/README.md) · [order-rsi-mt5-alignment.md](docs/order-rsi-mt5-alignment.md).
 
 Full guide: [docs/order-rsi-mt5-alignment.md](docs/order-rsi-mt5-alignment.md)
 

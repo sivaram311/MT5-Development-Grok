@@ -120,12 +120,19 @@ Old **bar 0** (85.89 on M1) equaled MT5 **bar 1**, not bar 0 — hence the misma
 
 ## Optional: MT5 built-in iRSI export
 
-Python MetaTrader5 package has no `iRSI` API. The app reads MT5 terminal values via EA export:
+Python MetaTrader5 package has no `iRSI` API. The app reads MT5 terminal values via EA export.
 
-1. EA source: `python/mt5_scripts/GrokDevOrderRsiExport.mq5` (**v2.0** — compile to `MQL5/Experts/`).
-2. Attach to any **XAUUSD** chart; enable **Algo Trading**.
-3. EA writes `Terminal/Common/Files/grok_dev_order_rsi_mt5.json` (atomic temp + move).
-4. Publisher includes `timeframes.{TF}.mt5` in the API; use **MT5 built-in** toggle on the **Analyzer** page.
+**Full MQL5 guide (install, compile, both EAs):** [python/mt5_scripts/README.md](../python/mt5_scripts/README.md)
+
+### Quick install (pre-built)
+
+1. Copy `python/mt5_scripts/GrokDevOrderRsiExport.ex5` (+ `.mq5`) to your terminal `MQL5\Experts\` folder.
+2. MT5 Navigator → **Refresh** → drag **GrokDevOrderRsiExport** onto **XAUUSD**.
+3. Enable **Algo Trading**.
+4. EA writes `Terminal/Common/Files/grok_dev_order_rsi_mt5.json` (atomic temp + move).
+5. Publisher includes `timeframes.{TF}.mt5` in the API; use **MT5 built-in** toggle on the **Analyzer** page.
+
+Source: `python/mt5_scripts/GrokDevOrderRsiExport.mq5` (**v2.0**). Pre-built: `GrokDevOrderRsiExport.ex5` in the same folder.
 
 ### EA v2.0 settings (recommended)
 

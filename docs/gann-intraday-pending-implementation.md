@@ -4,7 +4,7 @@ Live page: **`/dashboard/gann-intraday`** (Gann Intraday)
 
 API: **`GET /api/market/xauusd/gann-intraday`** · SSE **`/gann-intraday/stream`**
 
-Python publisher: **`python run_gann_intraday.py`** · MT5 EA: **`GrokDevGannScanner.mq5`**
+Python publisher: **`python run_gann_intraday.py`** · MT5 EA: **`GrokDevGannScanner.mq5`** / pre-built **`GrokDevGannScanner.ex5`** — see [mt5_scripts/README.md](../python/mt5_scripts/README.md)
 
 ## Status legend
 
@@ -95,6 +95,7 @@ Python publisher: **`python run_gann_intraday.py`** · MT5 EA: **`GrokDevGannSca
 ## Related docs
 
 - **[GANN_INTRADAY_USAGE_GUIDE.md](../frontend/docs/GANN_INTRADAY_USAGE_GUIDE.md)** — how to use the page (tutorial, controls, workflows)
+- **[mt5_scripts/README.md](../python/mt5_scripts/README.md)** — MQL5 EA install, compile, deploy
 - [order-rsi-mt5-alignment.md](./order-rsi-mt5-alignment.md)
 - [api-endpoints.md](./api-endpoints.md)
 - [ANGULAR_FRONTEND.md](../frontend/docs/ANGULAR_FRONTEND.md)

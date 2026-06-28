@@ -273,6 +273,8 @@ Frontend: bottom nav **Analyzer** (`/dashboard/order-rsi`) → TF-column table +
 
 Requires MT5 terminal logged in (same as data downloader).
 
+**Optional — MT5 built-in RSI EA:** copy `python/mt5_scripts/GrokDevOrderRsiExport.ex5` to `MQL5\Experts\`, attach on XAUUSD, Algo Trading ON. Full instructions: [python/mt5_scripts/README.md](../python/mt5_scripts/README.md).
+
 ### Stack Pilot (all four services)
 
 Use [Stack Pilot](https://github.com/sivaram311/MT5-Development-Grok) sibling repo at `E:\Source\stack-pilot` to start/stop the full stack from one dashboard (`http://localhost:8091`):

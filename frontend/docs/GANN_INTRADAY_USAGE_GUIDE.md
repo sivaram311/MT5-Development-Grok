@@ -44,7 +44,7 @@ cd python
 python run_gann_intraday.py
 ```
 
-5. **(Optional) MT5 scanner EA** — `GrokDevGannScanner.mq5` writes `grok_dev_gann_scanner.json` to Terminal Common Files for external tooling.
+5. **(Optional) MT5 scanner EA** — copy `GrokDevGannScanner.ex5` from `python/mt5_scripts/` to MT5 Experts; writes `grok_dev_gann_scanner.json`. See [mt5_scripts/README.md](../../python/mt5_scripts/README.md).
 
 ### How to navigate there
 

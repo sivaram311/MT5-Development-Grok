@@ -4,6 +4,17 @@ All notable changes to the Grok Dev full-stack application (Spring Boot + Angula
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2026-06-29 (MQL5 EA docs + pre-built binaries)
+
+### Added
+- **`python/mt5_scripts/README.md`** — MQL5 guide: quick install, MetaEditor compile, both EAs, Common Files layout, troubleshooting
+- Pre-built **`GrokDevOrderRsiExport.ex5`** and **`GrokDevGannScanner.ex5`** in repo (0 errors compile)
+
+### Documentation
+- Cross-links in README, setup-and-run, order-rsi alignment, Gann tracker, operations-log, Python README
+
+---
+
 ## [Unreleased] - 2026-06-29 (GrokDevOrderRsiExport EA v2)
 
 ### Changed
