@@ -8,9 +8,10 @@
 - Shared UI kit in [src/app/ui/](file:///E:/Source/grok_dev/frontend/src/app/ui/)
 - [preferences.service.ts](file:///E:/Source/grok_dev/frontend/src/app/services/preferences.service.ts) — backend-synced column layout (PATCH merge)
 - [health-stream.service.ts](file:///E:/Source/grok_dev/frontend/src/app/services/health-stream.service.ts) — SSE pipeline alerts
-- [sse-manager.service.ts](file:///E:/Source/grok_dev/frontend/src/app/services/sse-manager.service.ts) — centralized dashboard SSE lifecycle (route-aware Order RSI)
+- [sse-manager.service.ts](file:///E:/Source/grok_dev/frontend/src/app/services/sse-manager.service.ts) — centralized dashboard SSE lifecycle (Health + Gann + NY Liquidity always on; Order RSI route-gated)
 - [stream-throttle.config.ts](file:///E:/Source/grok_dev/frontend/src/app/services/stream-throttle.config.ts) — UI throttle intervals for SSE snapshots
 - [order-rsi-stream.service.ts](file:///E:/Source/grok_dev/frontend/src/app/services/order-rsi-stream.service.ts) — live Analyzer snapshot (SSE, throttled for UI)
+- [ny-liquidity-sweep-stream.service.ts](file:///E:/Source/grok_dev/frontend/src/app/services/ny-liquidity-sweep-stream.service.ts) — live NY liquidity setup snapshot (SSE, throttled for UI)
 - [market-data-cache.service.ts](file:///E:/Source/grok_dev/frontend/src/app/services/market-data-cache.service.ts) — `fetchGridWithFallback()` with IndexedDB offline
 - HttpClient + RxJS for API communications
 - PWA manifest: [manifest.webmanifest](file:///E:/Source/grok_dev/frontend/src/assets/manifest.webmanifest)
@@ -47,8 +48,12 @@ See [MOBILE_TABLET_UX.md](file:///E:/Source/grok_dev/frontend/docs/MOBILE_TABLET
 | `OfflineBannerComponent` | Network / API offline banner |
 | `PwaUpdateComponent` | New version available prompt |
 | `HealthAlertBannerComponent` | Pipeline DEGRADED/DOWN alert from SSE |
+| `GannAlertBannerComponent` | Gann intraday reversal alert from SSE |
+| `LiquidityAlertBannerComponent` | NY liquidity sweep setup alert from SSE |
 
 Utilities: [time.util.ts](file:///E:/Source/grok_dev/frontend/src/app/utils/time.util.ts), [gann.util.ts](file:///E:/Source/grok_dev/frontend/src/app/utils/gann.util.ts), [gann-intraday.util.ts](file:///E:/Source/grok_dev/frontend/src/app/utils/gann-intraday.util.ts), [order-rsi-zone.util.ts](file:///E:/Source/grok_dev/frontend/src/app/utils/order-rsi-zone.util.ts), [haptic.util.ts](file:///E:/Source/grok_dev/frontend/src/app/utils/haptic.util.ts)
+
+Detection logic (server-side): Python [liquidity_sweep_analyzer.py](file:///E:/Source/grok_dev/python/mt5_xauusd/liquidity_sweep_analyzer.py) · Java [NyLiquiditySweepCalculator.java](file:///E:/Source/grok_dev/backend/src/main/java/com/grokdev/grokdev/service/NyLiquiditySweepCalculator.java)
 
 ## Layout & Routing
 
@@ -56,7 +61,7 @@ Utilities: [time.util.ts](file:///E:/Source/grok_dev/frontend/src/app/utils/time
 
 - **Phone**: Compact header + offline/health banners + `.dashboard-main` content + fixed bottom nav + More sheet
 - **Tablet+**: Collapsible sidebar, no bottom nav, table-first pages
-- Starts [SseManagerService](file:///E:/Source/grok_dev/frontend/src/app/services/sse-manager.service.ts) on init — Health + Gann SSE always on; Order RSI SSE only on Analyzer route
+- Starts [SseManagerService](file:///E:/Source/grok_dev/frontend/src/app/services/sse-manager.service.ts) on init — Health + Gann + NY Liquidity SSE always on; Order RSI SSE only on Analyzer route
 
 See [PERFORMANCE_OPTIMIZATION.md](file:///E:/Source/grok_dev/frontend/docs/PERFORMANCE_OPTIMIZATION.md) for OnPush, SSE throttling, virtual-scroll tuning, and subscription cleanup.
 
@@ -136,6 +141,25 @@ Orchestrator: [gann-intraday.util.ts](file:///E:/Source/grok_dev/frontend/src/ap
 **Backend:** `GET /api/market/xauusd/gann-intraday` ([GannIntradayController.java](file:///E:/Source/grok_dev/backend/src/main/java/com/grokdev/grokdev/controller/GannIntradayController.java)) — Java calculator + live Postgres snapshot. SSE via [gann-intraday-stream.service.ts](file:///E:/Source/grok_dev/frontend/src/app/services/gann-intraday-stream.service.ts). Dashboard banner: [gann-alert-banner.component.ts](file:///E:/Source/grok_dev/frontend/src/app/ui/gann-alert-banner.component.ts).
 
 **Python:** [run_gann_intraday.py](file:///E:/Source/grok_dev/python/run_gann_intraday.py) · **MT5:** [GrokDevGannScanner.mq5](file:///E:/Source/grok_dev/python/mt5_scripts/GrokDevGannScanner.mq5) / pre-built `.ex5` — [mt5_scripts/README.md](file:///E:/Source/grok_dev/python/mt5_scripts/README.md)
+
+### NyLiquiditySweepComponent
+[ny-liquidity-sweep.component.ts](file:///E:/Source/grok_dev/frontend/src/app/dashboard/ny-liquidity-sweep.component.ts) — sidebar **NY Liquidity**, route `/dashboard/ny-liquidity-sweep` (phone: **More** menu).
+
+Detects NY-session setups: **liquidity sweep** → **return to historical structure** at similar price → **H1/M15 RSI confluence** → entry/SL/TP with backtested outcome.
+
+**Usage guide:** [NY_LIQUIDITY_SWEEP_ANALYZER.md](file:///E:/Source/grok_dev/frontend/docs/NY_LIQUIDITY_SWEEP_ANALYZER.md) · in-app: Docs → **NY Liquidity Sweep Analyzer** accordion.
+
+| UI area | Behavior |
+|---------|----------|
+| **Stats cards** | Total setups, win rate, avg R:R, wins/losses |
+| **Live RSI panel** | H1 + M15 RSI when an active setup is detected (SSE) |
+| **Interactive chart** | Chart.js — click any row; sweep/structure/entry/SL/TP1/TP2 lines |
+| **Historical grid** | Filter by direction/result; sort; CSV export |
+| **Scan history** | `POST /scan` (Java grid) or `python run_ny_liquidity_sweep.py --backfill` |
+
+**Backend:** `GET /api/market/xauusd/ny-liquidity-sweep` ([NyLiquiditySweepController.java](file:///E:/Source/grok_dev/backend/src/main/java/com/grokdev/grokdev/service/NyLiquiditySweepController.java)). SSE via [ny-liquidity-sweep-stream.service.ts](file:///E:/Source/grok_dev/frontend/src/app/services/ny-liquidity-sweep-stream.service.ts) (event `nyLiquiditySweep`). Dashboard banner: [liquidity-alert-banner.component.ts](file:///E:/Source/grok_dev/frontend/src/app/ui/liquidity-alert-banner.component.ts).
+
+**Python:** [run_ny_liquidity_sweep.py](file:///E:/Source/grok_dev/python/run_ny_liquidity_sweep.py) — `--backfill` (historical) or `--live` (SSE publisher).
 
 ### LoginComponent
 [login.component.ts](file:///E:/Source/grok_dev/frontend/src/app/login/login.component.ts)

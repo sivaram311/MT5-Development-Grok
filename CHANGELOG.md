@@ -4,6 +4,15 @@ All notable changes to the Grok Dev full-stack application (Spring Boot + Angula
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2026-06-29 (NY Liquidity docs sync)
+
+### Documentation
+- **`frontend/docs/ANGULAR_FRONTEND.md`** — NyLiquiditySweepComponent, stream service, alert banner, SseManager lifecycle
+- **`docs/api-endpoints.md`** — all `/ny-liquidity-sweep` endpoints (snapshot, stream, setups, stats, chart, scan)
+- **`README.md`** — feature bullet, key endpoints, run commands, docs index link
+
+---
+
 ## [Unreleased] - 2026-06-29 (NY Liquidity Sweep Analyzer)
 
 ### Added

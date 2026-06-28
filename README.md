@@ -72,6 +72,7 @@ Then restart the backend. The seeder will recreate them.
 - **Analysis Lab** — RSI storm scanner + Gann level studies (octave + Square-of-9)
 - **Analyzer** — live multi-TF RSI(14) table, classic S/R pivots, **Gann Odd Square** (So9), toggleable rows — route `/dashboard/order-rsi`; see [docs/order-rsi-mt5-alignment.md](docs/order-rsi-mt5-alignment.md)
 - **Gann Intraday** — five-module intraday Gann page (1×1 angle, session pivots, fine So9, time squaring, NY/London killzones) — route `/dashboard/gann-intraday`; API `GET /api/market/xauusd/gann-intraday`; **usage guide:** [frontend/docs/GANN_INTRADAY_USAGE_GUIDE.md](frontend/docs/GANN_INTRADAY_USAGE_GUIDE.md); implementation tracker: [docs/gann-intraday-pending-implementation.md](docs/gann-intraday-pending-implementation.md)
+- **NY Liquidity Analyzer** — NY-session liquidity sweep + structure reference + multi-TF RSI confluence — route `/dashboard/ny-liquidity-sweep`; API `GET /api/market/xauusd/ny-liquidity-sweep`; historical grid, Chart.js replay, win-rate stats, SSE alerts; **usage guide:** [frontend/docs/NY_LIQUIDITY_SWEEP_ANALYZER.md](frontend/docs/NY_LIQUIDITY_SWEEP_ANALYZER.md)
 - **User preferences** — PATCH merge to `/api/auth/preferences` (grid, market UI, volatility)
 - **Playwright e2e** — login, manifest, auth-guard smoke tests (`npm run e2e`)
 
@@ -126,6 +127,7 @@ Rich technical documentation lives **inside the Angular project**:
   - [SPRINGBOOT_BACKEND.md](file:///E:/Source/grok_dev/frontend/docs/SPRINGBOOT_BACKEND.md) (API controllers)
   - [ANGULAR_FRONTEND.md](file:///E:/Source/grok_dev/frontend/docs/ANGULAR_FRONTEND.md) (UI layouts)
   - [GANN_INTRADAY_USAGE_GUIDE.md](file:///E:/Source/grok_dev/frontend/docs/GANN_INTRADAY_USAGE_GUIDE.md) (Gann Intraday page tutorial)
+  - [NY_LIQUIDITY_SWEEP_ANALYZER.md](file:///E:/Source/grok_dev/frontend/docs/NY_LIQUIDITY_SWEEP_ANALYZER.md) (NY Liquidity Sweep analyzer)
   - [NY_SESSION_ONLY_FEATURE.md](file:///E:/Source/grok_dev/frontend/docs/NY_SESSION_ONLY_FEATURE.md) (Session filtering)
   - [TIMEZONE_HANDLING.md](file:///E:/Source/grok_dev/frontend/docs/TIMEZONE_HANDLING.md) (DST calculations)
   - [MOBILE_TABLET_UX.md](file:///E:/Source/grok_dev/frontend/docs/MOBILE_TABLET_UX.md) (Layout constraints)
@@ -150,6 +152,11 @@ All documentation was written with priority given to readability on small screen
 - GET /api/market/xauusd/health/stream → SSE push stream (30s interval)
 - GET /api/market/xauusd/order-rsi → live Order RSI snapshot (Python Wilder + optional MT5 iRSI)
 - GET /api/market/xauusd/order-rsi/stream → SSE push when snapshot updates (~250ms)
+- GET /api/market/xauusd/ny-liquidity-sweep → live NY liquidity setup snapshot
+- GET /api/market/xauusd/ny-liquidity-sweep/setups → historical setups grid
+- GET /api/market/xauusd/ny-liquidity-sweep/stats → win rate / avg R:R
+- GET /api/market/xauusd/ny-liquidity-sweep/stream → SSE push when live setup changes (~1s)
+- POST /api/market/xauusd/ny-liquidity-sweep/scan → grid backfill (Java)
 - GET /api/projects → demo content
 
 ## Analyzer (live RSI panel)
@@ -163,6 +170,22 @@ Second Python process (`python run_order_rsi.py`) publishes forming-bar RSI for 
 **Optional MT5 verify:** `.\python\mt5_scripts\deploy-mt5-eas.ps1` — deploys both EAs to MT5 Experts. Guide: [python/mt5_scripts/README.md](python/mt5_scripts/README.md).
 
 Full guide: [docs/order-rsi-mt5-alignment.md](docs/order-rsi-mt5-alignment.md)
+
+## NY Liquidity Analyzer
+
+Python process (`python run_ny_liquidity_sweep.py`) detects NY-session liquidity sweeps with structure reference and multi-TF RSI confluence. Results are stored in `grok_dev.liquidity_setups`; live snapshot in `grok_dev.live_ny_liquidity_sweep`.
+
+**Frontend:** sidebar **NY Liquidity** (`/dashboard/ny-liquidity-sweep`) — stats cards, Chart.js replay with sweep/entry/SL/TP lines, historical grid with filters, CSV export, live RSI panel, SSE alert banner.
+
+```powershell
+cd python
+python run_ny_liquidity_sweep.py --backfill --days 30   # historical scan
+python run_ny_liquidity_sweep.py --live                 # SSE publisher
+```
+
+Or use **Scan history** in the UI (`POST /api/market/xauusd/ny-liquidity-sweep/scan`).
+
+Full guide: [frontend/docs/NY_LIQUIDITY_SWEEP_ANALYZER.md](frontend/docs/NY_LIQUIDITY_SWEEP_ANALYZER.md)
 
 ## SOLID & Design Patterns
 See docs/solid-and-patterns.md for details on how the project follows clean architecture.

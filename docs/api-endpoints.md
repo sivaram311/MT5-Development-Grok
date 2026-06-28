@@ -242,6 +242,95 @@ SSE — emits `gannIntraday` events when `live_gann_intraday.updated_at` changes
 
 Requires Bearer token **or** `?access_token=<jwt>`.
 
+### GET `/api/market/xauusd/ny-liquidity-sweep`
+
+NY Liquidity Sweep Analyzer — detects XAUUSD reversal setups during the New York session: liquidity sweep of PDL/Asian/running extremes → return to prior swing structure → H1/M15 RSI confluence → entry/SL/TP with simulated outcome.
+
+**Usage guide:** [frontend/docs/NY_LIQUIDITY_SWEEP_ANALYZER.md](../frontend/docs/NY_LIQUIDITY_SWEEP_ANALYZER.md) · page route `/dashboard/ny-liquidity-sweep`.
+
+**Query params:**
+
+| Param | Default | Description |
+|-------|---------|-------------|
+| `prefer_live` | `true` | Use `live_ny_liquidity_sweep` snapshot when available |
+
+Returns computed snapshot from grid when live publisher unavailable (`source: computed`).
+
+**Run live publisher:** `python run_ny_liquidity_sweep.py --live`
+
+**Historical backfill:** `python run_ny_liquidity_sweep.py --backfill --days 30` (writes `grok_dev.liquidity_setups`)
+
+**Example live response:**
+```json
+{
+  "live": true,
+  "symbol": "XAUUSD",
+  "setup_id": "XAU_2026-06-22_0915_B",
+  "date": "2026-06-22",
+  "direction": "Bullish",
+  "sweep_level": 2324.50,
+  "structure_level": 2325.80,
+  "entry": 2326.40,
+  "sl": 2322.80,
+  "tp1": 2332.00,
+  "tp2": 2338.00,
+  "rsi_htf": 42.0,
+  "rsi_ltf": 37.0,
+  "how_spotted": "NY Sweep Low + Structure Return + H1/M15 RSI",
+  "result": "Win",
+  "rr_achieved": 2.8
+}
+```
+
+### GET `/api/market/xauusd/ny-liquidity-sweep/stream`
+
+SSE — emits `nyLiquiditySweep` events when `live_ny_liquidity_sweep.updated_at` changes (poll `grok.ny-liquidity-sweep.stream-poll-ms`, default 1000ms).
+
+Requires Bearer token **or** `?access_token=<jwt>`.
+
+### GET `/api/market/xauusd/ny-liquidity-sweep/setups`
+
+Historical setups grid stored in `grok_dev.liquidity_setups`.
+
+**Query params:**
+
+| Param | Description |
+|-------|-------------|
+| `from` | Start date (ISO `YYYY-MM-DD`) |
+| `to` | End date (ISO `YYYY-MM-DD`) |
+| `direction` | `Bullish` or `Bearish` |
+| `result` | `Win`, `Loss`, or `Open` |
+| `limit` | Max rows (default 500, max 1000) |
+
+### GET `/api/market/xauusd/ny-liquidity-sweep/stats`
+
+Performance summary: `totalSetups`, `wins`, `losses`, `openSetups`, `winRate`, `averageRr`, `byDayOfWeek`.
+
+### GET `/api/market/xauusd/ny-liquidity-sweep/chart/{setupId}`
+
+Chart payload for the Angular replay view: `setup`, `candles` (M5 OHLC with nyTime), `levels` (sweep, structure, entry, sl, tp1, tp2).
+
+### POST `/api/market/xauusd/ny-liquidity-sweep/scan`
+
+Scan recent grid data and upsert detected setups (Java calculator). Does not replace full Python backfill for deep history.
+
+**Query params:**
+
+| Param | Default | Description |
+|-------|---------|-------------|
+| `days` | `30` | Number of NY session days to scan |
+
+**Response:**
+```json
+{
+  "scanned": true,
+  "days": 30,
+  "detected": 12,
+  "upserted": 12,
+  "message": "Grid scan complete. For full accuracy run: python run_ny_liquidity_sweep.py --backfill"
+}
+```
+
 ## Other Endpoints
 
 ### GET `/api/welcome`
