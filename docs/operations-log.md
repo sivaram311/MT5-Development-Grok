@@ -12,6 +12,21 @@ Format for each entry:
 
 ---
 
+## 2026-06-28 — Analyzer S/R label key fix
+
+### Symptom
+S3/S2/S1 rows showed resistance-band prices and R1/R2/R3 showed support-band prices (names inverted vs MT5).
+
+### Changes
+| Area | Change |
+|------|--------|
+| `pivot_util.py` | Swap `sr` key assignment so UI labels match terminal |
+| Docs | `order-rsi-mt5-alignment.md`, `api-endpoints.md`, `ANGULAR_FRONTEND.md` |
+
+**Verification:** `pytest python/tests/test_pivot_util.py`; restart `python-order-rsi`.
+
+---
+
 ## 2026-06-28 — Analyzer classic S/R pivots (B0SR / B1SR)
 
 ### Changes

@@ -19,15 +19,15 @@ Bottom nav **Analyzer** (`/dashboard/order-rsi`) shows a **table** — timeframe
 
 Computed in `run_order_rsi.py` from each bar's **high, low, close**:
 
-| Level | Formula |
-|-------|---------|
+| Row label | Formula (published under matching `sr.*` key) |
+|-----------|-----------------------------------------------|
 | Pivot | (H + L + C) / 3 |
-| R1 | 2×P − L |
-| S1 | 2×P − H |
-| R2 | P + (H − L) |
-| S2 | P − (H − L) |
-| R3 | H + 2×(P − L) |
-| S3 | L − 2×(H − P) |
+| S1 | 2×P − L |
+| R1 | 2×P − H |
+| S2 | P + (H − L) |
+| R2 | P − (H − L) |
+| S3 | H + 2×(P − L) |
+| R3 | L − 2×(H − P) |
 
 - **B0SR** — Bar 0 (forming) current H/L/C; updates as the candle forms.
 - **B1SR** — Bar 1 (last closed) H/L/C.

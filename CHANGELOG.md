@@ -4,6 +4,16 @@ All notable changes to the Grok Dev full-stack application (Spring Boot + Angula
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2026-06-28 (Analyzer S/R label fix)
+
+### Fixed
+- **Classic pivot S/R names** — `pivot_util.py` maps `sr.s3`/`sr.r3` (and S2/R2, S1/R1) to match UI / MT5 row labels (were inverted).
+
+### Documentation
+- Alignment guide formula table, `ANGULAR_FRONTEND.md`, API example JSON updated.
+
+---
+
 ## [Unreleased] - 2026-06-28 (Analyzer classic S/R pivots)
 
 ### Added

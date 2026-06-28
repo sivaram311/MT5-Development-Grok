@@ -372,15 +372,15 @@ export class OrderRsiComponent implements OnInit, OnDestroy {
   }
 
   srLevelClass(level: OrderRsiSrLevelKey): string {
+    if (level === 'pivot') return 'text-amber-300';
     if (level.startsWith('s')) return 'text-sky-300';
-    if (level.startsWith('r')) return 'text-rose-300';
-    return 'text-amber-300';
+    return 'text-rose-300';
   }
 
   srRowBgClass(level: OrderRsiSrLevelKey): string {
+    if (level === 'pivot') return 'bg-amber-950/10';
     if (level.startsWith('s')) return 'bg-sky-950/10';
-    if (level.startsWith('r')) return 'bg-rose-950/10';
-    return 'bg-amber-950/10';
+    return 'bg-rose-950/10';
   }
 
   zoneBoxClass(rsi: number | null): string {

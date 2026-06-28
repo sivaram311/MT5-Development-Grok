@@ -202,7 +202,7 @@ import { PageHeaderComponent } from '../ui/page-header.component';
 
             <p><strong>Show rows</strong> chips: Bar 0/1 RSI and data individually; <strong>B0SR</strong> and <strong>B1SR</strong> each toggle all seven S/R levels together.</p>
 
-            <p><strong>Classic S/R</strong> — floor pivots from each bar's H/L/C (computed in <code>run_order_rsi.py</code>). B0SR = forming bar; B1SR = last closed bar.</p>
+            <p><strong>Classic S/R</strong> — floor pivots from each bar's H/L/C (computed in <code>run_order_rsi.py</code>). B0SR = forming bar; B1SR = last closed bar. Row labels S3–R3 match API <code>sr.*</code> keys (S3 = upper band, R3 = lower band).</p>
 
             <p><strong>Zone highlights</strong> (rectangle background, not text color):</p>
             <ul class="pl-4 list-disc space-y-1">

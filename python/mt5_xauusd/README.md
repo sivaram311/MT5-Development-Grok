@@ -208,7 +208,7 @@ python run_order_rsi.py
 
 **MT5 alignment:** Terminal RSI **14 / Close**. API sends both Python Wilder and optional `mt5.shift0/shift1` from EA export. **Analyzer** page toggle selects which to display.
 
-**Classic S/R:** `pivot_util.classic_floor_pivots()` computes floor pivots (S3–R3) from each bar's H/L/C. Snapshot includes `timeframes.{TF}.sr` (Bar 0) and `completed.sr` (Bar 1).
+**Classic S/R:** `pivot_util.classic_floor_pivots()` computes floor pivots (S3–R3) from each bar's H/L/C. Snapshot `sr` keys match UI row labels (S3 = upper band, R3 = lower band). Fields: `timeframes.{TF}.sr` (Bar 0), `completed.sr` (Bar 1).
 
 ### 5. Robustness (Implemented)
 - Automatic reconnection logic (`ensure_connected` with exponential backoff).

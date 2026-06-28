@@ -8,6 +8,7 @@
 - Shared UI kit in [src/app/ui/](file:///E:/Source/grok_dev/frontend/src/app/ui/)
 - [preferences.service.ts](file:///E:/Source/grok_dev/frontend/src/app/services/preferences.service.ts) — backend-synced column layout (PATCH merge)
 - [health-stream.service.ts](file:///E:/Source/grok_dev/frontend/src/app/services/health-stream.service.ts) — SSE pipeline alerts
+- [order-rsi-stream.service.ts](file:///E:/Source/grok_dev/frontend/src/app/services/order-rsi-stream.service.ts) — live Analyzer snapshot (SSE)
 - [market-data-cache.service.ts](file:///E:/Source/grok_dev/frontend/src/app/services/market-data-cache.service.ts) — `fetchGridWithFallback()` with IndexedDB offline
 - HttpClient + RxJS for API communications
 - PWA manifest: [manifest.webmanifest](file:///E:/Source/grok_dev/frontend/src/assets/manifest.webmanifest)
@@ -45,7 +46,7 @@ See [MOBILE_TABLET_UX.md](file:///E:/Source/grok_dev/frontend/docs/MOBILE_TABLET
 | `PwaUpdateComponent` | New version available prompt |
 | `HealthAlertBannerComponent` | Pipeline DEGRADED/DOWN alert from SSE |
 
-Utilities: [time.util.ts](file:///E:/Source/grok_dev/frontend/src/app/utils/time.util.ts), [gann.util.ts](file:///E:/Source/grok_dev/frontend/src/app/utils/gann.util.ts), [haptic.util.ts](file:///E:/Source/grok_dev/frontend/src/app/utils/haptic.util.ts)
+Utilities: [time.util.ts](file:///E:/Source/grok_dev/frontend/src/app/utils/time.util.ts), [gann.util.ts](file:///E:/Source/grok_dev/frontend/src/app/utils/gann.util.ts), [order-rsi-zone.util.ts](file:///E:/Source/grok_dev/frontend/src/app/utils/order-rsi-zone.util.ts), [haptic.util.ts](file:///E:/Source/grok_dev/frontend/src/app/utils/haptic.util.ts)
 
 ## Layout & Routing
 
@@ -90,6 +91,25 @@ Child routes under `/dashboard` (canonical) — `/welcome` is an alias. See [app
 [analysis.component.ts](file:///E:/Source/grok_dev/frontend/src/app/dashboard/analysis.component.ts)
 - **RSI storm scanner** — overbought (≥70) / oversold (≤30) on M15, H1, H4
 - **Gann study** — swing octave levels + Square-of-9 projections on D1, H4, H1 ([gann.util.ts](file:///E:/Source/grok_dev/frontend/src/app/utils/gann.util.ts))
+
+### OrderRsiComponent (Analyzer)
+[order-rsi.component.ts](file:///E:/Source/grok_dev/frontend/src/app/dashboard/order-rsi.component.ts) — bottom nav **Analyzer**, route `/dashboard/order-rsi`.
+
+Live multi-timeframe table (W1 → M1) fed by SSE via [order-rsi-stream.service.ts](file:///E:/Source/grok_dev/frontend/src/app/services/order-rsi-stream.service.ts) (`GET /api/market/xauusd/order-rsi/stream`).
+
+| UI area | Behavior |
+|---------|----------|
+| **Columns** | One column per timeframe (W1, D1, H4, H1, M15, M5, M1) |
+| **RSI rows** | Bar 0 / Bar 1 RSI with zone-colored boxes ([order-rsi-zone.util.ts](file:///E:/Source/grok_dev/frontend/src/app/utils/order-rsi-zone.util.ts)) |
+| **Data rows** | Bar 0 / Bar 1 broker time + close |
+| **B0SR / B1SR** | Classic floor pivots (S3–R3); each chip toggles all seven levels for that bar group |
+| **RSI source** | Page toggle **Calculated** (Python Wilder) vs **MT5 built-in** — not saved to preferences |
+
+**S/R data** comes from the Order RSI publisher (`timeframes.{TF}.sr` for Bar 0, `completed.sr` for Bar 1). `sr.s3`…`sr.r3` keys match row labels (S3 = upper band). Independent of the RSI source toggle.
+
+**Show rows** chips are page-only (not persisted). Defaults: all groups on.
+
+Full alignment guide: [order-rsi-mt5-alignment.md](../../docs/order-rsi-mt5-alignment.md).
 
 ### LoginComponent
 [login.component.ts](file:///E:/Source/grok_dev/frontend/src/app/login/login.component.ts)
