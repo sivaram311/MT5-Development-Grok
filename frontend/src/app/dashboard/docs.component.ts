@@ -1,5 +1,7 @@
-import { Component } from '@angular/core';
+import { AfterViewInit, Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ActivatedRoute } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { PageHeaderComponent } from '../ui/page-header.component';
 
 @Component({
@@ -19,19 +21,19 @@ import { PageHeaderComponent } from '../ui/page-header.component';
 
       <!-- Quick Navigation -->
       <div class="mb-6 flex flex-wrap gap-2 text-xs">
-        <a href="#overview" class="min-h-9 inline-flex items-center px-3 rounded-full bg-zinc-800 border border-zinc-700 active:bg-zinc-700">1. Overview</a>
-        <a href="#layers" class="px-3 py-1 rounded-full bg-zinc-800 border border-zinc-700 active:bg-zinc-700">2. Three Layers</a>
-        <a href="#database" class="px-3 py-1 rounded-full bg-zinc-800 border border-zinc-700 active:bg-zinc-700">3. Database</a>
-        <a href="#python" class="px-3 py-1 rounded-full bg-zinc-800 border border-zinc-700 active:bg-zinc-700">4. Python</a>
-        <a href="#spring" class="px-3 py-1 rounded-full bg-zinc-800 border border-zinc-700 active:bg-zinc-700">5. Spring Boot</a>
-        <a href="#angular" class="px-3 py-1 rounded-full bg-zinc-800 border border-zinc-700 active:bg-zinc-700">6. Angular</a>
-        <a href="#ny" class="px-3 py-1 rounded-full bg-zinc-800 border border-zinc-700 active:bg-zinc-700">7. NY Session</a>
-        <a href="#time" class="px-3 py-1 rounded-full bg-zinc-800 border border-zinc-700 active:bg-zinc-700">8. Timezones</a>
-        <a href="#auth" class="px-3 py-1 rounded-full bg-zinc-800 border border-zinc-700 active:bg-zinc-700">9. Auth &amp; JWT</a>
-        <a href="#health" class="px-3 py-1 rounded-full bg-zinc-800 border border-zinc-700 active:bg-zinc-700">10. Health</a>
-        <a href="#order-rsi" class="px-3 py-1 rounded-full bg-zinc-800 border border-zinc-700 active:bg-zinc-700">Analyzer</a>
-        <a href="#gann-intraday" class="px-3 py-1 rounded-full bg-zinc-800 border border-zinc-700 active:bg-zinc-700">Gann Intraday</a>
-        <a href="#flow" class="px-3 py-1 rounded-full bg-zinc-800 border border-zinc-700 active:bg-zinc-700">11. Full Data Flow</a>
+        <a href="#overview" class="min-h-9 inline-flex items-center px-3 rounded-full bg-zinc-800 border border-zinc-700 active:bg-zinc-700" (click)="onNavChipClick('overview', $event)">1. Overview</a>
+        <a href="#layers" class="px-3 py-1 rounded-full bg-zinc-800 border border-zinc-700 active:bg-zinc-700" (click)="onNavChipClick('layers', $event)">2. Three Layers</a>
+        <a href="#database" class="px-3 py-1 rounded-full bg-zinc-800 border border-zinc-700 active:bg-zinc-700" (click)="onNavChipClick('database', $event)">3. Database</a>
+        <a href="#python" class="px-3 py-1 rounded-full bg-zinc-800 border border-zinc-700 active:bg-zinc-700" (click)="onNavChipClick('python', $event)">4. Python</a>
+        <a href="#spring" class="px-3 py-1 rounded-full bg-zinc-800 border border-zinc-700 active:bg-zinc-700" (click)="onNavChipClick('spring', $event)">5. Spring Boot</a>
+        <a href="#angular" class="px-3 py-1 rounded-full bg-zinc-800 border border-zinc-700 active:bg-zinc-700" (click)="onNavChipClick('angular', $event)">6. Angular</a>
+        <a href="#ny" class="px-3 py-1 rounded-full bg-zinc-800 border border-zinc-700 active:bg-zinc-700" (click)="onNavChipClick('ny', $event)">7. NY Session</a>
+        <a href="#time" class="px-3 py-1 rounded-full bg-zinc-800 border border-zinc-700 active:bg-zinc-700" (click)="onNavChipClick('time', $event)">8. Timezones</a>
+        <a href="#auth" class="px-3 py-1 rounded-full bg-zinc-800 border border-zinc-700 active:bg-zinc-700" (click)="onNavChipClick('auth', $event)">9. Auth &amp; JWT</a>
+        <a href="#health" class="px-3 py-1 rounded-full bg-zinc-800 border border-zinc-700 active:bg-zinc-700" (click)="onNavChipClick('health', $event)">10. Health</a>
+        <a href="#order-rsi" class="px-3 py-1 rounded-full bg-zinc-800 border border-zinc-700 active:bg-zinc-700" (click)="onNavChipClick('order-rsi', $event)">Analyzer</a>
+        <a href="#gann-intraday" class="px-3 py-1 rounded-full bg-zinc-800 border border-zinc-700 active:bg-zinc-700" (click)="onNavChipClick('gann-intraday', $event)">Gann Intraday</a>
+        <a href="#flow" class="px-3 py-1 rounded-full bg-zinc-800 border border-zinc-700 active:bg-zinc-700" (click)="onNavChipClick('flow', $event)">11. Full Data Flow</a>
       </div>
 
       <!-- Sections as mobile-friendly accordions -->
@@ -385,4 +387,73 @@ import { PageHeaderComponent } from '../ui/page-header.component';
     </div>
   `
 })
-export class DocsComponent {}
+export class DocsComponent implements OnInit, AfterViewInit, OnDestroy {
+  private subs = new Subscription();
+  private viewReady = false;
+  private pendingSectionId: string | null = null;
+
+  private readonly onHashChange = (): void => {
+    const id = window.location.hash.replace(/^#/, '');
+    if (id) {
+      this.pendingSectionId = id;
+      this.tryScrollToSection();
+    }
+  };
+
+  constructor(private route: ActivatedRoute) {}
+
+  ngOnInit(): void {
+    this.subs.add(
+      this.route.fragment.subscribe(fragment => {
+        this.pendingSectionId = fragment;
+        this.tryScrollToSection();
+      })
+    );
+    window.addEventListener('hashchange', this.onHashChange);
+  }
+
+  ngAfterViewInit(): void {
+    this.viewReady = true;
+    const initial = this.route.snapshot.fragment ?? window.location.hash.replace(/^#/, '') || null;
+    if (initial) {
+      this.pendingSectionId = initial;
+    }
+    this.tryScrollToSection();
+  }
+
+  ngOnDestroy(): void {
+    this.subs.unsubscribe();
+    window.removeEventListener('hashchange', this.onHashChange);
+  }
+
+  onNavChipClick(sectionId: string, event: MouseEvent): void {
+    event.preventDefault();
+    this.pendingSectionId = sectionId;
+    history.replaceState(null, '', `#${sectionId}`);
+    this.tryScrollToSection();
+  }
+
+  private tryScrollToSection(): void {
+    if (!this.viewReady || !this.pendingSectionId) {
+      return;
+    }
+
+    const sectionId = this.pendingSectionId;
+    requestAnimationFrame(() => {
+      setTimeout(() => this.scrollToSection(sectionId), 0);
+    });
+  }
+
+  private scrollToSection(sectionId: string): void {
+    const el = document.getElementById(sectionId);
+    if (!el) {
+      return;
+    }
+
+    if (el instanceof HTMLDetailsElement) {
+      el.open = true;
+    }
+
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
