@@ -4,6 +4,16 @@ All notable changes to the Grok Dev full-stack application (Spring Boot + Angula
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2026-06-29 (NY Liquidity chart highlights only)
+
+### Changed
+- Removed vertical event lines from NY Liquidity chart — **wick zone highlights** on liquidity, entry, and exit bars only (Candles mode)
+
+### Documentation
+- **`frontend/docs/NY_LIQUIDITY_SWEEP_ANALYZER.md`** — event bar highlight color key
+
+---
+
 ## [Unreleased] - 2026-06-29 (NY Liquidity chart wick visibility)
 
 ### Changed
