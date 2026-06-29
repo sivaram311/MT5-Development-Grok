@@ -70,14 +70,16 @@ Or use **Scan history** in the UI / `POST /api/market/xauusd/ny-liquidity-sweep/
     | Green solid | Entry price |
     | Red dashed | Stop loss |
     | Light green dashed | TP1 / TP2 |
-  - **Vertical lines** (time events) — drawn at the bar where each event occurs:
+  - **Vertical lines** (time events) — drawn **behind** candles so wicks stay visible:
     | Line | Style | Meaning |
     |------|-------|---------|
-    | Amber dashed | Liquidity sweep (stop hunt) |
-    | Green solid | Entry trigger (structure return + setup bar) |
-    | Red solid | Exit — SL hit |
-    | Green solid | Exit — TP hit (TP1 or TP2, whichever first) |
-  - Open trades show sweep + entry verticals only (no exit line until closed)
+    | Orange dashed | Liquidity sweep candle (stop hunt) |
+    | Sky blue solid | Entry trigger (structure return bar) |
+    | Rose solid | Exit — SL hit |
+    | Violet solid | Exit — TP hit (TP1 or TP2, whichever first) |
+  - Liquidity bar resolved from `sweepTime` in payload, or by matching `sweep_level` to bar high/low before entry
+  - **Candle wick zones** (Candles mode only) — on event bars, tinted band **above high** (orange) and **below low** (sky) so upper/lower wicks stand out from the candle body
+  - Candles use **blue** (up) / **pink** (down) bodies — distinct from vertical line colors
 - Historical setups table with filters and CSV export
 - Dashboard alert banner on live setups (SSE)
 

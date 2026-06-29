@@ -67,6 +67,13 @@ interface ChartVerticalLine {
   label: string;
 }
 
+interface EventCandleHighlight {
+  index: number;
+  aboveColor: string;
+  belowColor: string;
+  label: string;
+}
+
 type ExitHit = 'sl' | 'tp1' | 'tp2';
 
 /** Shared chart overlay colors — keep in sync with template legend. */
@@ -77,10 +84,18 @@ const CHART_COLORS = {
   levelSl: '#f87171',
   levelTp1: '#6ee7b7',
   levelTp2: '#a7f3d0',
-  vLiquidity: '#f59e0b',
-  vEntry: '#34d399',
-  vExitSl: '#ef4444',
-  vExitTp: '#22c55e'
+  candleUp: '#60a5fa',
+  candleDown: '#f472b6',
+  vLiquidity: '#fb923c',
+  vEntry: '#38bdf8',
+  vExitSl: '#f43f5e',
+  vExitTp: '#c084fc',
+  wickLiquidityAbove: 'rgba(251, 146, 60, 0.22)',
+  wickLiquidityBelow: 'rgba(56, 189, 248, 0.22)',
+  wickEntryAbove: 'rgba(56, 189, 248, 0.2)',
+  wickEntryBelow: 'rgba(192, 132, 252, 0.2)',
+  wickExitAbove: 'rgba(244, 63, 94, 0.15)',
+  wickExitBelow: 'rgba(192, 132, 252, 0.15)'
 } as const;
 
 @Component({
@@ -187,17 +202,27 @@ const CHART_COLORS = {
           <div class="text-zinc-500 uppercase tracking-wider pt-1">Vertical — time events</div>
           <div class="flex flex-wrap gap-x-4 gap-y-1 text-zinc-300">
             <span class="flex items-center gap-1.5">
-              <span class="inline-block w-0 h-3 border-l-2 border-dashed border-amber-500"></span> Liquidity sweep
+              <span class="inline-block w-0 h-3 border-l-2 border-dashed border-orange-400"></span> Liquidity sweep candle
             </span>
             <span class="flex items-center gap-1.5">
-              <span class="inline-block w-0 h-3 border-l-2 border-emerald-400"></span> Entry trigger
+              <span class="inline-block w-0 h-3 border-l-2 border-sky-400"></span> Entry trigger
             </span>
             <span class="flex items-center gap-1.5">
-              <span class="inline-block w-0 h-3 border-l-2 border-red-500"></span> Exit (SL hit)
+              <span class="inline-block w-0 h-3 border-l-2 border-rose-500"></span> Exit (SL hit)
             </span>
             <span class="flex items-center gap-1.5">
-              <span class="inline-block w-0 h-3 border-l-2 border-green-500"></span> Exit (TP hit)
+              <span class="inline-block w-0 h-3 border-l-2 border-violet-400"></span> Exit (TP hit)
             </span>
+          </div>
+          <div class="text-zinc-500 uppercase tracking-wider pt-1" *ngIf="chartMode === 'candlestick'">Candle wick zones (event bars)</div>
+          <div class="flex flex-wrap gap-x-4 gap-y-1 text-zinc-400" *ngIf="chartMode === 'candlestick'">
+            <span class="flex items-center gap-1.5">
+              <span class="inline-block w-3 h-2 bg-orange-400/30"></span> Above high
+            </span>
+            <span class="flex items-center gap-1.5">
+              <span class="inline-block w-3 h-2 bg-sky-400/30"></span> Below low
+            </span>
+            <span class="text-zinc-600">— highlights liquidity &amp; entry candles so wicks stay visible</span>
           </div>
         </div>
       </div>
@@ -489,7 +514,7 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
     if (!candles.length) return data;
 
     const structureIdx = this.findSetupBarIndex(candles, setup, data.structureTime);
-    const sweepIdx = this.findMarkerIndex(candles, data.sweepTime);
+    const sweepIdx = this.findSweepBarIndex(candles, data, setup);
     const anchorIdx = structureIdx >= 0 ? structureIdx : sweepIdx >= 0 ? sweepIdx : Math.max(0, candles.length - 1);
     const earliestIdx = Math.min(
       structureIdx >= 0 ? structureIdx : Number.POSITIVE_INFINITY,
@@ -570,7 +595,7 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
     setup: LiquiditySetup | null
   ): ChartVerticalLine[] {
     const lines: ChartVerticalLine[] = [];
-    const sweepIdx = this.findMarkerIndex(candles, data.sweepTime);
+    const sweepIdx = this.findSweepBarIndex(candles, data, setup);
     const entryIdx = this.findSetupBarIndex(candles, setup, data.structureTime);
 
     if (sweepIdx >= 0) {
@@ -601,10 +626,85 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
     return lines;
   }
 
+  private buildEventCandleHighlights(
+    candles: OhlcCandle[],
+    data: ChartPayload,
+    setup: LiquiditySetup | null
+  ): EventCandleHighlight[] {
+    const out: EventCandleHighlight[] = [];
+    const sweepIdx = this.findSweepBarIndex(candles, data, setup);
+    const entryIdx = this.findSetupBarIndex(candles, setup, data.structureTime);
+
+    if (sweepIdx >= 0) {
+      out.push({
+        index: sweepIdx,
+        aboveColor: CHART_COLORS.wickLiquidityAbove,
+        belowColor: CHART_COLORS.wickLiquidityBelow,
+        label: 'Liquidity sweep'
+      });
+    }
+    if (entryIdx >= 0 && entryIdx !== sweepIdx) {
+      out.push({
+        index: entryIdx,
+        aboveColor: CHART_COLORS.wickEntryAbove,
+        belowColor: CHART_COLORS.wickEntryBelow,
+        label: 'Entry trigger'
+      });
+    } else if (entryIdx >= 0 && sweepIdx >= 0 && entryIdx === sweepIdx) {
+      out[0] = {
+        index: sweepIdx,
+        aboveColor: CHART_COLORS.wickLiquidityAbove,
+        belowColor: CHART_COLORS.wickEntryBelow,
+        label: 'Liquidity + entry'
+      };
+    }
+    if (setup && entryIdx >= 0) {
+      const exit = this.findExitDetails(candles, entryIdx, setup);
+      if (exit) {
+        out.push({
+          index: exit.index,
+          aboveColor: CHART_COLORS.wickExitAbove,
+          belowColor: CHART_COLORS.wickExitBelow,
+          label: 'Exit'
+        });
+      }
+    }
+    return out;
+  }
+
+  /** Liquidity sweep bar — from payload time, or price match before entry. */
+  private findSweepBarIndex(
+    candles: OhlcCandle[],
+    data: ChartPayload,
+    setup: LiquiditySetup | null
+  ): number {
+    const fromTime = this.findMarkerIndex(candles, data.sweepTime);
+    if (fromTime >= 0) return fromTime;
+    if (!setup?.sweep_level) return -1;
+
+    const entryIdx = this.findSetupBarIndex(candles, setup, data.structureTime);
+    const searchEnd = entryIdx > 0 ? entryIdx : candles.length - 1;
+    const sweepLevel = setup.sweep_level;
+    const tol = 0.35;
+    let bestIdx = -1;
+    let bestDist = Number.POSITIVE_INFINITY;
+
+    for (let i = 0; i <= searchEnd; i++) {
+      const c = candles[i];
+      const probe = setup.direction === 'Bearish' ? c.high : c.low;
+      const dist = Math.abs(probe - sweepLevel);
+      if (dist <= tol && dist < bestDist) {
+        bestDist = dist;
+        bestIdx = i;
+      }
+    }
+    return bestIdx;
+  }
+
   private verticalLinePlugin(lines: ChartVerticalLine[]) {
     return {
       id: 'nyLiquidityVerticalLines',
-      afterDraw: (chart: Chart) => {
+      beforeDatasetsDraw: (chart: Chart) => {
         if (!lines.length) return;
         const { ctx, chartArea, scales } = chart;
         const xScale = scales['x'];
@@ -614,14 +714,44 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
           const x = xScale.getPixelForValue(line.index);
           if (x < chartArea.left - 1 || x > chartArea.right + 1) continue;
           ctx.strokeStyle = line.color;
-          ctx.lineWidth = 2;
-          ctx.setLineDash(line.dashed ? [5, 4] : []);
+          ctx.globalAlpha = 0.55;
+          ctx.lineWidth = line.dashed ? 2 : 2.5;
+          ctx.setLineDash(line.dashed ? [6, 4] : []);
           ctx.beginPath();
           ctx.moveTo(x, chartArea.top);
           ctx.lineTo(x, chartArea.bottom);
           ctx.stroke();
         }
         ctx.restore();
+      }
+    };
+  }
+
+  private eventCandleHighlightPlugin(highlights: EventCandleHighlight[]) {
+    return {
+      id: 'nyLiquidityEventCandles',
+      afterDatasetsDraw: (chart: Chart) => {
+        if (!highlights.length) return;
+        const meta = chart.getDatasetMeta(0);
+        const yScale = chart.scales['y'];
+        const { ctx, chartArea } = chart;
+        if (!ctx || !chartArea || !yScale || !meta?.data?.length) return;
+
+        for (const h of highlights) {
+          const el = meta.data[h.index] as { x?: number; width?: number; high?: number; low?: number };
+          if (!el || el.x == null || el.high == null || el.low == null) continue;
+
+          const halfW = (el.width ?? 14) / 2 + 3;
+          const yHigh = yScale.getPixelForValue(el.high);
+          const yLow = yScale.getPixelForValue(el.low);
+
+          ctx.save();
+          ctx.fillStyle = h.aboveColor;
+          ctx.fillRect(el.x - halfW, chartArea.top, halfW * 2, Math.max(0, yHigh - chartArea.top));
+          ctx.fillStyle = h.belowColor;
+          ctx.fillRect(el.x - halfW, yLow, halfW * 2, Math.max(0, chartArea.bottom - yLow));
+          ctx.restore();
+        }
       }
     };
   }
@@ -661,6 +791,7 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
   ): void {
     const labels = candles.map(c => this.candleNyHm(c));
     const verticalLines = this.buildEventVerticalLines(candles, data, setup);
+
     const datasets: ChartConfiguration['data']['datasets'] = [this.buildCloseLineDataset(candles)];
     datasets.push(...this.buildCategoryLevelDatasets(candles.length, levels));
 
@@ -682,6 +813,11 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
     const labels = candles.map(c => this.candleNyHm(c));
     const tickStep = Math.max(1, Math.floor(candles.length / 10));
     const verticalLines = this.buildEventVerticalLines(candles, data, setup);
+    const eventHighlights = this.buildEventCandleHighlights(candles, data, setup);
+    const chartPlugins = [
+      this.verticalLinePlugin(verticalLines),
+      this.eventCandleHighlightPlugin(eventHighlights)
+    ];
 
     const datasets: ChartConfiguration['data']['datasets'] = [
       {
@@ -698,13 +834,13 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
         barThickness: 12,
         maxBarThickness: 16,
         borderColors: {
-          up: '#34d399',
-          down: '#f87171',
+          up: CHART_COLORS.candleUp,
+          down: CHART_COLORS.candleDown,
           unchanged: '#a1a1aa'
         },
         backgroundColors: {
-          up: 'rgba(52, 211, 153, 0.85)',
-          down: 'rgba(248, 113, 113, 0.85)',
+          up: 'rgba(96, 165, 250, 0.9)',
+          down: 'rgba(244, 114, 182, 0.9)',
           unchanged: 'rgba(161, 161, 170, 0.85)'
         }
       } as ChartConfiguration['data']['datasets'][number],
@@ -745,7 +881,7 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
           }
         }
       },
-      plugins: [this.verticalLinePlugin(verticalLines)]
+      plugins: chartPlugins
     });
   }
 
