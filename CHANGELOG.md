@@ -12,6 +12,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Chart mode preference persisted in `localStorage` (`nyLiquidityChartMode`)
 
 ### Changed
+- NY Liquidity chart window trims to setup action: 12 bars before sweep/structure, 6 after exit
+- Candlestick mode shows level lines aligned with price (mixed chart + category x-axis)
 - Chart API returns up to **2000** M5 bars; payload includes top-level `sweepTime` / `structureTime`
 - Python analyzer stores `sweepTime` / `structureTime` in setup payload for marker placement
 

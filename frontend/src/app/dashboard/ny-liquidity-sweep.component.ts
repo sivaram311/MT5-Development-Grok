@@ -399,13 +399,92 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
       low: Number(c.low),
       close: Number(c.close)
     }));
-    return {
+    const setup = data?.setup || this.selectedSetup;
+    const payload = {
       candles,
       levels: data?.levels || {},
-      setup: data?.setup || this.selectedSetup,
+      setup,
       sweepTime: data?.sweepTime || data?.setup?.payload?.sweepTime,
       structureTime: data?.structureTime || data?.setup?.payload?.structureTime
     };
+    return this.trimChartWindow(payload);
+  }
+
+  /** Focus chart on structure return → first SL/TP hit with minimal padding. */
+  private trimChartWindow(data: ChartPayload): ChartPayload {
+    const { candles, setup } = data;
+    if (!candles.length) return data;
+
+    const structureIdx = this.findSetupBarIndex(candles, setup, data.structureTime);
+    const sweepIdx = this.findMarkerIndex(candles, data.sweepTime);
+    const anchorIdx = structureIdx >= 0 ? structureIdx : sweepIdx >= 0 ? sweepIdx : Math.max(0, candles.length - 1);
+    const earliestIdx = Math.min(
+      structureIdx >= 0 ? structureIdx : Number.POSITIVE_INFINITY,
+      sweepIdx >= 0 ? sweepIdx : Number.POSITIVE_INFINITY
+    );
+    const windowStart = Number.isFinite(earliestIdx) ? earliestIdx : anchorIdx;
+
+    const barsBefore = 12;
+    const barsAfterExit = 6;
+    const barsAfterOpen = 12;
+
+    const startIdx = Math.max(0, windowStart - barsBefore);
+    let endIdx = candles.length - 1;
+
+    if (setup) {
+      const exitIdx = this.findExitIndex(candles, anchorIdx, setup);
+      if (exitIdx >= 0) {
+        endIdx = Math.min(candles.length - 1, exitIdx + barsAfterExit);
+      } else if (setup.result === 'Open') {
+        endIdx = Math.min(candles.length - 1, anchorIdx + barsAfterOpen);
+      } else {
+        endIdx = Math.min(candles.length - 1, anchorIdx + barsAfterOpen);
+      }
+    } else {
+      endIdx = Math.min(candles.length - 1, anchorIdx + barsAfterOpen);
+    }
+
+    if (endIdx <= startIdx) {
+      endIdx = Math.min(candles.length - 1, startIdx + barsAfterOpen);
+    }
+
+    return { ...data, candles: candles.slice(startIdx, endIdx + 1) };
+  }
+
+  private findSetupBarIndex(
+    candles: OhlcCandle[],
+    setup: LiquiditySetup | null,
+    structureTime?: string
+  ): number {
+    const fromPayload = this.findMarkerIndex(candles, structureTime);
+    if (fromPayload >= 0) return fromPayload;
+    if (!setup?.ny_time) return -1;
+    const target = setup.ny_time.substring(0, 5);
+    return candles.findIndex(c => this.candleNyHm(c) === target);
+  }
+
+  private candleNyHm(c: OhlcCandle): string {
+    const t = c.nyTime || c.time || '';
+    return t.length > 11 ? t.substring(11, 16) : t.substring(0, 5);
+  }
+
+  /** First bar after entry where SL or TP (whichever comes first) is touched. */
+  private findExitIndex(candles: OhlcCandle[], entryIdx: number, setup: LiquiditySetup): number {
+    if (entryIdx < 0) return -1;
+    const { direction, sl, tp1, tp2 } = setup;
+    for (let i = entryIdx + 1; i < candles.length; i++) {
+      const { high, low } = candles[i];
+      if (direction === 'Bullish') {
+        if (low <= sl) return i;
+        if (high >= tp2) return i;
+        if (high >= tp1) return i;
+      } else {
+        if (high >= sl) return i;
+        if (low <= tp2) return i;
+        if (low <= tp1) return i;
+      }
+    }
+    return -1;
   }
 
   private buildChart(data: ChartPayload): void {
@@ -414,25 +493,21 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
     const { candles, levels, setup } = data;
     if (!candles.length) return;
 
-    const labels = candles.map(c => {
-      const t = c.nyTime || c.time || '';
-      return t.length > 11 ? t.substring(11, 16) : t;
-    });
+    const labels = candles.map(c => this.candleNyHm(c));
 
     const datasets: ChartConfiguration['data']['datasets'] =
       this.chartMode === 'candlestick'
         ? [this.buildCandlestickDataset(candles)]
         : [this.buildCloseLineDataset(candles)];
 
-    datasets.push(...this.buildLevelDatasets(candles, levels));
-    datasets.push(...this.buildMarkerDatasets(candles, data, setup));
+    datasets.push(...this.buildLevelDatasets(candles.length, levels));
+    datasets.push(...this.buildMarkerDatasets(labels, candles, data, setup));
 
-    const baseType = this.chartMode === 'candlestick' ? 'candlestick' : 'line';
-
+    // Base type `line` so mixed candlestick + level line datasets share the category x-axis.
     this.chart = new Chart(this.chartCanvas.nativeElement, {
-      type: baseType,
+      type: 'line',
       data: { labels, datasets },
-      options: this.buildChartOptions()
+      options: this.buildChartOptions(this.chartMode === 'candlestick')
     });
   }
 
@@ -447,6 +522,9 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
         l: c.low,
         c: c.close
       })),
+      order: 1,
+      barThickness: 10,
+      maxBarThickness: 14,
       borderColors: {
         up: '#34d399',
         down: '#f87171',
@@ -474,7 +552,7 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
     };
   }
 
-  private buildLevelDatasets(candles: OhlcCandle[], levels: Record<string, number>) {
+  private buildLevelDatasets(candleCount: number, levels: Record<string, number>) {
     const levelColors: Record<string, string> = {
       sweep: '#fbbf24',
       structure: '#a1a1aa',
@@ -490,12 +568,14 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
         out.push({
           type: 'line',
           label: key.toUpperCase(),
-          data: candles.map(() => val),
+          data: Array.from({ length: candleCount }, (_, i) => ({ x: i, y: val })),
           borderColor: color,
           borderDash: key === 'sl' || key.startsWith('tp') ? [6, 4] : [],
           pointRadius: 0,
-          borderWidth: 1,
-          fill: false
+          borderWidth: 1.5,
+          fill: false,
+          order: 0,
+          spanGaps: true
         });
       }
     }
@@ -503,13 +583,14 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
   }
 
   private buildMarkerDatasets(
+    _labels: string[],
     candles: OhlcCandle[],
     data: ChartPayload,
     setup: LiquiditySetup | null
   ) {
     const out: ChartConfiguration['data']['datasets'] = [];
     const sweepIdx = this.findMarkerIndex(candles, data.sweepTime);
-    const structIdx = this.findMarkerIndex(candles, data.structureTime);
+    const structIdx = this.findSetupBarIndex(candles, setup, data.structureTime);
     if (sweepIdx >= 0) {
       out.push({
         type: 'scatter',
@@ -519,7 +600,8 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
         pointStyle: 'triangle',
         pointBackgroundColor: '#fbbf24',
         pointBorderColor: '#fbbf24',
-        borderWidth: 0
+        borderWidth: 0,
+        order: 2
       });
     }
     if (structIdx >= 0) {
@@ -531,13 +613,14 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
         pointStyle: 'circle',
         pointBackgroundColor: '#e4e4e7',
         pointBorderColor: '#e4e4e7',
-        borderWidth: 0
+        borderWidth: 0,
+        order: 2
       });
     }
     return out;
   }
 
-  private buildChartOptions(): ChartConfiguration['options'] {
+  private buildChartOptions(candlestickMode: boolean): ChartConfiguration['options'] {
     return {
       responsive: true,
       maintainAspectRatio: false,
@@ -566,12 +649,14 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
       scales: {
         x: {
           type: 'category',
-          ticks: { color: '#71717a', maxTicksLimit: 14, font: { size: 9 } },
+          offset: candlestickMode,
+          ticks: { color: '#71717a', maxTicksLimit: 12, font: { size: 9 }, autoSkip: true },
           grid: { color: '#27272a' }
         },
         y: {
           ticks: { color: '#71717a', font: { size: 9 } },
-          grid: { color: '#27272a' }
+          grid: { color: '#27272a' },
+          grace: '8%'
         }
       }
     };

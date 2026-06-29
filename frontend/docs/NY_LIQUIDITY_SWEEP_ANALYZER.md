@@ -61,7 +61,8 @@ Or use **Scan history** in the UI / `POST /api/market/xauusd/ny-liquidity-sweep/
   - **Candles** — OHLC candlesticks via `chartjs-chart-financial` (default)
   - **Line** — close-price line (previous view)
   - Toggle with **Candles | Line** in the chart header; preference saved in `localStorage` (`nyLiquidityChartMode`)
-  - Overlays: sweep / structure / entry / SL / TP1 / TP2 level lines
+  - Focused window: **12 M5 bars** before sweep/structure, **6 bars** after first SL/TP (or 12 if still open)
+  - Overlays: sweep / structure / entry / SL / TP1 / TP2 level lines (both chart modes)
   - Markers: sweep (triangle) and structure (circle) at `sweepTime` / `structureTime`
 - Historical setups table with filters and CSV export
 - Dashboard alert banner on live setups (SSE)
