@@ -22,11 +22,6 @@ import java.io.IOException;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private static final String SSE_HEALTH_STREAM_PATH = "/api/market/xauusd/health/stream";
-    private static final String SSE_ORDER_RSI_STREAM_PATH = "/api/market/xauusd/order-rsi/stream";
-    private static final String SSE_GANN_INTRADAY_STREAM_PATH = "/api/market/xauusd/gann-intraday/stream";
-    private static final String SSE_NY_LIQUIDITY_SWEEP_STREAM_PATH = "/api/market/xauusd/ny-liquidity-sweep/stream";
-
     @Autowired
     private JwtUtil jwtUtil;
 
@@ -75,11 +70,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return headerAuth.substring(7);
         }
 
-        // EventSource cannot send Authorization header — query token on SSE streams only.
-        if (SSE_HEALTH_STREAM_PATH.equals(request.getRequestURI())
-                || SSE_ORDER_RSI_STREAM_PATH.equals(request.getRequestURI())
-                || SSE_GANN_INTRADAY_STREAM_PATH.equals(request.getRequestURI())
-                || SSE_NY_LIQUIDITY_SWEEP_STREAM_PATH.equals(request.getRequestURI())) {
+        // EventSource cannot send Authorization header — query token on market SSE streams only.
+        if (isMarketSseStream(request)) {
             String queryToken = request.getParameter("access_token");
             if (StringUtils.hasText(queryToken)) {
                 return queryToken;
@@ -87,5 +79,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         return null;
+    }
+
+    /** Accept query access_token for any market xauusd stream endpoint. */
+    private boolean isMarketSseStream(HttpServletRequest request) {
+        String servletPath = request.getServletPath();
+        if (StringUtils.hasText(servletPath) && servletPath.endsWith("/stream") && servletPath.startsWith("/api/market/xauusd/")) {
+            return true;
+        }
+        String requestUri = request.getRequestURI();
+        return StringUtils.hasText(requestUri)
+                && requestUri.endsWith("/stream")
+                && requestUri.contains("/api/market/xauusd/");
     }
 }
