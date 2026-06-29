@@ -172,17 +172,22 @@ public class NyLiquiditySweepService {
         }
         Map<String, Object> setup = rows.get(0);
         String date = String.valueOf(setup.get("date"));
-        List<XauusdCandle> m5 = marketDataService.getXauusdGridData("M5", 2000, false);
-        List<XauusdCandle> m5Asc = toAsc(m5);
-        List<Map<String, Object>> candles = m5Asc.stream()
+        @SuppressWarnings("unchecked")
+        Map<String, Object> payload = setup.get("payload") instanceof Map
+                ? (Map<String, Object>) setup.get("payload")
+                : Map.of();
+        String entryTf = payload.get("entryTf") != null ? String.valueOf(payload.get("entryTf")) : "M15";
+        int limit = "M1".equals(entryTf) ? 3000 : 2000;
+        List<XauusdCandle> entryAsc = toAsc(marketDataService.getXauusdGridData(entryTf, limit, false));
+        List<Map<String, Object>> candles = entryAsc.stream()
                 .filter(c -> c.getTime() != null && c.getTime().toLocalDate().toString().equals(date)
                         || (c.getNyTime() != null && c.getNyTime().toLocalDate().toString().equals(date)))
                 .map(this::candleToMap)
                 .collect(Collectors.toList());
 
         if (candles.size() < 20) {
-            int take = Math.min(180, m5Asc.size());
-            candles = m5Asc.subList(Math.max(0, m5Asc.size() - take), m5Asc.size()).stream()
+            int take = Math.min("M1".equals(entryTf) ? 360 : 180, entryAsc.size());
+            candles = entryAsc.subList(Math.max(0, entryAsc.size() - take), entryAsc.size()).stream()
                     .map(this::candleToMap)
                     .collect(Collectors.toList());
         }
@@ -190,6 +195,7 @@ public class NyLiquiditySweepService {
         Map<String, Object> chart = new LinkedHashMap<>();
         chart.put("setup", setup);
         chart.put("candles", candles);
+        chart.put("entryTf", entryTf);
         chart.put("levels", Map.of(
                 "sweep", setup.get("sweep_level"),
                 "structure", setup.get("structure_level"),
@@ -198,23 +204,30 @@ public class NyLiquiditySweepService {
                 "tp1", setup.get("tp1"),
                 "tp2", setup.get("tp2")
         ));
-        @SuppressWarnings("unchecked")
-        Map<String, Object> payload = setup.get("payload") instanceof Map
-                ? (Map<String, Object>) setup.get("payload")
-                : Map.of();
         chart.put("sweepTime", payload.get("sweepTime"));
         chart.put("structureTime", payload.get("structureTime"));
         return chart;
     }
 
-    public Map<String, Object> scanFromGrid(int days) {
-        ensureTables();
-        List<XauusdCandle> m5Asc = toAsc(marketDataService.getXauusdGridData("M5", GRID_LIMIT, false));
-        List<XauusdCandle> m15Asc = toAsc(marketDataService.getXauusdGridData("M15", 2000, false));
-        List<XauusdCandle> h1Asc = toAsc(marketDataService.getXauusdGridData("H1", 1000, false));
-        List<XauusdCandle> d1Asc = toAsc(marketDataService.getXauusdGridData("D1", 120, false));
+    public List<Map<String, String>> getTfPresets() {
+        return List.of(
+                Map.of("id", "h1-m15-m15", "label", "H1 → M15 (M15 entry)", "htf", "H1", "ltf", "M15", "entry", "M15"),
+                Map.of("id", "h1-m1-m1", "label", "H1 → M1 (M1 entry)", "htf", "H1", "ltf", "M1", "entry", "M1"),
+                Map.of("id", "m15-m1-m1", "label", "M15 → M1 (M1 entry)", "htf", "M15", "ltf", "M1", "entry", "M1"),
+                Map.of("id", "h4-m15-m15", "label", "H4 → M15 (M15 entry)", "htf", "H4", "ltf", "M15", "entry", "M15"),
+                Map.of("id", "h4-m1-m1", "label", "H4 → M1 (M1 entry)", "htf", "H4", "ltf", "M1", "entry", "M1")
+        );
+    }
 
-        List<Map<String, Object>> detected = calculator.scanRecentDays(m5Asc, m15Asc, h1Asc, d1Asc, days);
+    public Map<String, Object> scanFromGrid(int days, String entryTf, String htf, String ltf) {
+        ensureTables();
+        NyLiquiditySweepCalculator.TfConfig config = NyLiquiditySweepCalculator.TfConfig.of(entryTf, htf, ltf);
+        Map<String, List<XauusdCandle>> tfBars = loadTfBars(config);
+        int entryLimit = "M1".equals(config.entryTf()) ? 15000 : GRID_LIMIT;
+        List<XauusdCandle> entryAsc = toAsc(marketDataService.getXauusdGridData(config.entryTf(), entryLimit, false));
+        List<XauusdCandle> d1Asc = tfBars.getOrDefault("D1", List.of());
+
+        List<Map<String, Object>> detected = calculator.scanRecentDays(entryAsc, tfBars, d1Asc, days, config);
         int upserted = 0;
         for (Map<String, Object> setup : detected) {
             upsertSetup(setup);
@@ -223,18 +236,41 @@ public class NyLiquiditySweepService {
         return Map.of(
                 "scanned", true,
                 "days", days,
+                "entryTf", config.entryTf(),
+                "htf", config.htf(),
+                "ltf", config.ltf(),
                 "detected", detected.size(),
                 "upserted", upserted,
                 "message", "Grid scan complete. For full accuracy run: python run_ny_liquidity_sweep.py --backfill"
         );
     }
 
+    private Map<String, List<XauusdCandle>> loadTfBars(NyLiquiditySweepCalculator.TfConfig config) {
+        Map<String, Integer> limits = Map.of(
+                "M1", 15000,
+                "M15", 2000,
+                "H1", 1000,
+                "H4", 500,
+                "D1", 120
+        );
+        Map<String, List<XauusdCandle>> tfBars = new LinkedHashMap<>();
+        tfBars.put("M15", toAsc(marketDataService.getXauusdGridData("M15", limits.get("M15"), false)));
+        tfBars.put(config.htf(), toAsc(marketDataService.getXauusdGridData(config.htf(), limits.getOrDefault(config.htf(), 1000), false)));
+        tfBars.put(config.ltf(), toAsc(marketDataService.getXauusdGridData(config.ltf(), limits.getOrDefault(config.ltf(), 2000), false)));
+        if ("M1".equals(config.entryTf()) && !tfBars.containsKey("M1")) {
+            tfBars.put("M1", toAsc(marketDataService.getXauusdGridData("M1", limits.get("M1"), false)));
+        }
+        tfBars.put("D1", toAsc(marketDataService.getXauusdGridData("D1", limits.get("D1"), false)));
+        return tfBars;
+    }
+
     private Map<String, Object> computeLiveFromGrid() {
-        List<XauusdCandle> m5Asc = toAsc(marketDataService.getXauusdGridData("M5", 800, false));
-        List<XauusdCandle> m15Asc = toAsc(marketDataService.getXauusdGridData("M15", 800, false));
-        List<XauusdCandle> h1Asc = toAsc(marketDataService.getXauusdGridData("H1", 400, false));
-        List<XauusdCandle> d1Asc = toAsc(marketDataService.getXauusdGridData("D1", 60, false));
-        return calculator.detectLive(m5Asc, m15Asc, h1Asc, d1Asc);
+        NyLiquiditySweepCalculator.TfConfig config = NyLiquiditySweepCalculator.TfConfig.defaults();
+        Map<String, List<XauusdCandle>> tfBars = loadTfBars(config);
+        int tail = 800;
+        List<XauusdCandle> entryAsc = toAsc(marketDataService.getXauusdGridData(config.entryTf(), tail, false));
+        List<XauusdCandle> d1Asc = tfBars.getOrDefault("D1", List.of());
+        return calculator.detectLive(entryAsc, tfBars, d1Asc, config);
     }
 
     private void upsertSetup(Map<String, Object> setup) {

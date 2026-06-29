@@ -52,12 +52,21 @@ interface LiquidityStats {
 
 type ChartMode = 'candlestick' | 'line';
 
+interface TfPreset {
+  id: string;
+  label: string;
+  htf: string;
+  ltf: string;
+  entry: string;
+}
+
 interface ChartPayload {
   candles: OhlcCandle[];
   levels: Record<string, number>;
   setup: LiquiditySetup | null;
   sweepTime?: string;
   structureTime?: string;
+  entryTf?: string;
 }
 
 interface EventCandleHighlight {
@@ -97,7 +106,11 @@ const CHART_COLORS = {
       <app-page-header
         title="NY Liquidity Analyzer"
         subtitle="Liquidity sweep → structure reference → multi-TF RSI confluence during New York session.">
-        <div actions>
+        <div actions class="flex flex-wrap items-center gap-2">
+          <select [(ngModel)]="selectedPresetId" (change)="applyPreset()"
+            class="min-h-11 bg-zinc-900 border border-zinc-800 rounded-xl px-3 text-xs max-w-[14rem]">
+            <option *ngFor="let p of tfPresets" [value]="p.id">{{ p.label }}</option>
+          </select>
           <button type="button" (click)="runScan()" [disabled]="scanning"
             class="min-h-11 px-4 text-xs font-semibold rounded-2xl border border-emerald-800 text-emerald-400 active:bg-emerald-950 disabled:opacity-50">
             {{ scanning ? 'Scanning…' : 'Scan history' }}
@@ -138,8 +151,8 @@ const CHART_COLORS = {
         <div class="text-xs text-zinc-400 mb-2 uppercase tracking-wider">Live setup · Multi-TF RSI</div>
         <div class="grid mobile:grid-cols-2 tablet:grid-cols-4 gap-3 text-sm">
           <div><span class="text-zinc-500 text-xs">Direction</span><div class="font-semibold">{{ liveSetup?.direction }}</div></div>
-          <div><span class="text-zinc-500 text-xs">H1 RSI</span><div class="font-mono">{{ liveSetup?.rsi_htf ?? '—' }}</div></div>
-          <div><span class="text-zinc-500 text-xs">M15 RSI</span><div class="font-mono">{{ liveSetup?.rsi_ltf ?? '—' }}</div></div>
+          <div><span class="text-zinc-500 text-xs">{{ htfLabel }} RSI</span><div class="font-mono">{{ liveSetup?.rsi_htf ?? '—' }}</div></div>
+          <div><span class="text-zinc-500 text-xs">{{ ltfLabel }} RSI</span><div class="font-mono">{{ liveSetup?.rsi_ltf ?? '—' }}</div></div>
           <div><span class="text-zinc-500 text-xs">How spotted</span><div class="text-xs">{{ liveSetup?.how_spotted }}</div></div>
         </div>
       </div>
@@ -148,7 +161,7 @@ const CHART_COLORS = {
       <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-4 mb-6">
         <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
           <div class="text-xs text-zinc-400 uppercase tracking-wider">
-            {{ chartMode === 'candlestick' ? 'OHLC candlestick' : 'Close line' }} · M5
+            {{ chartMode === 'candlestick' ? 'OHLC candlestick' : 'Close line' }} · {{ chartEntryTf }}
             <span *ngIf="selectedSetup"> · {{ selectedSetup.date }} {{ selectedSetup.ny_time }} NY</span>
           </div>
           <div class="flex flex-wrap items-center gap-2">
@@ -217,7 +230,20 @@ const CHART_COLORS = {
       </div>
 
       <!-- Filters -->
-      <div class="flex flex-wrap gap-2 mb-4">
+      <div class="flex flex-wrap gap-2 mb-4 items-center">
+        <div class="text-[10px] text-zinc-500 uppercase tracking-wider mr-1">Scan TF</div>
+        <select [(ngModel)]="scanHtf" (change)="onCustomTfChange()" class="min-h-11 bg-zinc-900 border border-zinc-800 rounded-xl px-3 text-xs">
+          <option *ngFor="let tf of htfOptions" [value]="tf">{{ tf }} HTF</option>
+        </select>
+        <span class="text-zinc-600 text-xs">→</span>
+        <select [(ngModel)]="scanLtf" (change)="onCustomTfChange()" class="min-h-11 bg-zinc-900 border border-zinc-800 rounded-xl px-3 text-xs">
+          <option *ngFor="let tf of ltfOptions" [value]="tf">{{ tf }} LTF</option>
+        </select>
+        <select [(ngModel)]="scanEntryTf" (change)="onCustomTfChange()" class="min-h-11 bg-zinc-900 border border-zinc-800 rounded-xl px-3 text-xs">
+          <option value="M15">M15 entry</option>
+          <option value="M1">M1 entry</option>
+        </select>
+        <div class="w-px h-8 bg-zinc-800 mx-1 hidden sm:block"></div>
         <select [(ngModel)]="filterDirection" (change)="loadSetups()" class="min-h-11 bg-zinc-900 border border-zinc-800 rounded-xl px-3 text-xs">
           <option value="">All directions</option>
           <option value="Bullish">Bullish</option>
@@ -302,6 +328,29 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
   filterResult = '';
   chartMode: ChartMode = 'candlestick';
   chartModeOptions = ['Candles', 'Line'];
+  chartEntryTf = 'M15';
+
+  readonly tfPresets: TfPreset[] = [
+    { id: 'h1-m15-m15', label: 'H1 → M15 (M15 entry)', htf: 'H1', ltf: 'M15', entry: 'M15' },
+    { id: 'h1-m1-m1', label: 'H1 → M1 (M1 entry)', htf: 'H1', ltf: 'M1', entry: 'M1' },
+    { id: 'm15-m1-m1', label: 'M15 → M1 (M1 entry)', htf: 'M15', ltf: 'M1', entry: 'M1' },
+    { id: 'h4-m15-m15', label: 'H4 → M15 (M15 entry)', htf: 'H4', ltf: 'M15', entry: 'M15' },
+    { id: 'h4-m1-m1', label: 'H4 → M1 (M1 entry)', htf: 'H4', ltf: 'M1', entry: 'M1' }
+  ];
+  readonly htfOptions = ['D1', 'H4', 'H1', 'M15'];
+  readonly ltfOptions = ['M15', 'M1'];
+  selectedPresetId = 'h1-m15-m15';
+  scanEntryTf = 'M15';
+  scanHtf = 'H1';
+  scanLtf = 'M15';
+
+  get htfLabel(): string {
+    return this.liveSetup?.payload?.['htf'] as string || this.scanHtf;
+  }
+
+  get ltfLabel(): string {
+    return this.liveSetup?.payload?.['ltf'] as string || this.scanLtf;
+  }
 
   get chartModeLabel(): string {
     return this.chartMode === 'line' ? 'Line' : 'Candles';
@@ -318,6 +367,11 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
     const saved = localStorage.getItem('nyLiquidityChartMode');
     if (saved === 'line' || saved === 'candlestick') {
       this.chartMode = saved;
+    }
+    const savedPreset = localStorage.getItem('nyLiquidityTfPreset');
+    if (savedPreset && this.tfPresets.some(p => p.id === savedPreset)) {
+      this.selectedPresetId = savedPreset;
+      this.applyPreset(false);
     }
     this.stream.connected$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(c => {
       this.streamConnected = c;
@@ -388,7 +442,12 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
   runScan(): void {
     this.scanning = true;
     this.cdr.markForCheck();
-    this.http.post<{ detected: number }>(`${environment.apiUrl}/market/xauusd/ny-liquidity-sweep/scan?days=30`, {}).subscribe({
+    const params = new HttpParams()
+      .set('days', '30')
+      .set('entryTf', this.scanEntryTf)
+      .set('htf', this.scanHtf)
+      .set('ltf', this.scanLtf);
+    this.http.post<{ detected: number }>(`${environment.apiUrl}/market/xauusd/ny-liquidity-sweep/scan`, {}, { params }).subscribe({
       next: () => {
         this.scanning = false;
         this.refresh();
@@ -398,6 +457,29 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
         this.cdr.markForCheck();
       }
     });
+  }
+
+  applyPreset(persist = true): void {
+    const preset = this.tfPresets.find(p => p.id === this.selectedPresetId);
+    if (!preset) return;
+    this.scanHtf = preset.htf;
+    this.scanLtf = preset.ltf;
+    this.scanEntryTf = preset.entry;
+    if (persist) {
+      localStorage.setItem('nyLiquidityTfPreset', preset.id);
+    }
+    this.cdr.markForCheck();
+  }
+
+  onCustomTfChange(): void {
+    const match = this.tfPresets.find(
+      p => p.htf === this.scanHtf && p.ltf === this.scanLtf && p.entry === this.scanEntryTf
+    );
+    this.selectedPresetId = match?.id ?? 'custom';
+    if (match) {
+      localStorage.setItem('nyLiquidityTfPreset', match.id);
+    }
+    this.cdr.markForCheck();
   }
 
   setChartMode(value: string): void {
@@ -476,12 +558,15 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
       close: Number(c.close)
     }));
     const setup = data?.setup || this.selectedSetup;
+    const entryTf = data?.entryTf || setup?.payload?.['entryTf'] || this.scanEntryTf;
+    this.chartEntryTf = String(entryTf);
     const payload = {
       candles,
       levels: this.normalizeLevels(data?.levels),
       setup,
       sweepTime: data?.sweepTime || data?.setup?.payload?.sweepTime,
-      structureTime: data?.structureTime || data?.setup?.payload?.structureTime
+      structureTime: data?.structureTime || data?.setup?.payload?.structureTime,
+      entryTf: this.chartEntryTf
     };
     return this.trimChartWindow(payload);
   }

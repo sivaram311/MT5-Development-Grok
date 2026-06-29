@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
 from .gann_intraday_util import LONDON_SESSION_END, LONDON_SESSION_START, compute_session_pivots
+from .liquidity_tf_util import tf_minutes
 from .rsi_util import wilder_rsi_at_index
 
 
@@ -27,6 +28,9 @@ class LiquiditySweepConfig:
     outcome_bars: int = 48
     entry_offset_pips: float = 2.0
     sl_offset_pips: float = 4.0
+    entry_tf: str = "M15"
+    htf: str = "H1"
+    ltf: str = "M15"
 
 
 @dataclass
@@ -161,10 +165,10 @@ def _rsi_at_bar(tf_bars: List[dict], target_time: str, period: int = 14) -> Opti
     return wilder_rsi_at_index(closes, period)
 
 
-def _bullish_divergence(m15: List[dict], struct_idx: int, lookback: int = 8) -> bool:
+def _bullish_divergence(ltf_bars: List[dict], struct_idx: int, lookback: int = 8) -> bool:
     if struct_idx < lookback + 1:
         return False
-    slice_bars = m15[max(0, struct_idx - lookback) : struct_idx + 1]
+    slice_bars = ltf_bars[max(0, struct_idx - lookback) : struct_idx + 1]
     if len(slice_bars) < 4:
         return False
     closes = [float(b.get("close") or 0) for b in slice_bars]
@@ -182,10 +186,10 @@ def _bullish_divergence(m15: List[dict], struct_idx: int, lookback: int = 8) -> 
     return l2 < l1 and r2 > r1
 
 
-def _bearish_divergence(m15: List[dict], struct_idx: int, lookback: int = 8) -> bool:
+def _bearish_divergence(ltf_bars: List[dict], struct_idx: int, lookback: int = 8) -> bool:
     if struct_idx < lookback + 1:
         return False
-    slice_bars = m15[max(0, struct_idx - lookback) : struct_idx + 1]
+    slice_bars = ltf_bars[max(0, struct_idx - lookback) : struct_idx + 1]
     closes = [float(b.get("close") or 0) for b in slice_bars]
     highs = [float(b.get("high") or b.get("close") or 0) for b in slice_bars]
     rsi_vals = []
@@ -244,55 +248,65 @@ def _simulate_outcome(
     return "Open", None
 
 
-def _setup_id(date: str, ny_time: str, direction: str) -> str:
+def _setup_id(date: str, ny_time: str, direction: str, entry_tf: str) -> str:
     clean = re.sub(r"[^0-9]", "", ny_time)[:12]
-    return f"XAU_{date}_{clean}_{direction[0]}"
+    return f"XAU_{date}_{clean}_{direction[0]}_{entry_tf}"
+
+
+def _bar_idx_at_time(bars: List[dict], target_time: str) -> Optional[int]:
+    return next((j for j, b in enumerate(bars) if b.get("time") == target_time), None)
 
 
 def scan_day_setups(
-    m5: List[dict],
-    m15: List[dict],
-    h1: List[dict],
+    entry_bars: List[dict],
+    tf_bars: Dict[str, List[dict]],
     d1: List[dict],
     cfg: Optional[LiquiditySweepConfig] = None,
 ) -> List[LiquiditySetup]:
-    """Scan one NY session day. Bars must be chronological ASC with nyTime enriched."""
+    """Scan one NY session day on the entry timeframe with HTF/LTF RSI confluence."""
     cfg = cfg or LiquiditySweepConfig()
-    if len(m5) < 30:
+    htf_bars = tf_bars.get(cfg.htf, [])
+    ltf_bars = tf_bars.get(cfg.ltf, [])
+    m15 = tf_bars.get("M15", [])
+    bar_min = tf_minutes(cfg.entry_tf)
+    if len(entry_bars) < 30:
         return []
 
     session = compute_session_pivots(list(reversed(d1)) if d1 else [], list(reversed(m15)) if m15 else [])
     if not session:
         return []
 
-    latest_ny = _parse_ny_parts(m5[-1].get("nyTime") or m5[-1].get("time"))
-    session_date = latest_ny[0] if latest_ny else m5[-1].get("time", "")[:10]
+    latest_ny = _parse_ny_parts(entry_bars[-1].get("nyTime") or entry_bars[-1].get("time"))
+    session_date = latest_ny[0] if latest_ny else entry_bars[-1].get("time", "")[:10]
 
     pdl = session.get("pdl")
     pdh = session.get("pdh")
     asian_low = _asian_low(m15, session_date)
     asian_high = _asian_high(m15, session_date)
 
-    ny_bars = [b for b in m5 if _in_ny_session(b.get("nyTime") or b.get("time"), cfg)]
+    ny_bars = [b for b in entry_bars if _in_ny_session(b.get("nyTime") or b.get("time"), cfg)]
     if not ny_bars:
         return []
 
     running_low = min(float(b.get("low") or b.get("close") or 1e9) for b in ny_bars[:1])
     running_high = max(float(b.get("high") or b.get("close") or 0) for b in ny_bars[:1])
 
-    swing_lows, swing_highs = find_swings(m5[: m5.index(ny_bars[0]) + len(ny_bars)], cfg.swing_lookback)
+    swing_lows, swing_highs = find_swings(entry_bars[: entry_bars.index(ny_bars[0]) + len(ny_bars)], cfg.swing_lookback)
     swing_lows = swing_lows[-cfg.max_swings :]
     swing_highs = swing_highs[-cfg.max_swings :]
 
     setups: List[LiquiditySetup] = []
     tol = cfg.structure_tolerance_pips * cfg.pip_size
     sweep_buf = cfg.sweep_buffer_pips * cfg.pip_size
+    max_future = max(1, cfg.max_time_after_sweep_min // bar_min)
+    outcome_bars_n = max(4, (cfg.outcome_bars * 5) // bar_min)
 
-    bodies = [abs(float(b.get("close") or 0) - float(b.get("open") or 0)) for b in m5[-40:]]
+    bodies = [abs(float(b.get("close") or 0) - float(b.get("open") or 0)) for b in entry_bars[-40:]]
     avg_body = sum(bodies) / len(bodies) if bodies else 1.0
+    how_base = f"NY Sweep + Structure + {cfg.htf}/{cfg.ltf} RSI ({cfg.entry_tf} entry)"
 
     for i, bar in enumerate(ny_bars):
-        bar_idx = m5.index(bar)
+        bar_idx = entry_bars.index(bar)
         low = float(bar.get("low") or bar.get("close") or 0)
         high = float(bar.get("high") or bar.get("close") or 0)
         running_low = min(running_low, low)
@@ -310,7 +324,7 @@ def scan_day_setups(
             if low < sig - sweep_buf:
                 sweep_level = low
                 sweep_time = str(bar.get("time") or "")
-                future = m5[bar_idx + 1 : bar_idx + 1 + cfg.max_time_after_sweep_min // 5]
+                future = entry_bars[bar_idx + 1 : bar_idx + 1 + max_future]
                 for fb in future:
                     mins = _minutes_between(sweep_time, str(fb.get("time") or ""))
                     if mins is not None and mins > cfg.max_time_after_sweep_min:
@@ -321,15 +335,15 @@ def scan_day_setups(
                             continue
                         if abs(close - sw["price"]) <= tol:
                             struct_time = str(fb.get("time") or "")
-                            h1_rsi = _rsi_at_bar(h1, struct_time)
-                            m15_idx = next((j for j, b in enumerate(m15) if b.get("time") == fb.get("time")), None)
-                            m15_rsi = _rsi_at_bar(m15, struct_time)
-                            div = _bullish_divergence(m15, m15_idx or 0) if m15_idx else False
+                            htf_rsi = _rsi_at_bar(htf_bars, struct_time)
+                            ltf_idx = _bar_idx_at_time(ltf_bars, struct_time)
+                            ltf_rsi = _rsi_at_bar(ltf_bars, struct_time)
+                            div = _bullish_divergence(ltf_bars, ltf_idx or 0) if ltf_idx is not None else False
                             rsi_ok = (
-                                h1_rsi is not None
-                                and h1_rsi > cfg.rsi_htf_threshold
+                                htf_rsi is not None
+                                and htf_rsi > cfg.rsi_htf_threshold
                                 and (
-                                    (m15_rsi is not None and m15_rsi > cfg.rsi_ltf_entry_zone)
+                                    (ltf_rsi is not None and ltf_rsi > cfg.rsi_ltf_entry_zone)
                                     or div
                                 )
                             )
@@ -342,17 +356,18 @@ def scan_day_setups(
                             risk = entry - sl
                             tp1 = sw["price"] + risk * 1.5
                             tp2 = sw["price"] + risk * 2.5
-                            outcome_bars = m5[m5.index(fb) + 1 : m5.index(fb) + 1 + cfg.outcome_bars]
-                            result, rr = _simulate_outcome(outcome_bars, "Bullish", entry, sl, tp1, tp2)
+                            fb_idx = entry_bars.index(fb)
+                            outcome_slice = entry_bars[fb_idx + 1 : fb_idx + 1 + outcome_bars_n]
+                            result, rr = _simulate_outcome(outcome_slice, "Bullish", entry, sl, tp1, tp2)
                             ny_t = fb.get("nyTime") or fb.get("time") or ""
                             ist_t = fb.get("istTime") or ""
                             date = session_date
                             notes = f"Sweep PDL/Asian/running low @ {sweep_level:.2f}; return to swing {sw['price']:.2f}"
-                            how = "NY Sweep Low + Structure Return + H1/M15 RSI"
+                            how = how_base
                             if div:
                                 how += " + Bullish Div"
                             setup = LiquiditySetup(
-                                setup_id=_setup_id(date, ny_t, "Bullish"),
+                                setup_id=_setup_id(date, ny_t, "Bullish", cfg.entry_tf),
                                 date=date,
                                 ny_time=str(ny_t)[11:16] if len(str(ny_t)) > 11 else str(ny_t),
                                 ist_time=str(ist_t)[11:16] if len(str(ist_t)) > 11 else str(ist_t),
@@ -365,18 +380,21 @@ def scan_day_setups(
                                 tp2=round(tp2, 2),
                                 result=result,
                                 rr_achieved=rr,
-                                rsi_htf=round(h1_rsi, 1) if h1_rsi else None,
-                                rsi_ltf=round(m15_rsi, 1) if m15_rsi else None,
+                                rsi_htf=round(htf_rsi, 1) if htf_rsi else None,
+                                rsi_ltf=round(ltf_rsi, 1) if ltf_rsi else None,
                                 notes=notes,
                                 sweep_time=sweep_time,
                                 structure_time=struct_time,
                                 how_spotted=how,
                                 payload={
                                     "sweepBarIndex": bar_idx,
-                                    "structureBarIndex": m5.index(fb),
+                                    "structureBarIndex": fb_idx,
                                     "significantLevel": round(sig, 2),
                                     "sweepTime": sweep_time,
                                     "structureTime": struct_time,
+                                    "entryTf": cfg.entry_tf,
+                                    "htf": cfg.htf,
+                                    "ltf": cfg.ltf,
                                 },
                             )
                             setups.append(setup)
@@ -388,7 +406,7 @@ def scan_day_setups(
             if high > sig + sweep_buf:
                 sweep_level = high
                 sweep_time = str(bar.get("time") or "")
-                future = m5[bar_idx + 1 : bar_idx + 1 + cfg.max_time_after_sweep_min // 5]
+                future = entry_bars[bar_idx + 1 : bar_idx + 1 + max_future]
                 for fb in future:
                     mins = _minutes_between(sweep_time, str(fb.get("time") or ""))
                     if mins is not None and mins > cfg.max_time_after_sweep_min:
@@ -399,15 +417,15 @@ def scan_day_setups(
                             continue
                         if abs(close - sw["price"]) <= tol:
                             struct_time = str(fb.get("time") or "")
-                            h1_rsi = _rsi_at_bar(h1, struct_time)
-                            m15_idx = next((j for j, b in enumerate(m15) if b.get("time") == fb.get("time")), None)
-                            m15_rsi = _rsi_at_bar(m15, struct_time)
-                            div = _bearish_divergence(m15, m15_idx or 0) if m15_idx else False
+                            htf_rsi = _rsi_at_bar(htf_bars, struct_time)
+                            ltf_idx = _bar_idx_at_time(ltf_bars, struct_time)
+                            ltf_rsi = _rsi_at_bar(ltf_bars, struct_time)
+                            div = _bearish_divergence(ltf_bars, ltf_idx or 0) if ltf_idx is not None else False
                             rsi_ok = (
-                                h1_rsi is not None
-                                and h1_rsi < (100 - cfg.rsi_htf_threshold)
+                                htf_rsi is not None
+                                and htf_rsi < (100 - cfg.rsi_htf_threshold)
                                 and (
-                                    (m15_rsi is not None and m15_rsi < (100 - cfg.rsi_ltf_entry_zone))
+                                    (ltf_rsi is not None and ltf_rsi < (100 - cfg.rsi_ltf_entry_zone))
                                     or div
                                 )
                             )
@@ -420,17 +438,18 @@ def scan_day_setups(
                             risk = sl - entry
                             tp1 = sw["price"] - risk * 1.5
                             tp2 = sw["price"] - risk * 2.5
-                            outcome_bars = m5[m5.index(fb) + 1 : m5.index(fb) + 1 + cfg.outcome_bars]
-                            result, rr = _simulate_outcome(outcome_bars, "Bearish", entry, sl, tp1, tp2)
+                            fb_idx = entry_bars.index(fb)
+                            outcome_slice = entry_bars[fb_idx + 1 : fb_idx + 1 + outcome_bars_n]
+                            result, rr = _simulate_outcome(outcome_slice, "Bearish", entry, sl, tp1, tp2)
                             ny_t = fb.get("nyTime") or fb.get("time") or ""
                             ist_t = fb.get("istTime") or ""
                             date = session_date
                             notes = f"Sweep PDH/Asian/running high @ {sweep_level:.2f}; return to swing {sw['price']:.2f}"
-                            how = "NY Sweep High + Structure Return + H1/M15 RSI"
+                            how = how_base
                             if div:
                                 how += " + Bearish Div"
                             setup = LiquiditySetup(
-                                setup_id=_setup_id(date, ny_t, "Bearish"),
+                                setup_id=_setup_id(date, ny_t, "Bearish", cfg.entry_tf),
                                 date=date,
                                 ny_time=str(ny_t)[11:16] if len(str(ny_t)) > 11 else str(ny_t),
                                 ist_time=str(ist_t)[11:16] if len(str(ist_t)) > 11 else str(ist_t),
@@ -443,18 +462,21 @@ def scan_day_setups(
                                 tp2=round(tp2, 2),
                                 result=result,
                                 rr_achieved=rr,
-                                rsi_htf=round(h1_rsi, 1) if h1_rsi else None,
-                                rsi_ltf=round(m15_rsi, 1) if m15_rsi else None,
+                                rsi_htf=round(htf_rsi, 1) if htf_rsi else None,
+                                rsi_ltf=round(ltf_rsi, 1) if ltf_rsi else None,
                                 notes=notes,
                                 sweep_time=sweep_time,
                                 structure_time=struct_time,
                                 how_spotted=how,
                                 payload={
                                     "sweepBarIndex": bar_idx,
-                                    "structureBarIndex": m5.index(fb),
+                                    "structureBarIndex": fb_idx,
                                     "significantLevel": round(sig, 2),
                                     "sweepTime": sweep_time,
                                     "structureTime": struct_time,
+                                    "entryTf": cfg.entry_tf,
+                                    "htf": cfg.htf,
+                                    "ltf": cfg.ltf,
                                 },
                             )
                             setups.append(setup)
@@ -465,14 +487,13 @@ def scan_day_setups(
 
 
 def detect_live_setup(
-    m5: List[dict],
-    m15: List[dict],
-    h1: List[dict],
+    entry_bars: List[dict],
+    tf_bars: Dict[str, List[dict]],
     d1: List[dict],
     cfg: Optional[LiquiditySweepConfig] = None,
 ) -> Optional[Dict[str, Any]]:
     """Return the most recent in-progress or just-confirmed setup for live SSE."""
-    setups = scan_day_setups(m5, m15, h1, d1, cfg)
+    setups = scan_day_setups(entry_bars, tf_bars, d1, cfg)
     if not setups:
         return None
     latest = setups[-1]

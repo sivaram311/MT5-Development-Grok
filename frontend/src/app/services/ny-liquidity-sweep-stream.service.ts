@@ -25,6 +25,7 @@ export interface LiquiditySetup {
   how_spotted?: string;
   live?: boolean;
   message?: string;
+  payload?: Record<string, unknown>;
 }
 
 export interface LiquidityAlertState {

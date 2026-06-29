@@ -7,8 +7,22 @@ Detects XAUUSD reversal setups during the New York session:
 
 1. **Liquidity sweep** — price breaks PDL, Asian range, or running session extreme
 2. **Structure return** — price returns within tolerance of a prior swing
-3. **Multi-TF RSI** — H1 + M15 confluence
+3. **Multi-TF RSI** — configurable higher TF + lower TF confluence
 4. **Reversal** — displacement / close confirmation
+
+---
+
+## Timeframe combinations
+
+| Preset | HTF (RSI) | LTF (RSI) | Entry TF |
+|--------|-----------|-----------|----------|
+| H1 → M15 (M15 entry) | H1 | M15 | M15 |
+| H1 → M1 (M1 entry) | H1 | M1 | M1 |
+| M15 → M1 (M1 entry) | M15 | M1 | M1 |
+| H4 → M15 (M15 entry) | H4 | M15 | M15 |
+| H4 → M1 (M1 entry) | H4 | M1 | M1 |
+
+**Rules:** HTF must be higher than LTF; entry is **M15** or **M1** only.
 
 ---
 
@@ -17,6 +31,7 @@ Detects XAUUSD reversal setups during the New York session:
 | Layer | Files |
 |-------|-------|
 | Python engine | `python/mt5_xauusd/liquidity_sweep_analyzer.py` |
+| TF helpers | `python/mt5_xauusd/liquidity_tf_util.py` |
 | Python publisher | `python/mt5_xauusd/liquidity_sweep_service.py`, `python/run_ny_liquidity_sweep.py` |
 | Database | `grok_dev.liquidity_setups`, `grok_dev.live_ny_liquidity_sweep` |
 | Spring Boot | `NyLiquiditySweepService`, `NyLiquiditySweepCalculator`, `NyLiquiditySweepController` |
@@ -28,15 +43,23 @@ Detects XAUUSD reversal setups during the New York session:
 ## Run commands
 
 ```bash
-# Historical backfill (Postgres M5/M15/H1/D1 required)
+# Historical backfill — M15 entry, H1/M15 RSI (default)
 cd python
 python run_ny_liquidity_sweep.py --backfill --days 30
 
-# Live publisher (upserts live snapshot + saves setups)
-python run_ny_liquidity_sweep.py --live
+# M1 entry with H1/M1 RSI
+python run_ny_liquidity_sweep.py --backfill --days 30 --entry-tf M1 --htf H1 --ltf M1
+
+# H4 → M15 preset
+python run_ny_liquidity_sweep.py --backfill --days 30 --entry-tf M15 --htf H4 --ltf M15
+
+# Live publisher
+python run_ny_liquidity_sweep.py --live --entry-tf M15 --htf H1 --ltf M15
 ```
 
-Or use **Scan history** in the UI / `POST /api/market/xauusd/ny-liquidity-sweep/scan?days=30` (Java grid scan).
+Or use **Scan history** in the UI with the TF preset dropdown / custom HTF·LTF·Entry selectors.
+
+`POST /api/market/xauusd/ny-liquidity-sweep/scan?days=30&entryTf=M15&htf=H1&ltf=M15`
 
 ---
 
@@ -46,22 +69,25 @@ Or use **Scan history** in the UI / `POST /api/market/xauusd/ny-liquidity-sweep/
 |--------|------|-------------|
 | GET | `/ny-liquidity-sweep` | Live snapshot |
 | GET | `/ny-liquidity-sweep/stream` | SSE stream |
+| GET | `/ny-liquidity-sweep/presets` | TF preset list |
 | GET | `/ny-liquidity-sweep/setups` | Historical grid (filters: from, to, direction, result) |
 | GET | `/ny-liquidity-sweep/stats` | Win rate, avg R:R |
-| GET | `/ny-liquidity-sweep/chart/{setupId}` | Chart candles + levels |
-| POST | `/ny-liquidity-sweep/scan?days=30` | Grid backfill |
+| GET | `/ny-liquidity-sweep/chart/{setupId}` | Chart candles (setup's entry TF) + levels |
+| POST | `/ny-liquidity-sweep/scan` | Grid backfill (`days`, `entryTf`, `htf`, `ltf`) |
 
 ---
 
 ## UI features
 
+- **TF preset dropdown** — quick-select common HTF/LTF/entry combinations
+- **Custom TF row** — HTF → LTF + entry TF selectors (synced with presets)
 - Performance stats (total, win rate, avg R:R)
-- Live multi-TF RSI panel when setup is active
-- **Interactive chart** — click any historical row to replay the setup on M5:
+- Live multi-TF RSI panel when setup is active (labels match selected HTF/LTF)
+- **Interactive chart** — click any historical row to replay the setup on the setup's **entry timeframe**:
   - **Candles** — OHLC candlesticks via `chartjs-chart-financial` (default)
   - **Line** — close-price line (previous view)
   - Toggle with **Candles | Line** in the chart header; preference saved in `localStorage` (`nyLiquidityChartMode`)
-  - Focused window: **12 M5 bars** before sweep/structure, **6 bars** after first SL/TP (or 12 if still open)
+  - Focused window: **12 bars** before sweep/structure, **6 bars** after first SL/TP (or 12 if still open)
   - **Horizontal lines** (price levels) — see legend under chart:
     | Line | Style | Meaning |
     |------|-------|---------|
@@ -78,23 +104,11 @@ Or use **Scan history** in the UI / `POST /api/market/xauusd/ny-liquidity-sweep/
     | Exit (SL or TP) | Rose | Violet |
   - Liquidity bar from `sweepTime` or price match to `sweep_level` before entry
   - Candles: **blue** up / **pink** down bodies
-- Historical setups table with filters and CSV export
-- Dashboard alert banner on live setups (SSE)
 
 ---
 
-## Configurable parameters (Python)
+## Setup ID format
 
-See `LiquiditySweepConfig` in `liquidity_sweep_analyzer.py`:
+`XAU_{date}_{nyTime}_{B|B}_{entryTf}` — e.g. `XAU_2026-06-26_1030_B_M15`
 
-- NY session: 08:00–17:00 NY
-- Sweep buffer: 3 pips (0.30 on XAUUSD)
-- Structure tolerance: 6 pips
-- Max wait after sweep: 90 minutes
-- RSI H1 floor: 38, M15 entry zone: 35
-
----
-
-## Telegram alerts
-
-Not wired in this release — browser banner via `LiquidityAlertBannerComponent` + SSE. Telegram can be added to the Python publisher using the same hook pattern as future integrations.
+Payload includes `entryTf`, `htf`, `ltf`, `sweepTime`, `structureTime`.

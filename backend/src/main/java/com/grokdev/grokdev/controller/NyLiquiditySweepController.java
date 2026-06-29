@@ -66,9 +66,17 @@ public class NyLiquiditySweepController {
         return ResponseEntity.ok(service.getChartData(setupId));
     }
 
+    @GetMapping("/presets")
+    public ResponseEntity<List<Map<String, String>>> getPresets() {
+        return ResponseEntity.ok(service.getTfPresets());
+    }
+
     @PostMapping("/scan")
     public ResponseEntity<Map<String, Object>> scan(
-            @RequestParam(defaultValue = "30") int days) {
-        return ResponseEntity.ok(service.scanFromGrid(days));
+            @RequestParam(defaultValue = "30") int days,
+            @RequestParam(defaultValue = "M15") String entryTf,
+            @RequestParam(defaultValue = "H1") String htf,
+            @RequestParam(defaultValue = "M15") String ltf) {
+        return ResponseEntity.ok(service.scanFromGrid(days, entryTf, htf, ltf));
     }
 }
