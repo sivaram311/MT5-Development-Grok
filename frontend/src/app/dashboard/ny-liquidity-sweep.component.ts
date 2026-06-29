@@ -411,12 +411,23 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
     const setup = data?.setup || this.selectedSetup;
     const payload = {
       candles,
-      levels: data?.levels || {},
+      levels: this.normalizeLevels(data?.levels),
       setup,
       sweepTime: data?.sweepTime || data?.setup?.payload?.sweepTime,
       structureTime: data?.structureTime || data?.setup?.payload?.structureTime
     };
     return this.trimChartWindow(payload);
+  }
+
+  private normalizeLevels(levels: Record<string, unknown> | undefined): Record<string, number> {
+    const out: Record<string, number> = {};
+    for (const [key, value] of Object.entries(levels || {})) {
+      const n = Number(value);
+      if (Number.isFinite(n)) {
+        out[key] = n;
+      }
+    }
+    return out;
   }
 
   /** Focus chart on structure return → first SL/TP hit with minimal padding. */
@@ -503,56 +514,118 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
     }
     this.chart?.destroy();
     const { candles, levels, setup } = data;
-    if (!candles.length) {
-      console.warn('NY Liquidity chart has no candles after trim');
+    const validCandles = candles.filter(c =>
+      Number.isFinite(c.open) && Number.isFinite(c.high) && Number.isFinite(c.low) && Number.isFinite(c.close)
+    );
+    if (!validCandles.length) {
+      console.warn('NY Liquidity chart has no valid candles after trim');
       return;
     }
 
-    const labels = candles.map(c => this.candleNyHm(c));
-
     try {
-      const datasets: ChartConfiguration['data']['datasets'] =
-        this.chartMode === 'candlestick'
-          ? [this.buildCandlestickDataset(candles)]
-          : [this.buildCloseLineDataset(candles)];
-
-      datasets.push(...this.buildLevelDatasets(candles.length, levels));
-      datasets.push(...this.buildMarkerDatasets(candles, data, setup));
-
-      this.chart = new Chart(this.chartCanvas.nativeElement, {
-        type: 'line',
-        data: { labels, datasets },
-        options: this.buildChartOptions(this.chartMode === 'candlestick')
-      });
+      if (this.chartMode === 'candlestick') {
+        this.buildCandlestickChart(validCandles, levels, data, setup);
+      } else {
+        this.buildLineChart(validCandles, levels, data, setup);
+      }
     } catch (err) {
       console.error('NY Liquidity chart render failed', err);
     }
   }
 
-  private buildCandlestickDataset(candles: OhlcCandle[]) {
-    return {
-      type: 'candlestick' as const,
-      label: 'XAUUSD M5',
-      data: candles.map(c => ({
-        o: c.open,
-        h: c.high,
-        l: c.low,
-        c: c.close
-      })),
-      order: 1,
-      barThickness: 10,
-      maxBarThickness: 14,
-      borderColors: {
-        up: '#34d399',
-        down: '#f87171',
-        unchanged: '#a1a1aa'
-      },
-      backgroundColors: {
-        up: 'rgba(52, 211, 153, 0.85)',
-        down: 'rgba(248, 113, 113, 0.85)',
-        unchanged: 'rgba(161, 161, 170, 0.85)'
+  /** Line chart — category x-axis, close price + horizontal level lines. */
+  private buildLineChart(
+    candles: OhlcCandle[],
+    levels: Record<string, number>,
+    data: ChartPayload,
+    setup: LiquiditySetup | null
+  ): void {
+    const labels = candles.map(c => this.candleNyHm(c));
+    const datasets: ChartConfiguration['data']['datasets'] = [this.buildCloseLineDataset(candles)];
+    datasets.push(...this.buildCategoryLevelDatasets(candles.length, levels));
+    datasets.push(...this.buildCategoryMarkerDatasets(candles, data, setup));
+
+    this.chart = new Chart(this.chartCanvas!.nativeElement, {
+      type: 'line',
+      data: { labels, datasets },
+      options: this.buildLineChartOptions()
+    });
+  }
+
+  /** Candlestick chart — linear indexed x + OHLC bars + level overlays. */
+  private buildCandlestickChart(
+    candles: OhlcCandle[],
+    levels: Record<string, number>,
+    data: ChartPayload,
+    setup: LiquiditySetup | null
+  ): void {
+    const labels = candles.map(c => this.candleNyHm(c));
+    const tickStep = Math.max(1, Math.floor(candles.length / 10));
+
+    const datasets: ChartConfiguration['data']['datasets'] = [
+      {
+        type: 'candlestick',
+        label: 'XAUUSD M5',
+        data: candles.map((c, i) => ({
+          x: i,
+          o: c.open,
+          h: c.high,
+          l: c.low,
+          c: c.close
+        })),
+        order: 1,
+        barThickness: 12,
+        maxBarThickness: 16,
+        borderColors: {
+          up: '#34d399',
+          down: '#f87171',
+          unchanged: '#a1a1aa'
+        },
+        backgroundColors: {
+          up: 'rgba(52, 211, 153, 0.85)',
+          down: 'rgba(248, 113, 113, 0.85)',
+          unchanged: 'rgba(161, 161, 170, 0.85)'
+        }
+      } as ChartConfiguration['data']['datasets'][number],
+      ...this.buildIndexedLevelDatasets(candles.length, levels),
+      ...this.buildIndexedMarkerDatasets(candles, data, setup)
+    ];
+
+    this.chart = new Chart(this.chartCanvas!.nativeElement, {
+      type: 'candlestick',
+      data: { datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        parsing: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: true, labels: { color: '#a1a1aa', boxWidth: 12, font: { size: 10 } } },
+          ...this.buildTooltipPlugin()
+        },
+        scales: {
+          x: {
+            type: 'linear',
+            min: 0,
+            max: Math.max(0, candles.length - 1),
+            offset: true,
+            ticks: {
+              color: '#71717a',
+              stepSize: tickStep,
+              font: { size: 9 },
+              callback: (value) => labels[Number(value)] ?? ''
+            },
+            grid: { color: '#27272a' }
+          },
+          y: {
+            type: 'linear',
+            ticks: { color: '#71717a', font: { size: 9 } },
+            grid: { color: '#27272a' },
+            grace: '8%'
+          }
+        }
       }
-    } as ChartConfiguration['data']['datasets'][number];
+    });
   }
 
   private buildCloseLineDataset(candles: OhlcCandle[]) {
@@ -569,7 +642,7 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
     };
   }
 
-  private buildLevelDatasets(candleCount: number, levels: Record<string, number>) {
+  private buildCategoryLevelDatasets(candleCount: number, levels: Record<string, number>) {
     const levelColors: Record<string, string> = {
       sweep: '#fbbf24',
       structure: '#a1a1aa',
@@ -599,7 +672,37 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
     return out;
   }
 
-  private buildMarkerDatasets(
+  private buildIndexedLevelDatasets(candleCount: number, levels: Record<string, number>) {
+    const levelColors: Record<string, string> = {
+      sweep: '#fbbf24',
+      structure: '#a1a1aa',
+      entry: '#34d399',
+      sl: '#f87171',
+      tp1: '#6ee7b7',
+      tp2: '#a7f3d0'
+    };
+    const out: ChartConfiguration['data']['datasets'] = [];
+    for (const [key, color] of Object.entries(levelColors)) {
+      const val = levels[key];
+      if (val != null) {
+        out.push({
+          type: 'line',
+          label: key.toUpperCase(),
+          data: Array.from({ length: candleCount }, (_, i) => ({ x: i, y: val })),
+          borderColor: color,
+          borderDash: key === 'sl' || key.startsWith('tp') ? [6, 4] : [],
+          pointRadius: 0,
+          borderWidth: 1.5,
+          fill: false,
+          order: 0,
+          spanGaps: true
+        });
+      }
+    }
+    return out;
+  }
+
+  private buildCategoryMarkerDatasets(
     candles: OhlcCandle[],
     data: ChartPayload,
     setup: LiquiditySetup | null
@@ -611,7 +714,7 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
       out.push({
         type: 'scatter',
         label: 'Sweep',
-        data: [{ x: sweepIdx, y: setup?.sweep_level ?? candles[sweepIdx].low }] as any,
+        data: [{ x: sweepIdx, y: setup?.sweep_level ?? candles[sweepIdx].low }],
         pointRadius: 7,
         pointStyle: 'triangle',
         pointBackgroundColor: '#fbbf24',
@@ -624,7 +727,7 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
       out.push({
         type: 'scatter',
         label: 'Structure',
-        data: [{ x: structIdx, y: setup?.structure_level ?? candles[structIdx].close }] as any,
+        data: [{ x: structIdx, y: setup?.structure_level ?? candles[structIdx].close }],
         pointRadius: 6,
         pointStyle: 'circle',
         pointBackgroundColor: '#e4e4e7',
@@ -636,36 +739,78 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
     return out;
   }
 
-  private buildChartOptions(candlestickMode: boolean): ChartConfiguration['options'] {
+  private buildIndexedMarkerDatasets(
+    candles: OhlcCandle[],
+    data: ChartPayload,
+    setup: LiquiditySetup | null
+  ) {
+    const out: ChartConfiguration['data']['datasets'] = [];
+    const sweepIdx = this.findMarkerIndex(candles, data.sweepTime);
+    const structIdx = this.findSetupBarIndex(candles, setup, data.structureTime);
+    if (sweepIdx >= 0) {
+      out.push({
+        type: 'scatter',
+        label: 'Sweep',
+        data: [{ x: sweepIdx, y: setup?.sweep_level ?? candles[sweepIdx].low }],
+        pointRadius: 7,
+        pointStyle: 'triangle',
+        pointBackgroundColor: '#fbbf24',
+        pointBorderColor: '#fbbf24',
+        borderWidth: 0,
+        order: 2
+      });
+    }
+    if (structIdx >= 0) {
+      out.push({
+        type: 'scatter',
+        label: 'Structure',
+        data: [{ x: structIdx, y: setup?.structure_level ?? candles[structIdx].close }],
+        pointRadius: 6,
+        pointStyle: 'circle',
+        pointBackgroundColor: '#e4e4e7',
+        pointBorderColor: '#e4e4e7',
+        borderWidth: 0,
+        order: 2
+      });
+    }
+    return out;
+  }
+
+  private buildTooltipPlugin() {
+    return {
+      tooltip: {
+        callbacks: {
+          label: (ctx: { dataset: { label?: string }; raw: unknown }) => {
+            const raw = ctx.raw;
+            if (typeof raw === 'number') {
+              return `${ctx.dataset.label}: ${raw.toFixed(2)}`;
+            }
+            const point = raw as { o?: number; h?: number; l?: number; c?: number; y?: number };
+            if (point?.o != null && point?.h != null) {
+              return `O ${point.o.toFixed(2)} H ${point.h.toFixed(2)} L ${point.l!.toFixed(2)} C ${point.c!.toFixed(2)}`;
+            }
+            if (point?.y != null) {
+              return `${ctx.dataset.label}: ${point.y.toFixed(2)}`;
+            }
+            return '';
+          }
+        }
+      }
+    };
+  }
+
+  private buildLineChartOptions(): ChartConfiguration['options'] {
     return {
       responsive: true,
       maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
       plugins: {
         legend: { display: true, labels: { color: '#a1a1aa', boxWidth: 12, font: { size: 10 } } },
-        tooltip: {
-          callbacks: {
-            label: ctx => {
-              const raw = ctx.raw;
-              if (typeof raw === 'number') {
-                return `${ctx.dataset.label}: ${raw.toFixed(2)}`;
-              }
-              const point = raw as { o?: number; h?: number; l?: number; c?: number; y?: number };
-              if (point?.o != null && point?.h != null) {
-                return `O ${point.o.toFixed(2)} H ${point.h.toFixed(2)} L ${point.l!.toFixed(2)} C ${point.c!.toFixed(2)}`;
-              }
-              if (point?.y != null) {
-                return `${ctx.dataset.label}: ${point.y.toFixed(2)}`;
-              }
-              return '';
-            }
-          }
-        }
+        ...this.buildTooltipPlugin()
       },
       scales: {
         x: {
           type: 'category',
-          offset: candlestickMode,
           ticks: { color: '#71717a', maxTicksLimit: 12, font: { size: 9 }, autoSkip: true },
           grid: { color: '#27272a' }
         },
