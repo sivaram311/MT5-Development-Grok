@@ -419,7 +419,11 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
   loadSetups(): void {
     this.loading = true;
     this.cdr.markForCheck();
-    let params = new HttpParams().set('limit', '500');
+    let params = new HttpParams()
+      .set('limit', '500')
+      .set('entryTf', this.scanEntryTf)
+      .set('htf', this.scanHtf)
+      .set('ltf', this.scanLtf);
     if (this.filterDirection) params = params.set('direction', this.filterDirection);
     if (this.filterResult) params = params.set('result', this.filterResult);
     this.http.get<LiquiditySetup[]>(`${environment.apiUrl}/market/xauusd/ny-liquidity-sweep/setups`, { params }).subscribe({
@@ -479,6 +483,8 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
     if (match) {
       localStorage.setItem('nyLiquidityTfPreset', match.id);
     }
+    this.selectedSetup = null;
+    this.loadSetups();
     this.cdr.markForCheck();
   }
 

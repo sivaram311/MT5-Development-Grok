@@ -52,8 +52,11 @@ public class NyLiquiditySweepController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(required = false) String direction,
             @RequestParam(required = false) String result,
-            @RequestParam(defaultValue = "500") int limit) {
-        return ResponseEntity.ok(service.getHistoricalSetups(from, to, direction, result, limit));
+            @RequestParam(defaultValue = "500") int limit,
+            @RequestParam(required = false) String entryTf,
+            @RequestParam(required = false) String htf,
+            @RequestParam(required = false) String ltf) {
+        return ResponseEntity.ok(service.getHistoricalSetups(from, to, direction, result, limit, entryTf, htf, ltf));
     }
 
     @GetMapping("/stats")

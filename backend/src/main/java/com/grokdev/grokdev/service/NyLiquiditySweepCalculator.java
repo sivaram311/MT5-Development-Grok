@@ -135,14 +135,15 @@ public class NyLiquiditySweepCalculator {
         String howBase = "NY Sweep + Structure + " + config.htf() + "/" + config.ltf()
                 + " RSI (" + config.entryTf() + " entry)";
 
-        Map<String, Object> session = computeSessionPivots(d1, m15);
+        LocalDate sessionDate = nyBars.get(0).getNyTime().toLocalDate();
+
+        Map<String, Object> session = computeSessionPivots(d1, m15, sessionDate);
         if (session == null) {
             return setups;
         }
 
         Double pdl = toDoubleObj(session.get("pdl"));
         Double pdh = toDoubleObj(session.get("pdh"));
-        LocalDate sessionDate = nyBars.get(0).getNyTime().toLocalDate();
 
         List<Swing> swingLows = findSwings(allEntry, true);
         List<Swing> swingHighs = findSwings(allEntry, false);
@@ -191,7 +192,39 @@ public class NyLiquiditySweepCalculator {
                 }
             }
         }
-        return setups;
+        return dedupeSetups(setups);
+    }
+
+    private List<Map<String, Object>> dedupeSetups(List<Map<String, Object>> setups) {
+        Map<String, Map<String, Object>> best = new LinkedHashMap<>();
+        for (Map<String, Object> setup : setups) {
+            String dir = String.valueOf(setup.get("direction"));
+            @SuppressWarnings("unchecked")
+            Map<String, Object> payload = setup.get("payload") instanceof Map
+                    ? (Map<String, Object>) setup.get("payload") : Map.of();
+            String structTime = payload.get("structureTime") != null
+                    ? String.valueOf(payload.get("structureTime"))
+                    : String.valueOf(setup.get("ny_time"));
+            String key = dir + "|" + structTime;
+            Map<String, Object> cur = best.get(key);
+            if (cur == null || setupRank(setup) > setupRank(cur)) {
+                best.put(key, setup);
+            }
+        }
+        return new ArrayList<>(best.values());
+    }
+
+    private int setupRank(Map<String, Object> setup) {
+        String result = String.valueOf(setup.get("result"));
+        int base = switch (result) {
+            case "Win" -> 300;
+            case "Open" -> 200;
+            case "Loss" -> 100;
+            default -> 0;
+        };
+        Object rr = setup.get("rr_achieved");
+        int rrBonus = rr instanceof Number n ? (int) Math.round(n.doubleValue() * 10) : 0;
+        return base + rrBonus;
     }
 
     private Map<String, Object> findBullishReturn(
@@ -317,6 +350,9 @@ public class NyLiquiditySweepCalculator {
         payload.put("entryTf", config.entryTf());
         payload.put("htf", config.htf());
         payload.put("ltf", config.ltf());
+        if (structBar.getTime() != null) {
+            payload.put("structureTime", structBar.getTime().toString());
+        }
 
         Map<String, Object> setup = new LinkedHashMap<>();
         setup.put("setup_id", setupId);
@@ -395,11 +431,22 @@ public class NyLiquiditySweepCalculator {
         return out.size() > 15 ? out.subList(out.size() - 15, out.size()) : out;
     }
 
-    private Map<String, Object> computeSessionPivots(List<XauusdCandle> d1, List<XauusdCandle> m15) {
+    private Map<String, Object> computeSessionPivots(List<XauusdCandle> d1, List<XauusdCandle> m15, LocalDate sessionDate) {
         if (d1 == null || d1.isEmpty()) return null;
-        List<XauusdCandle> d1Desc = new ArrayList<>(d1);
-        d1Desc.sort(Comparator.comparing(XauusdCandle::getTime).reversed());
-        XauusdCandle prev = d1Desc.size() >= 2 ? d1Desc.get(1) : d1Desc.get(0);
+        List<XauusdCandle> d1Asc = new ArrayList<>(d1);
+        d1Asc.sort(Comparator.comparing(XauusdCandle::getTime));
+        XauusdCandle prev = null;
+        for (XauusdCandle bar : d1Asc) {
+            LocalDate barDate = bar.getNyTime() != null
+                    ? bar.getNyTime().toLocalDate()
+                    : bar.getTime().toLocalDate();
+            if (barDate.isBefore(sessionDate)) {
+                prev = bar;
+            }
+        }
+        if (prev == null) {
+            prev = d1Asc.size() >= 2 ? d1Asc.get(d1Asc.size() - 2) : d1Asc.get(0);
+        }
         Map<String, Object> session = new LinkedHashMap<>();
         session.put("pdh", toDouble(prev.getHigh()));
         session.put("pdl", toDouble(prev.getLow()));

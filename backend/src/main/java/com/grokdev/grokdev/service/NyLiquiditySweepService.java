@@ -99,7 +99,8 @@ public class NyLiquiditySweepService {
     }
 
     public List<Map<String, Object>> getHistoricalSetups(
-            LocalDate from, LocalDate to, String direction, String result, Integer limit) {
+            LocalDate from, LocalDate to, String direction, String result, Integer limit,
+            String entryTf, String htf, String ltf) {
         ensureTables();
         int max = limit != null && limit > 0 ? Math.min(limit, 1000) : 500;
         StringBuilder sql = new StringBuilder(String.format("""
@@ -125,6 +126,18 @@ public class NyLiquiditySweepService {
             sql.append(" AND result = ?");
             params.add(result);
         }
+        if (entryTf != null && !entryTf.isBlank()) {
+            sql.append(" AND payload->>'entryTf' = ?");
+            params.add(entryTf);
+        }
+        if (htf != null && !htf.isBlank()) {
+            sql.append(" AND payload->>'htf' = ?");
+            params.add(htf);
+        }
+        if (ltf != null && !ltf.isBlank()) {
+            sql.append(" AND payload->>'ltf' = ?");
+            params.add(ltf);
+        }
         sql.append(" ORDER BY setup_date DESC, ny_time DESC LIMIT ?");
         params.add(max);
 
@@ -133,7 +146,7 @@ public class NyLiquiditySweepService {
 
     public Map<String, Object> getStats() {
         ensureTables();
-        List<Map<String, Object>> setups = getHistoricalSetups(null, null, null, null, 1000);
+        List<Map<String, Object>> setups = getHistoricalSetups(null, null, null, null, 1000, null, null, null);
         long total = setups.size();
         long wins = setups.stream().filter(s -> "Win".equals(s.get("result"))).count();
         long losses = setups.stream().filter(s -> "Loss".equals(s.get("result"))).count();
@@ -222,6 +235,7 @@ public class NyLiquiditySweepService {
     public Map<String, Object> scanFromGrid(int days, String entryTf, String htf, String ltf) {
         ensureTables();
         NyLiquiditySweepCalculator.TfConfig config = NyLiquiditySweepCalculator.TfConfig.of(entryTf, htf, ltf);
+        clearSetupsForScan(config);
         Map<String, List<XauusdCandle>> tfBars = loadTfBars(config);
         int entryLimit = "M1".equals(config.entryTf()) ? 15000 : GRID_LIMIT;
         List<XauusdCandle> entryAsc = toAsc(marketDataService.getXauusdGridData(config.entryTf(), entryLimit, false));
@@ -262,6 +276,16 @@ public class NyLiquiditySweepService {
         }
         tfBars.put("D1", toAsc(marketDataService.getXauusdGridData("D1", limits.get("D1"), false)));
         return tfBars;
+    }
+
+    private void clearSetupsForScan(NyLiquiditySweepCalculator.TfConfig config) {
+        jdbcTemplate.update(String.format("""
+            DELETE FROM %s.liquidity_setups
+            WHERE (payload->>'entryTf' = ? AND payload->>'htf' = ? AND payload->>'ltf' = ?)
+               OR payload IS NULL
+               OR payload::text = '{}'
+            """, SCHEMA),
+                config.entryTf(), config.htf(), config.ltf());
     }
 
     private Map<String, Object> computeLiveFromGrid() {

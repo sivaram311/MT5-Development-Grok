@@ -39,10 +39,37 @@ def _round5(n: float) -> float:
     return round(n, 5)
 
 
-def compute_session_pivots(d1: List[dict], m15: List[dict]) -> Optional[Dict[str, Any]]:
+def _bar_date_key(bar: dict) -> str:
+    return str(bar.get("nyTime") or bar.get("time") or "")[:10]
+
+
+def _prior_d1_for_session(d1_asc: List[dict], session_date: str) -> Optional[dict]:
+    """Return the D1 bar immediately before session_date (for PDH/PDL)."""
+    if not d1_asc:
+        return None
+    candidate: Optional[dict] = None
+    for bar in d1_asc:
+        if _bar_date_key(bar) < session_date:
+            candidate = bar
+    if candidate is not None:
+        return candidate
+    return d1_asc[-2] if len(d1_asc) >= 2 else d1_asc[0]
+
+
+def compute_session_pivots(
+    d1: List[dict],
+    m15: List[dict],
+    session_date: Optional[str] = None,
+) -> Optional[Dict[str, Any]]:
     if not d1:
         return None
-    prev = d1[1] if len(d1) >= 2 else d1[0]
+    d1_asc = sorted(d1, key=lambda b: str(b.get("time") or ""))
+    if session_date:
+        prev = _prior_d1_for_session(d1_asc, session_date)
+    else:
+        prev = d1_asc[-2] if len(d1_asc) >= 2 else d1_asc[0]
+    if not prev:
+        return None
     pdh = prev.get("high") or prev.get("close")
     pdl = prev.get("low") or prev.get("close")
     prev_close = prev.get("close") or 0
@@ -53,8 +80,9 @@ def compute_session_pivots(d1: List[dict], m15: List[dict]) -> Optional[Dict[str
     ny_start = london_start = None
 
     if m15:
-        latest = _parse_ny_parts(m15[0].get("nyTime") or m15[0].get("time"))
-        session_date = latest[0] if latest else None
+        if not session_date:
+            latest = _parse_ny_parts(m15[0].get("nyTime") or m15[0].get("time"))
+            session_date = latest[0] if latest else None
         if session_date:
             ny_bars, london_bars = [], []
             for c in m15:

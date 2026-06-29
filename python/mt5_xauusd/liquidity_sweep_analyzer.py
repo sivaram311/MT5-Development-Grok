@@ -257,6 +257,27 @@ def _bar_idx_at_time(bars: List[dict], target_time: str) -> Optional[int]:
     return next((j for j, b in enumerate(bars) if b.get("time") == target_time), None)
 
 
+def _dedupe_setups(setups: List[LiquiditySetup]) -> List[LiquiditySetup]:
+    """One setup per direction + structure time; prefer Win, then highest R:R."""
+    rank = {"Win": 3, "Open": 2, "Loss": 1}
+    best: Dict[Tuple[str, str], LiquiditySetup] = {}
+    for s in setups:
+        key = (s.direction, s.structure_time or s.ny_time)
+        cur = best.get(key)
+        if cur is None:
+            best[key] = s
+            continue
+        s_rank = rank.get(s.result, 0)
+        c_rank = rank.get(cur.result, 0)
+        s_rr = s.rr_achieved if s.rr_achieved is not None else -999.0
+        c_rr = cur.rr_achieved if cur.rr_achieved is not None else -999.0
+        if s_rank > c_rank or (s_rank == c_rank and s_rr > c_rr):
+            best[key] = s
+    out = list(best.values())
+    out.sort(key=lambda x: (x.date, x.ny_time))
+    return out
+
+
 def scan_day_setups(
     entry_bars: List[dict],
     tf_bars: Dict[str, List[dict]],
@@ -272,12 +293,12 @@ def scan_day_setups(
     if len(entry_bars) < 30:
         return []
 
-    session = compute_session_pivots(list(reversed(d1)) if d1 else [], list(reversed(m15)) if m15 else [])
-    if not session:
-        return []
-
     latest_ny = _parse_ny_parts(entry_bars[-1].get("nyTime") or entry_bars[-1].get("time"))
     session_date = latest_ny[0] if latest_ny else entry_bars[-1].get("time", "")[:10]
+
+    session = compute_session_pivots(d1 or [], m15, session_date=session_date)
+    if not session:
+        return []
 
     pdl = session.get("pdl")
     pdh = session.get("pdh")
@@ -483,7 +504,7 @@ def scan_day_setups(
                             break
                 break
 
-    return setups
+    return _dedupe_setups(setups)
 
 
 def detect_live_setup(
