@@ -1,6 +1,8 @@
+import { resolveApiUrl } from './api-url';
+
 export const environment = {
   production: false,
-  apiUrl: `http://${typeof window !== 'undefined' ? window.location.hostname : 'localhost'}:8081/api`,
+  apiUrl: resolveApiUrl(),
   showDemoHint: true,
   /** Dev/testing: sign in automatically when the login page loads. */
   autoLogin: true,
