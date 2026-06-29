@@ -134,9 +134,9 @@ interface ChartPayload {
             <app-status-badge *ngIf="selectedSetup" [label]="selectedSetup.direction" [tone]="selectedSetup.direction === 'Bullish' ? 'success' : 'warning'"></app-status-badge>
           </div>
         </div>
-        <div *ngIf="chartLoading" class="h-64 flex items-center justify-center text-zinc-500 text-sm">Loading chart…</div>
-        <div *ngIf="!chartLoading && !selectedSetup" class="h-48 flex items-center justify-center text-zinc-500 text-sm">Select a setup below to view chart with levels</div>
-        <div class="relative h-80 sm:h-96" [class.hidden]="chartLoading || !selectedSetup">
+        <div *ngIf="!selectedSetup" class="h-48 flex items-center justify-center text-zinc-500 text-sm">Select a setup below to view chart with levels</div>
+        <div *ngIf="selectedSetup" class="relative h-80 sm:h-96">
+          <div *ngIf="chartLoading" class="absolute inset-0 z-10 flex items-center justify-center bg-zinc-900/80 text-zinc-400 text-sm rounded-2xl">Loading chart…</div>
           <canvas #chartCanvas class="w-full h-full"></canvas>
         </div>
         <div *ngIf="selectedSetup" class="mt-3 flex flex-wrap gap-3 text-[10px] font-mono">
@@ -337,7 +337,7 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
     this.chartMode = value === 'Line' ? 'line' : 'candlestick';
     localStorage.setItem('nyLiquidityChartMode', this.chartMode);
     if (this.lastChartData) {
-      this.buildChart(this.lastChartData);
+      this.scheduleChartBuild(this.lastChartData);
     }
     this.cdr.markForCheck();
   }
@@ -350,13 +350,22 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
       next: data => {
         this.chartLoading = false;
         this.lastChartData = this.normalizeChartData(data);
-        this.buildChart(this.lastChartData);
+        this.scheduleChartBuild(this.lastChartData);
         this.cdr.markForCheck();
       },
-      error: () => {
+      error: err => {
+        console.error('NY Liquidity chart load failed', err);
         this.chartLoading = false;
         this.cdr.markForCheck();
       }
+    });
+  }
+
+  /** Wait for canvas to be in the DOM and visible before Chart.js measures layout. */
+  private scheduleChartBuild(data: ChartPayload): void {
+    this.cdr.markForCheck();
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => this.buildChart(data));
     });
   }
 
@@ -488,35 +497,43 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
   }
 
   private buildChart(data: ChartPayload): void {
-    if (!this.chartCanvas?.nativeElement) return;
+    if (!this.chartCanvas?.nativeElement) {
+      console.warn('NY Liquidity chart canvas not ready');
+      return;
+    }
     this.chart?.destroy();
     const { candles, levels, setup } = data;
-    if (!candles.length) return;
+    if (!candles.length) {
+      console.warn('NY Liquidity chart has no candles after trim');
+      return;
+    }
 
     const labels = candles.map(c => this.candleNyHm(c));
 
-    const datasets: ChartConfiguration['data']['datasets'] =
-      this.chartMode === 'candlestick'
-        ? [this.buildCandlestickDataset(candles)]
-        : [this.buildCloseLineDataset(candles)];
+    try {
+      const datasets: ChartConfiguration['data']['datasets'] =
+        this.chartMode === 'candlestick'
+          ? [this.buildCandlestickDataset(candles)]
+          : [this.buildCloseLineDataset(candles)];
 
-    datasets.push(...this.buildLevelDatasets(candles.length, levels));
-    datasets.push(...this.buildMarkerDatasets(labels, candles, data, setup));
+      datasets.push(...this.buildLevelDatasets(candles.length, levels));
+      datasets.push(...this.buildMarkerDatasets(candles, data, setup));
 
-    // Base type `line` so mixed candlestick + level line datasets share the category x-axis.
-    this.chart = new Chart(this.chartCanvas.nativeElement, {
-      type: 'line',
-      data: { labels, datasets },
-      options: this.buildChartOptions(this.chartMode === 'candlestick')
-    });
+      this.chart = new Chart(this.chartCanvas.nativeElement, {
+        type: 'line',
+        data: { labels, datasets },
+        options: this.buildChartOptions(this.chartMode === 'candlestick')
+      });
+    } catch (err) {
+      console.error('NY Liquidity chart render failed', err);
+    }
   }
 
   private buildCandlestickDataset(candles: OhlcCandle[]) {
     return {
       type: 'candlestick' as const,
       label: 'XAUUSD M5',
-      data: candles.map((c, i) => ({
-        x: i,
+      data: candles.map(c => ({
         o: c.open,
         h: c.high,
         l: c.low,
@@ -535,7 +552,7 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
         down: 'rgba(248, 113, 113, 0.85)',
         unchanged: 'rgba(161, 161, 170, 0.85)'
       }
-    };
+    } as ChartConfiguration['data']['datasets'][number];
   }
 
   private buildCloseLineDataset(candles: OhlcCandle[]) {
@@ -568,7 +585,7 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
         out.push({
           type: 'line',
           label: key.toUpperCase(),
-          data: Array.from({ length: candleCount }, (_, i) => ({ x: i, y: val })),
+          data: Array.from({ length: candleCount }, () => val),
           borderColor: color,
           borderDash: key === 'sl' || key.startsWith('tp') ? [6, 4] : [],
           pointRadius: 0,
@@ -583,7 +600,6 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
   }
 
   private buildMarkerDatasets(
-    _labels: string[],
     candles: OhlcCandle[],
     data: ChartPayload,
     setup: LiquiditySetup | null
@@ -595,7 +611,7 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
       out.push({
         type: 'scatter',
         label: 'Sweep',
-        data: [{ x: sweepIdx, y: setup?.sweep_level ?? candles[sweepIdx].low }],
+        data: [{ x: sweepIdx, y: setup?.sweep_level ?? candles[sweepIdx].low }] as any,
         pointRadius: 7,
         pointStyle: 'triangle',
         pointBackgroundColor: '#fbbf24',
@@ -608,7 +624,7 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
       out.push({
         type: 'scatter',
         label: 'Structure',
-        data: [{ x: structIdx, y: setup?.structure_level ?? candles[structIdx].close }],
+        data: [{ x: structIdx, y: setup?.structure_level ?? candles[structIdx].close }] as any,
         pointRadius: 6,
         pointStyle: 'circle',
         pointBackgroundColor: '#e4e4e7',
