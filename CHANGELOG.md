@@ -4,6 +4,22 @@ All notable changes to the Grok Dev full-stack application (Spring Boot + Angula
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2026-06-29 (NY Liquidity chart overlays)
+
+### Added
+- **NY Liquidity chart vertical event lines** — liquidity sweep, entry trigger, exit (SL or TP) with distinct colors on both Candles and Line modes
+- In-chart **color legend** under replay — horizontal price levels vs vertical time events
+
+### Changed
+- Replaced scatter point markers with full-height vertical lines for clearer timing
+- SSE JWT filter accepts query `access_token` on any `/api/market/xauusd/*/stream` path
+
+### Documentation
+- **`frontend/docs/NY_LIQUIDITY_SWEEP_ANALYZER.md`** — horizontal/vertical line color key
+- **`frontend/docs/ANGULAR_FRONTEND.md`** — chart overlay legend
+
+---
+
 ## [Unreleased] - 2026-06-29 (NY Liquidity chart modes)
 
 ### Added

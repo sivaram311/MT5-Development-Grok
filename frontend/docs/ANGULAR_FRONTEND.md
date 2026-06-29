@@ -153,7 +153,7 @@ Detects NY-session setups: **liquidity sweep** → **return to historical struct
 |---------|----------|
 | **Stats cards** | Total setups, win rate, avg R:R, wins/losses |
 | **Live RSI panel** | H1 + M15 RSI when an active setup is detected (SSE) |
-| **Interactive chart** | Chart.js + `chartjs-chart-financial` — click any row; **Candles** (OHLC) or **Line** (close) toggle; sweep/structure markers; entry/SL/TP1/TP2 level lines |
+| **Interactive chart** | Chart.js + `chartjs-chart-financial` — **Candles** or **Line** toggle; horizontal price levels (sweep/structure/entry/SL/TP); vertical event lines (liquidity sweep, entry, exit SL/TP); color legend under chart |
 | **Historical grid** | Filter by direction/result; sort; CSV export |
 | **Scan history** | `POST /scan` (Java grid) or `python run_ny_liquidity_sweep.py --backfill` |
 

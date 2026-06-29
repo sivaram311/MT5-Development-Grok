@@ -62,8 +62,22 @@ Or use **Scan history** in the UI / `POST /api/market/xauusd/ny-liquidity-sweep/
   - **Line** — close-price line (previous view)
   - Toggle with **Candles | Line** in the chart header; preference saved in `localStorage` (`nyLiquidityChartMode`)
   - Focused window: **12 M5 bars** before sweep/structure, **6 bars** after first SL/TP (or 12 if still open)
-  - Overlays: sweep / structure / entry / SL / TP1 / TP2 level lines (both chart modes)
-  - Markers: sweep (triangle) and structure (circle) at `sweepTime` / `structureTime`
+  - **Horizontal lines** (price levels) — see legend under chart:
+    | Line | Style | Meaning |
+    |------|-------|---------|
+    | Amber solid | Sweep level |
+    | Gray solid | Structure reference |
+    | Green solid | Entry price |
+    | Red dashed | Stop loss |
+    | Light green dashed | TP1 / TP2 |
+  - **Vertical lines** (time events) — drawn at the bar where each event occurs:
+    | Line | Style | Meaning |
+    |------|-------|---------|
+    | Amber dashed | Liquidity sweep (stop hunt) |
+    | Green solid | Entry trigger (structure return + setup bar) |
+    | Red solid | Exit — SL hit |
+    | Green solid | Exit — TP hit (TP1 or TP2, whichever first) |
+  - Open trades show sweep + entry verticals only (no exit line until closed)
 - Historical setups table with filters and CSV export
 - Dashboard alert banner on live setups (SSE)
 

@@ -60,6 +60,29 @@ interface ChartPayload {
   structureTime?: string;
 }
 
+interface ChartVerticalLine {
+  index: number;
+  color: string;
+  dashed?: boolean;
+  label: string;
+}
+
+type ExitHit = 'sl' | 'tp1' | 'tp2';
+
+/** Shared chart overlay colors — keep in sync with template legend. */
+const CHART_COLORS = {
+  levelSweep: '#fbbf24',
+  levelStructure: '#a1a1aa',
+  levelEntry: '#34d399',
+  levelSl: '#f87171',
+  levelTp1: '#6ee7b7',
+  levelTp2: '#a7f3d0',
+  vLiquidity: '#f59e0b',
+  vEntry: '#34d399',
+  vExitSl: '#ef4444',
+  vExitTp: '#22c55e'
+} as const;
+
 @Component({
   selector: 'app-ny-liquidity-sweep',
   standalone: true,
@@ -139,13 +162,43 @@ interface ChartPayload {
           <div *ngIf="chartLoading" class="absolute inset-0 z-10 flex items-center justify-center bg-zinc-900/80 text-zinc-400 text-sm rounded-2xl">Loading chart…</div>
           <canvas #chartCanvas class="w-full h-full"></canvas>
         </div>
-        <div *ngIf="selectedSetup" class="mt-3 flex flex-wrap gap-3 text-[10px] font-mono">
-          <span class="text-red-400">SL {{ selectedSetup.sl | number:'1.2-2' }}</span>
-          <span class="text-amber-400">Sweep {{ selectedSetup.sweep_level | number:'1.2-2' }}</span>
-          <span class="text-zinc-400">Struct {{ selectedSetup.structure_level | number:'1.2-2' }}</span>
-          <span class="text-emerald-400">Entry {{ selectedSetup.entry | number:'1.2-2' }}</span>
-          <span class="text-emerald-300">TP1 {{ selectedSetup.tp1 | number:'1.2-2' }}</span>
-          <span class="text-emerald-200">TP2 {{ selectedSetup.tp2 | number:'1.2-2' }}</span>
+        <div *ngIf="selectedSetup" class="mt-3 space-y-2 text-[10px]">
+          <div class="text-zinc-500 uppercase tracking-wider">Horizontal — price levels</div>
+          <div class="flex flex-wrap gap-x-4 gap-y-1 font-mono">
+            <span class="flex items-center gap-1.5 text-amber-400">
+              <span class="inline-block w-5 h-0.5 bg-amber-400"></span> Sweep {{ selectedSetup.sweep_level | number:'1.2-2' }}
+            </span>
+            <span class="flex items-center gap-1.5 text-zinc-400">
+              <span class="inline-block w-5 h-0.5 bg-zinc-400"></span> Structure {{ selectedSetup.structure_level | number:'1.2-2' }}
+            </span>
+            <span class="flex items-center gap-1.5 text-emerald-400">
+              <span class="inline-block w-5 h-0.5 bg-emerald-400"></span> Entry {{ selectedSetup.entry | number:'1.2-2' }}
+            </span>
+            <span class="flex items-center gap-1.5 text-red-400">
+              <span class="inline-block w-5 h-0.5 border-t border-dashed border-red-400"></span> SL {{ selectedSetup.sl | number:'1.2-2' }}
+            </span>
+            <span class="flex items-center gap-1.5 text-emerald-300">
+              <span class="inline-block w-5 h-0.5 border-t border-dashed border-emerald-300"></span> TP1 {{ selectedSetup.tp1 | number:'1.2-2' }}
+            </span>
+            <span class="flex items-center gap-1.5 text-emerald-200">
+              <span class="inline-block w-5 h-0.5 border-t border-dashed border-emerald-200"></span> TP2 {{ selectedSetup.tp2 | number:'1.2-2' }}
+            </span>
+          </div>
+          <div class="text-zinc-500 uppercase tracking-wider pt-1">Vertical — time events</div>
+          <div class="flex flex-wrap gap-x-4 gap-y-1 text-zinc-300">
+            <span class="flex items-center gap-1.5">
+              <span class="inline-block w-0 h-3 border-l-2 border-dashed border-amber-500"></span> Liquidity sweep
+            </span>
+            <span class="flex items-center gap-1.5">
+              <span class="inline-block w-0 h-3 border-l-2 border-emerald-400"></span> Entry trigger
+            </span>
+            <span class="flex items-center gap-1.5">
+              <span class="inline-block w-0 h-3 border-l-2 border-red-500"></span> Exit (SL hit)
+            </span>
+            <span class="flex items-center gap-1.5">
+              <span class="inline-block w-0 h-3 border-l-2 border-green-500"></span> Exit (TP hit)
+            </span>
+          </div>
         </div>
       </div>
 
@@ -452,9 +505,9 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
     let endIdx = candles.length - 1;
 
     if (setup) {
-      const exitIdx = this.findExitIndex(candles, anchorIdx, setup);
-      if (exitIdx >= 0) {
-        endIdx = Math.min(candles.length - 1, exitIdx + barsAfterExit);
+      const exit = this.findExitDetails(candles, anchorIdx, setup);
+      if (exit) {
+        endIdx = Math.min(candles.length - 1, exit.index + barsAfterExit);
       } else if (setup.result === 'Open') {
         endIdx = Math.min(candles.length - 1, anchorIdx + barsAfterOpen);
       } else {
@@ -489,22 +542,88 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
   }
 
   /** First bar after entry where SL or TP (whichever comes first) is touched. */
-  private findExitIndex(candles: OhlcCandle[], entryIdx: number, setup: LiquiditySetup): number {
-    if (entryIdx < 0) return -1;
+  private findExitDetails(
+    candles: OhlcCandle[],
+    entryIdx: number,
+    setup: LiquiditySetup
+  ): { index: number; hit: ExitHit } | null {
+    if (entryIdx < 0) return null;
     const { direction, sl, tp1, tp2 } = setup;
     for (let i = entryIdx + 1; i < candles.length; i++) {
       const { high, low } = candles[i];
       if (direction === 'Bullish') {
-        if (low <= sl) return i;
-        if (high >= tp2) return i;
-        if (high >= tp1) return i;
+        if (low <= sl) return { index: i, hit: 'sl' };
+        if (high >= tp2) return { index: i, hit: 'tp2' };
+        if (high >= tp1) return { index: i, hit: 'tp1' };
       } else {
-        if (high >= sl) return i;
-        if (low <= tp2) return i;
-        if (low <= tp1) return i;
+        if (high >= sl) return { index: i, hit: 'sl' };
+        if (low <= tp2) return { index: i, hit: 'tp2' };
+        if (low <= tp1) return { index: i, hit: 'tp1' };
       }
     }
-    return -1;
+    return null;
+  }
+
+  private buildEventVerticalLines(
+    candles: OhlcCandle[],
+    data: ChartPayload,
+    setup: LiquiditySetup | null
+  ): ChartVerticalLine[] {
+    const lines: ChartVerticalLine[] = [];
+    const sweepIdx = this.findMarkerIndex(candles, data.sweepTime);
+    const entryIdx = this.findSetupBarIndex(candles, setup, data.structureTime);
+
+    if (sweepIdx >= 0) {
+      lines.push({
+        index: sweepIdx,
+        color: CHART_COLORS.vLiquidity,
+        dashed: true,
+        label: 'Liquidity sweep'
+      });
+    }
+    if (entryIdx >= 0) {
+      lines.push({
+        index: entryIdx,
+        color: CHART_COLORS.vEntry,
+        label: 'Entry trigger'
+      });
+    }
+    if (setup && entryIdx >= 0) {
+      const exit = this.findExitDetails(candles, entryIdx, setup);
+      if (exit) {
+        lines.push({
+          index: exit.index,
+          color: exit.hit === 'sl' ? CHART_COLORS.vExitSl : CHART_COLORS.vExitTp,
+          label: exit.hit === 'sl' ? 'Exit (SL)' : 'Exit (TP)'
+        });
+      }
+    }
+    return lines;
+  }
+
+  private verticalLinePlugin(lines: ChartVerticalLine[]) {
+    return {
+      id: 'nyLiquidityVerticalLines',
+      afterDraw: (chart: Chart) => {
+        if (!lines.length) return;
+        const { ctx, chartArea, scales } = chart;
+        const xScale = scales['x'];
+        if (!ctx || !chartArea || !xScale) return;
+        ctx.save();
+        for (const line of lines) {
+          const x = xScale.getPixelForValue(line.index);
+          if (x < chartArea.left - 1 || x > chartArea.right + 1) continue;
+          ctx.strokeStyle = line.color;
+          ctx.lineWidth = 2;
+          ctx.setLineDash(line.dashed ? [5, 4] : []);
+          ctx.beginPath();
+          ctx.moveTo(x, chartArea.top);
+          ctx.lineTo(x, chartArea.bottom);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+    };
   }
 
   private buildChart(data: ChartPayload): void {
@@ -541,14 +660,15 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
     setup: LiquiditySetup | null
   ): void {
     const labels = candles.map(c => this.candleNyHm(c));
+    const verticalLines = this.buildEventVerticalLines(candles, data, setup);
     const datasets: ChartConfiguration['data']['datasets'] = [this.buildCloseLineDataset(candles)];
     datasets.push(...this.buildCategoryLevelDatasets(candles.length, levels));
-    datasets.push(...this.buildCategoryMarkerDatasets(candles, data, setup));
 
     this.chart = new Chart(this.chartCanvas!.nativeElement, {
       type: 'line',
       data: { labels, datasets },
-      options: this.buildLineChartOptions()
+      options: this.buildLineChartOptions(),
+      plugins: [this.verticalLinePlugin(verticalLines)]
     });
   }
 
@@ -561,6 +681,7 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
   ): void {
     const labels = candles.map(c => this.candleNyHm(c));
     const tickStep = Math.max(1, Math.floor(candles.length / 10));
+    const verticalLines = this.buildEventVerticalLines(candles, data, setup);
 
     const datasets: ChartConfiguration['data']['datasets'] = [
       {
@@ -587,8 +708,7 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
           unchanged: 'rgba(161, 161, 170, 0.85)'
         }
       } as ChartConfiguration['data']['datasets'][number],
-      ...this.buildIndexedLevelDatasets(candles.length, levels),
-      ...this.buildIndexedMarkerDatasets(candles, data, setup)
+      ...this.buildIndexedLevelDatasets(candles.length, levels)
     ];
 
     this.chart = new Chart(this.chartCanvas!.nativeElement, {
@@ -624,7 +744,8 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
             grace: '8%'
           }
         }
-      }
+      },
+      plugins: [this.verticalLinePlugin(verticalLines)]
     });
   }
 
@@ -644,12 +765,12 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
 
   private buildCategoryLevelDatasets(candleCount: number, levels: Record<string, number>) {
     const levelColors: Record<string, string> = {
-      sweep: '#fbbf24',
-      structure: '#a1a1aa',
-      entry: '#34d399',
-      sl: '#f87171',
-      tp1: '#6ee7b7',
-      tp2: '#a7f3d0'
+      sweep: CHART_COLORS.levelSweep,
+      structure: CHART_COLORS.levelStructure,
+      entry: CHART_COLORS.levelEntry,
+      sl: CHART_COLORS.levelSl,
+      tp1: CHART_COLORS.levelTp1,
+      tp2: CHART_COLORS.levelTp2
     };
     const out: ChartConfiguration['data']['datasets'] = [];
     for (const [key, color] of Object.entries(levelColors)) {
@@ -674,12 +795,12 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
 
   private buildIndexedLevelDatasets(candleCount: number, levels: Record<string, number>) {
     const levelColors: Record<string, string> = {
-      sweep: '#fbbf24',
-      structure: '#a1a1aa',
-      entry: '#34d399',
-      sl: '#f87171',
-      tp1: '#6ee7b7',
-      tp2: '#a7f3d0'
+      sweep: CHART_COLORS.levelSweep,
+      structure: CHART_COLORS.levelStructure,
+      entry: CHART_COLORS.levelEntry,
+      sl: CHART_COLORS.levelSl,
+      tp1: CHART_COLORS.levelTp1,
+      tp2: CHART_COLORS.levelTp2
     };
     const out: ChartConfiguration['data']['datasets'] = [];
     for (const [key, color] of Object.entries(levelColors)) {
@@ -698,80 +819,6 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
           spanGaps: true
         });
       }
-    }
-    return out;
-  }
-
-  private buildCategoryMarkerDatasets(
-    candles: OhlcCandle[],
-    data: ChartPayload,
-    setup: LiquiditySetup | null
-  ) {
-    const out: ChartConfiguration['data']['datasets'] = [];
-    const sweepIdx = this.findMarkerIndex(candles, data.sweepTime);
-    const structIdx = this.findSetupBarIndex(candles, setup, data.structureTime);
-    if (sweepIdx >= 0) {
-      out.push({
-        type: 'scatter',
-        label: 'Sweep',
-        data: [{ x: sweepIdx, y: setup?.sweep_level ?? candles[sweepIdx].low }],
-        pointRadius: 7,
-        pointStyle: 'triangle',
-        pointBackgroundColor: '#fbbf24',
-        pointBorderColor: '#fbbf24',
-        borderWidth: 0,
-        order: 2
-      });
-    }
-    if (structIdx >= 0) {
-      out.push({
-        type: 'scatter',
-        label: 'Structure',
-        data: [{ x: structIdx, y: setup?.structure_level ?? candles[structIdx].close }],
-        pointRadius: 6,
-        pointStyle: 'circle',
-        pointBackgroundColor: '#e4e4e7',
-        pointBorderColor: '#e4e4e7',
-        borderWidth: 0,
-        order: 2
-      });
-    }
-    return out;
-  }
-
-  private buildIndexedMarkerDatasets(
-    candles: OhlcCandle[],
-    data: ChartPayload,
-    setup: LiquiditySetup | null
-  ) {
-    const out: ChartConfiguration['data']['datasets'] = [];
-    const sweepIdx = this.findMarkerIndex(candles, data.sweepTime);
-    const structIdx = this.findSetupBarIndex(candles, setup, data.structureTime);
-    if (sweepIdx >= 0) {
-      out.push({
-        type: 'scatter',
-        label: 'Sweep',
-        data: [{ x: sweepIdx, y: setup?.sweep_level ?? candles[sweepIdx].low }],
-        pointRadius: 7,
-        pointStyle: 'triangle',
-        pointBackgroundColor: '#fbbf24',
-        pointBorderColor: '#fbbf24',
-        borderWidth: 0,
-        order: 2
-      });
-    }
-    if (structIdx >= 0) {
-      out.push({
-        type: 'scatter',
-        label: 'Structure',
-        data: [{ x: structIdx, y: setup?.structure_level ?? candles[structIdx].close }],
-        pointRadius: 6,
-        pointStyle: 'circle',
-        pointBackgroundColor: '#e4e4e7',
-        pointBorderColor: '#e4e4e7',
-        borderWidth: 0,
-        order: 2
-      });
     }
     return out;
   }
