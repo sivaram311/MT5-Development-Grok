@@ -57,7 +57,12 @@ Or use **Scan history** in the UI / `POST /api/market/xauusd/ny-liquidity-sweep/
 
 - Performance stats (total, win rate, avg R:R)
 - Live multi-TF RSI panel when setup is active
-- Interactive Chart.js chart with sweep / structure / entry / SL / TP lines
+- **Interactive chart** — click any historical row to replay the setup on M5:
+  - **Candles** — OHLC candlesticks via `chartjs-chart-financial` (default)
+  - **Line** — close-price line (previous view)
+  - Toggle with **Candles | Line** in the chart header; preference saved in `localStorage` (`nyLiquidityChartMode`)
+  - Overlays: sweep / structure / entry / SL / TP1 / TP2 level lines
+  - Markers: sweep (triangle) and structure (circle) at `sweepTime` / `structureTime`
 - Historical setups table with filters and CSV export
 - Dashboard alert banner on live setups (SSE)
 

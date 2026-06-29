@@ -72,7 +72,7 @@ Then restart the backend. The seeder will recreate them.
 - **Analysis Lab** — RSI storm scanner + Gann level studies (octave + Square-of-9)
 - **Analyzer** — live multi-TF RSI(14) table, classic S/R pivots, **Gann Odd Square** (So9), toggleable rows — route `/dashboard/order-rsi`; see [docs/order-rsi-mt5-alignment.md](docs/order-rsi-mt5-alignment.md)
 - **Gann Intraday** — five-module intraday Gann page (1×1 angle, session pivots, fine So9, time squaring, NY/London killzones) — route `/dashboard/gann-intraday`; API `GET /api/market/xauusd/gann-intraday`; **usage guide:** [frontend/docs/GANN_INTRADAY_USAGE_GUIDE.md](frontend/docs/GANN_INTRADAY_USAGE_GUIDE.md); implementation tracker: [docs/gann-intraday-pending-implementation.md](docs/gann-intraday-pending-implementation.md)
-- **NY Liquidity Analyzer** — NY-session liquidity sweep + structure reference + multi-TF RSI confluence — route `/dashboard/ny-liquidity-sweep`; API `GET /api/market/xauusd/ny-liquidity-sweep`; historical grid, Chart.js replay, win-rate stats, SSE alerts; **usage guide:** [frontend/docs/NY_LIQUIDITY_SWEEP_ANALYZER.md](frontend/docs/NY_LIQUIDITY_SWEEP_ANALYZER.md)
+- **NY Liquidity Analyzer** — NY-session liquidity sweep + structure reference + multi-TF RSI confluence — route `/dashboard/ny-liquidity-sweep`; API `GET /api/market/xauusd/ny-liquidity-sweep`; historical grid, Chart.js replay (**Candles** OHLC or **Line** close toggle), win-rate stats, SSE alerts; **usage guide:** [frontend/docs/NY_LIQUIDITY_SWEEP_ANALYZER.md](frontend/docs/NY_LIQUIDITY_SWEEP_ANALYZER.md)
 - **User preferences** — PATCH merge to `/api/auth/preferences` (grid, market UI, volatility)
 - **Playwright e2e** — login, manifest, auth-guard smoke tests (`npm run e2e`)
 
@@ -175,7 +175,7 @@ Full guide: [docs/order-rsi-mt5-alignment.md](docs/order-rsi-mt5-alignment.md)
 
 Python process (`python run_ny_liquidity_sweep.py`) detects NY-session liquidity sweeps with structure reference and multi-TF RSI confluence. Results are stored in `grok_dev.liquidity_setups`; live snapshot in `grok_dev.live_ny_liquidity_sweep`.
 
-**Frontend:** sidebar **NY Liquidity** (`/dashboard/ny-liquidity-sweep`) — stats cards, Chart.js replay with sweep/entry/SL/TP lines, historical grid with filters, CSV export, live RSI panel, SSE alert banner.
+**Frontend:** sidebar **NY Liquidity** (`/dashboard/ny-liquidity-sweep`) — stats cards, Chart.js replay (**Candles** OHLC or **Line** close toggle) with sweep/structure markers and entry/SL/TP lines, historical grid with filters, CSV export, live RSI panel, SSE alert banner.
 
 ```powershell
 cd python

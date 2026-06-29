@@ -375,6 +375,8 @@ def scan_day_setups(
                                     "sweepBarIndex": bar_idx,
                                     "structureBarIndex": m5.index(fb),
                                     "significantLevel": round(sig, 2),
+                                    "sweepTime": sweep_time,
+                                    "structureTime": struct_time,
                                 },
                             )
                             setups.append(setup)
@@ -451,6 +453,8 @@ def scan_day_setups(
                                     "sweepBarIndex": bar_idx,
                                     "structureBarIndex": m5.index(fb),
                                     "significantLevel": round(sig, 2),
+                                    "sweepTime": sweep_time,
+                                    "structureTime": struct_time,
                                 },
                             )
                             setups.append(setup)

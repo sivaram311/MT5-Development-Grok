@@ -4,6 +4,25 @@ All notable changes to the Grok Dev full-stack application (Spring Boot + Angula
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2026-06-29 (NY Liquidity chart modes)
+
+### Added
+- **NY Liquidity chart — dual view** — **Candles** (OHLC via `chartjs-chart-financial`) and **Line** (close price) toggle on `/dashboard/ny-liquidity-sweep`
+- Sweep / structure markers on chart using `sweepTime` and `structureTime` from setup payload
+- Chart mode preference persisted in `localStorage` (`nyLiquidityChartMode`)
+
+### Changed
+- Chart API returns up to **2000** M5 bars; payload includes top-level `sweepTime` / `structureTime`
+- Python analyzer stores `sweepTime` / `structureTime` in setup payload for marker placement
+
+### Documentation
+- **`frontend/docs/NY_LIQUIDITY_SWEEP_ANALYZER.md`** — chart modes, markers, localStorage key
+- **`frontend/docs/ANGULAR_FRONTEND.md`** — NyLiquiditySweepComponent chart toggle
+- **`docs/api-endpoints.md`** — chart response fields
+- **`README.md`** — feature bullets updated
+
+---
+
 ## [Unreleased] - 2026-06-29 (NY Liquidity docs sync)
 
 ### Documentation

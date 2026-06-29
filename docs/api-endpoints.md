@@ -308,7 +308,17 @@ Performance summary: `totalSetups`, `wins`, `losses`, `openSetups`, `winRate`, `
 
 ### GET `/api/market/xauusd/ny-liquidity-sweep/chart/{setupId}`
 
-Chart payload for the Angular replay view: `setup`, `candles` (M5 OHLC with nyTime), `levels` (sweep, structure, entry, sl, tp1, tp2).
+Chart payload for the Angular replay view:
+
+| Field | Description |
+|-------|-------------|
+| `setup` | Selected setup row (direction, levels, outcome, payload) |
+| `candles` | Up to **2000** M5 OHLC bars with `nyTime` |
+| `levels` | Horizontal lines: `sweep`, `structure`, `entry`, `sl`, `tp1`, `tp2` |
+| `sweepTime` | Broker time of the liquidity sweep bar (for chart marker) |
+| `structureTime` | Broker time of the structure-return bar (for chart marker) |
+
+`sweepTime` / `structureTime` are also stored in `setup.payload` for older rows after re-scan/backfill.
 
 ### POST `/api/market/xauusd/ny-liquidity-sweep/scan`
 

@@ -172,18 +172,17 @@ public class NyLiquiditySweepService {
         }
         Map<String, Object> setup = rows.get(0);
         String date = String.valueOf(setup.get("date"));
-        List<XauusdCandle> m5 = marketDataService.getXauusdGridData("M5", 500, false);
-        List<Map<String, Object>> candles = m5.stream()
+        List<XauusdCandle> m5 = marketDataService.getXauusdGridData("M5", 2000, false);
+        List<XauusdCandle> m5Asc = toAsc(m5);
+        List<Map<String, Object>> candles = m5Asc.stream()
                 .filter(c -> c.getTime() != null && c.getTime().toLocalDate().toString().equals(date)
                         || (c.getNyTime() != null && c.getNyTime().toLocalDate().toString().equals(date)))
-                .sorted(Comparator.comparing(XauusdCandle::getTime))
                 .map(this::candleToMap)
                 .collect(Collectors.toList());
 
         if (candles.size() < 20) {
-            candles = m5.stream()
-                    .sorted(Comparator.comparing(XauusdCandle::getTime))
-                    .limit(200)
+            int take = Math.min(180, m5Asc.size());
+            candles = m5Asc.subList(Math.max(0, m5Asc.size() - take), m5Asc.size()).stream()
                     .map(this::candleToMap)
                     .collect(Collectors.toList());
         }
@@ -199,6 +198,12 @@ public class NyLiquiditySweepService {
                 "tp1", setup.get("tp1"),
                 "tp2", setup.get("tp2")
         ));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> payload = setup.get("payload") instanceof Map
+                ? (Map<String, Object>) setup.get("payload")
+                : Map.of();
+        chart.put("sweepTime", payload.get("sweepTime"));
+        chart.put("structureTime", payload.get("structureTime"));
         return chart;
     }
 

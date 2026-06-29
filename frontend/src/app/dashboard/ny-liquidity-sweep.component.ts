@@ -15,15 +15,31 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Chart, ChartConfiguration, registerables } from 'chart.js';
+import {
+  CandlestickController,
+  CandlestickElement,
+  OhlcController,
+  OhlcElement
+} from 'chartjs-chart-financial';
 import { environment } from '../../environments/environment';
 import { PageHeaderComponent } from '../ui/page-header.component';
 import { StatusBadgeComponent } from '../ui/status-badge.component';
 import { EmptyStateComponent } from '../ui/empty-state.component';
 import { PullToRefreshComponent } from '../ui/pull-to-refresh.component';
+import { SegmentControlComponent } from '../ui/segment-control.component';
 import { NyLiquiditySweepStreamService, LiquiditySetup } from '../services/ny-liquidity-sweep-stream.service';
 import { formatWallTime } from '../utils/time.util';
 
-Chart.register(...registerables);
+Chart.register(...registerables, CandlestickController, CandlestickElement, OhlcController, OhlcElement);
+
+interface OhlcCandle {
+  time?: string;
+  nyTime?: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+}
 
 interface LiquidityStats {
   totalSetups: number;
@@ -34,11 +50,21 @@ interface LiquidityStats {
   averageRr: number;
 }
 
+type ChartMode = 'candlestick' | 'line';
+
+interface ChartPayload {
+  candles: OhlcCandle[];
+  levels: Record<string, number>;
+  setup: LiquiditySetup | null;
+  sweepTime?: string;
+  structureTime?: string;
+}
+
 @Component({
   selector: 'app-ny-liquidity-sweep',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, FormsModule, PageHeaderComponent, StatusBadgeComponent, EmptyStateComponent, PullToRefreshComponent],
+  imports: [CommonModule, FormsModule, PageHeaderComponent, StatusBadgeComponent, EmptyStateComponent, PullToRefreshComponent, SegmentControlComponent],
   template: `
     <app-pull-to-refresh (refresh)="refresh()">
       <app-page-header
@@ -95,14 +121,22 @@ interface LiquidityStats {
       <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-4 mb-6">
         <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
           <div class="text-xs text-zinc-400 uppercase tracking-wider">
-            Interactive chart
+            {{ chartMode === 'candlestick' ? 'OHLC candlestick' : 'Close line' }} · M5
             <span *ngIf="selectedSetup"> · {{ selectedSetup.date }} {{ selectedSetup.ny_time }} NY</span>
           </div>
-          <app-status-badge *ngIf="selectedSetup" [label]="selectedSetup.direction" [tone]="selectedSetup.direction === 'Bullish' ? 'success' : 'warning'"></app-status-badge>
+          <div class="flex flex-wrap items-center gap-2">
+            <app-segment-control
+              [options]="chartModeOptions"
+              [value]="chartModeLabel"
+              ariaLabel="Chart type"
+              (valueChange)="setChartMode($event)">
+            </app-segment-control>
+            <app-status-badge *ngIf="selectedSetup" [label]="selectedSetup.direction" [tone]="selectedSetup.direction === 'Bullish' ? 'success' : 'warning'"></app-status-badge>
+          </div>
         </div>
         <div *ngIf="chartLoading" class="h-64 flex items-center justify-center text-zinc-500 text-sm">Loading chart…</div>
         <div *ngIf="!chartLoading && !selectedSetup" class="h-48 flex items-center justify-center text-zinc-500 text-sm">Select a setup below to view chart with levels</div>
-        <div class="relative h-72" [class.hidden]="chartLoading || !selectedSetup">
+        <div class="relative h-80 sm:h-96" [class.hidden]="chartLoading || !selectedSetup">
           <canvas #chartCanvas class="w-full h-full"></canvas>
         </div>
         <div *ngIf="selectedSetup" class="mt-3 flex flex-wrap gap-3 text-[10px] font-mono">
@@ -187,6 +221,7 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
   private readonly destroyRef = inject(DestroyRef);
   private readonly cdr = inject(ChangeDetectorRef);
   private chart?: Chart;
+  private lastChartData: ChartPayload | null = null;
 
   setups: LiquiditySetup[] = [];
   selectedSetup: LiquiditySetup | null = null;
@@ -198,6 +233,13 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
   streamConnected = false;
   filterDirection = '';
   filterResult = '';
+  chartMode: ChartMode = 'candlestick';
+  chartModeOptions = ['Candles', 'Line'];
+
+  get chartModeLabel(): string {
+    return this.chartMode === 'line' ? 'Line' : 'Candles';
+  }
+
   formatWallTime = formatWallTime;
 
   constructor(
@@ -206,6 +248,10 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
   ) {}
 
   ngOnInit(): void {
+    const saved = localStorage.getItem('nyLiquidityChartMode');
+    if (saved === 'line' || saved === 'candlestick') {
+      this.chartMode = saved;
+    }
     this.stream.connected$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(c => {
       this.streamConnected = c;
       this.cdr.markForCheck();
@@ -287,6 +333,15 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
     });
   }
 
+  setChartMode(value: string): void {
+    this.chartMode = value === 'Line' ? 'line' : 'candlestick';
+    localStorage.setItem('nyLiquidityChartMode', this.chartMode);
+    if (this.lastChartData) {
+      this.buildChart(this.lastChartData);
+    }
+    this.cdr.markForCheck();
+  }
+
   selectSetup(row: LiquiditySetup): void {
     this.selectedSetup = row;
     this.chartLoading = true;
@@ -294,7 +349,8 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
     this.http.get<any>(`${environment.apiUrl}/market/xauusd/ny-liquidity-sweep/chart/${encodeURIComponent(row.setup_id)}`).subscribe({
       next: data => {
         this.chartLoading = false;
-        this.buildChart(data);
+        this.lastChartData = this.normalizeChartData(data);
+        this.buildChart(this.lastChartData);
         this.cdr.markForCheck();
       },
       error: () => {
@@ -334,29 +390,91 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
     URL.revokeObjectURL(link.href);
   }
 
-  private buildChart(data: any): void {
+  private normalizeChartData(data: any): ChartPayload {
+    const candles: OhlcCandle[] = (data?.candles || []).map((c: any) => ({
+      time: c.time,
+      nyTime: c.nyTime,
+      open: Number(c.open),
+      high: Number(c.high),
+      low: Number(c.low),
+      close: Number(c.close)
+    }));
+    return {
+      candles,
+      levels: data?.levels || {},
+      setup: data?.setup || this.selectedSetup,
+      sweepTime: data?.sweepTime || data?.setup?.payload?.sweepTime,
+      structureTime: data?.structureTime || data?.setup?.payload?.structureTime
+    };
+  }
+
+  private buildChart(data: ChartPayload): void {
     if (!this.chartCanvas?.nativeElement) return;
     this.chart?.destroy();
-    const candles: any[] = data?.candles || [];
-    const levels = data?.levels || {};
+    const { candles, levels, setup } = data;
+    if (!candles.length) return;
+
     const labels = candles.map(c => {
       const t = c.nyTime || c.time || '';
       return t.length > 11 ? t.substring(11, 16) : t;
     });
-    const closes = candles.map(c => c.close);
 
-    const datasets: ChartConfiguration<'line'>['data']['datasets'] = [
-      {
-        label: 'Close',
-        data: closes,
-        borderColor: '#34d399',
-        backgroundColor: 'rgba(52, 211, 153, 0.1)',
-        pointRadius: 0,
-        borderWidth: 1.5,
-        tension: 0.1
+    const datasets: ChartConfiguration['data']['datasets'] =
+      this.chartMode === 'candlestick'
+        ? [this.buildCandlestickDataset(candles)]
+        : [this.buildCloseLineDataset(candles)];
+
+    datasets.push(...this.buildLevelDatasets(candles, levels));
+    datasets.push(...this.buildMarkerDatasets(candles, data, setup));
+
+    const baseType = this.chartMode === 'candlestick' ? 'candlestick' : 'line';
+
+    this.chart = new Chart(this.chartCanvas.nativeElement, {
+      type: baseType,
+      data: { labels, datasets },
+      options: this.buildChartOptions()
+    });
+  }
+
+  private buildCandlestickDataset(candles: OhlcCandle[]) {
+    return {
+      type: 'candlestick' as const,
+      label: 'XAUUSD M5',
+      data: candles.map((c, i) => ({
+        x: i,
+        o: c.open,
+        h: c.high,
+        l: c.low,
+        c: c.close
+      })),
+      borderColors: {
+        up: '#34d399',
+        down: '#f87171',
+        unchanged: '#a1a1aa'
+      },
+      backgroundColors: {
+        up: 'rgba(52, 211, 153, 0.85)',
+        down: 'rgba(248, 113, 113, 0.85)',
+        unchanged: 'rgba(161, 161, 170, 0.85)'
       }
-    ];
+    };
+  }
 
+  private buildCloseLineDataset(candles: OhlcCandle[]) {
+    return {
+      type: 'line' as const,
+      label: 'Close',
+      data: candles.map(c => c.close),
+      borderColor: '#34d399',
+      backgroundColor: 'rgba(52, 211, 153, 0.1)',
+      pointRadius: 0,
+      borderWidth: 1.5,
+      tension: 0.1,
+      fill: false
+    };
+  }
+
+  private buildLevelDatasets(candles: OhlcCandle[], levels: Record<string, number>) {
     const levelColors: Record<string, string> = {
       sweep: '#fbbf24',
       structure: '#a1a1aa',
@@ -365,35 +483,105 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
       tp1: '#6ee7b7',
       tp2: '#a7f3d0'
     };
+    const out: ChartConfiguration['data']['datasets'] = [];
     for (const [key, color] of Object.entries(levelColors)) {
       const val = levels[key];
-      if (val != null && closes.length) {
-        datasets.push({
+      if (val != null) {
+        out.push({
+          type: 'line',
           label: key.toUpperCase(),
-          data: closes.map(() => val),
+          data: candles.map(() => val),
           borderColor: color,
           borderDash: key === 'sl' || key.startsWith('tp') ? [6, 4] : [],
           pointRadius: 0,
-          borderWidth: 1
+          borderWidth: 1,
+          fill: false
         });
       }
     }
+    return out;
+  }
 
-    this.chart = new Chart(this.chartCanvas.nativeElement, {
-      type: 'line',
-      data: { labels, datasets },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: { mode: 'index', intersect: false },
-        plugins: {
-          legend: { display: true, labels: { color: '#a1a1aa', boxWidth: 12, font: { size: 10 } } }
+  private buildMarkerDatasets(
+    candles: OhlcCandle[],
+    data: ChartPayload,
+    setup: LiquiditySetup | null
+  ) {
+    const out: ChartConfiguration['data']['datasets'] = [];
+    const sweepIdx = this.findMarkerIndex(candles, data.sweepTime);
+    const structIdx = this.findMarkerIndex(candles, data.structureTime);
+    if (sweepIdx >= 0) {
+      out.push({
+        type: 'scatter',
+        label: 'Sweep',
+        data: [{ x: sweepIdx, y: setup?.sweep_level ?? candles[sweepIdx].low }],
+        pointRadius: 7,
+        pointStyle: 'triangle',
+        pointBackgroundColor: '#fbbf24',
+        pointBorderColor: '#fbbf24',
+        borderWidth: 0
+      });
+    }
+    if (structIdx >= 0) {
+      out.push({
+        type: 'scatter',
+        label: 'Structure',
+        data: [{ x: structIdx, y: setup?.structure_level ?? candles[structIdx].close }],
+        pointRadius: 6,
+        pointStyle: 'circle',
+        pointBackgroundColor: '#e4e4e7',
+        pointBorderColor: '#e4e4e7',
+        borderWidth: 0
+      });
+    }
+    return out;
+  }
+
+  private buildChartOptions(): ChartConfiguration['options'] {
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: true, labels: { color: '#a1a1aa', boxWidth: 12, font: { size: 10 } } },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const raw = ctx.raw;
+              if (typeof raw === 'number') {
+                return `${ctx.dataset.label}: ${raw.toFixed(2)}`;
+              }
+              const point = raw as { o?: number; h?: number; l?: number; c?: number; y?: number };
+              if (point?.o != null && point?.h != null) {
+                return `O ${point.o.toFixed(2)} H ${point.h.toFixed(2)} L ${point.l!.toFixed(2)} C ${point.c!.toFixed(2)}`;
+              }
+              if (point?.y != null) {
+                return `${ctx.dataset.label}: ${point.y.toFixed(2)}`;
+              }
+              return '';
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          type: 'category',
+          ticks: { color: '#71717a', maxTicksLimit: 14, font: { size: 9 } },
+          grid: { color: '#27272a' }
         },
-        scales: {
-          x: { ticks: { color: '#71717a', maxTicksLimit: 12, font: { size: 9 } }, grid: { color: '#27272a' } },
-          y: { ticks: { color: '#71717a', font: { size: 9 } }, grid: { color: '#27272a' } }
+        y: {
+          ticks: { color: '#71717a', font: { size: 9 } },
+          grid: { color: '#27272a' }
         }
       }
-    });
+    };
+  }
+
+  private findMarkerIndex(candles: OhlcCandle[], time?: string): number {
+    if (!time || !candles.length) return -1;
+    const target = time.substring(0, 16);
+    const idx = candles.findIndex(c => (c.time || '').substring(0, 16) === target);
+    if (idx >= 0) return idx;
+    return candles.findIndex(c => (c.time || '').startsWith(target.substring(0, 10)));
   }
 }
