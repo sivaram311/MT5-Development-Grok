@@ -144,9 +144,9 @@ public class NyLiquiditySweepService {
         return jdbcTemplate.query(sql.toString(), (rs, rowNum) -> rowToSetup(rs), params.toArray());
     }
 
-    public Map<String, Object> getStats() {
+    public Map<String, Object> getStats(String entryTf, String htf, String ltf) {
         ensureTables();
-        List<Map<String, Object>> setups = getHistoricalSetups(null, null, null, null, 1000, null, null, null);
+        List<Map<String, Object>> setups = getHistoricalSetups(null, null, null, null, 1000, entryTf, htf, ltf);
         long total = setups.size();
         long wins = setups.stream().filter(s -> "Win".equals(s.get("result"))).count();
         long losses = setups.stream().filter(s -> "Loss".equals(s.get("result"))).count();

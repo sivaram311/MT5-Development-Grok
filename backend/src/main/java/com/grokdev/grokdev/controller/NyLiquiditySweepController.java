@@ -60,8 +60,11 @@ public class NyLiquiditySweepController {
     }
 
     @GetMapping("/stats")
-    public ResponseEntity<Map<String, Object>> getStats() {
-        return ResponseEntity.ok(service.getStats());
+    public ResponseEntity<Map<String, Object>> getStats(
+            @RequestParam(required = false) String entryTf,
+            @RequestParam(required = false) String htf,
+            @RequestParam(required = false) String ltf) {
+        return ResponseEntity.ok(service.getStats(entryTf, htf, ltf));
     }
 
     @GetMapping("/chart/{setupId}")

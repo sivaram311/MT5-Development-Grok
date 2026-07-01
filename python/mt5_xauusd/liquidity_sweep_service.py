@@ -91,6 +91,7 @@ class NyLiquiditySweepPublisher:
 
     def backfill_historical(self, days: int = 30) -> int:
         self.pg.ensure_liquidity_setups_table()
+        self.pg.clear_liquidity_setups_for_tf(self.cfg.entry_tf, self.cfg.htf, self.cfg.ltf)
         entry_bars, tf_bars, d1 = self.load_tf_bars_from_db()
         if not entry_bars:
             logger.warning("No %s data for backfill", self.cfg.entry_tf)

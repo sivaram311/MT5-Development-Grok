@@ -61,6 +61,8 @@ Or use **Scan history** in the UI with the TF preset dropdown / custom HTFÂ·LTFÂ
 
 `POST /api/market/xauusd/ny-liquidity-sweep/scan?days=30&entryTf=M15&htf=H1&ltf=M15`
 
+**Backfill** clears existing rows for the same TF combo before writing (matches UI scan). Switching presets reloads both the history table and stats for that combo.
+
 ---
 
 ## API endpoints
@@ -70,8 +72,8 @@ Or use **Scan history** in the UI with the TF preset dropdown / custom HTFÂ·LTFÂ
 | GET | `/ny-liquidity-sweep` | Live snapshot |
 | GET | `/ny-liquidity-sweep/stream` | SSE stream |
 | GET | `/ny-liquidity-sweep/presets` | TF preset list |
-| GET | `/ny-liquidity-sweep/setups` | Historical grid (filters: from, to, direction, result) |
-| GET | `/ny-liquidity-sweep/stats` | Win rate, avg R:R |
+| GET | `/ny-liquidity-sweep/setups` | Historical grid (`from`, `to`, `direction`, `result`, `entryTf`, `htf`, `ltf`) |
+| GET | `/ny-liquidity-sweep/stats` | Win rate, avg R:R (same TF filters as setups) |
 | GET | `/ny-liquidity-sweep/chart/{setupId}` | Chart candles (setup's entry TF) + levels |
 | POST | `/ny-liquidity-sweep/scan` | Grid backfill (`days`, `entryTf`, `htf`, `ltf`) |
 

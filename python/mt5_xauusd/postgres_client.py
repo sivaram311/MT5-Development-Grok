@@ -235,6 +235,18 @@ class PostgresClient:
             conn.execute(text(f'CREATE INDEX IF NOT EXISTS idx_liquidity_setups_date ON "{SCHEMA}".liquidity_setups (setup_date DESC)'))
             conn.commit()
 
+    def clear_liquidity_setups_for_tf(self, entry_tf: str, htf: str, ltf: str) -> None:
+        """Remove stale rows for a TF combo (matches Java scan clear)."""
+        query = text(f'''
+            DELETE FROM "{SCHEMA}".liquidity_setups
+            WHERE (payload->>'entryTf' = :entry_tf AND payload->>'htf' = :htf AND payload->>'ltf' = :ltf)
+               OR payload IS NULL
+               OR payload::text = '{{}}'
+        ''')
+        with self.engine.connect() as conn:
+            conn.execute(query, {"entry_tf": entry_tf, "htf": htf, "ltf": ltf})
+            conn.commit()
+
     def upsert_liquidity_setup(self, setup: dict):
         import json as json_lib
         query = text(f'''

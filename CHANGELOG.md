@@ -4,6 +4,31 @@ All notable changes to the Grok Dev full-stack application (Spring Boot + Angula
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2026-07-01 (NY Liquidity stats + backfill parity)
+
+### Fixed
+- **`/ny-liquidity-sweep/stats`** — filters by `entryTf`, `htf`, `ltf` (matches history table TF selection)
+- **Python backfill** — clears stale rows for the TF combo before insert (same as Java **Scan history**)
+- **Preset dropdown** — reloads stats + history when TF preset changes
+
+### Documentation
+- `api-endpoints.md`, `NY_LIQUIDITY_SWEEP_ANALYZER.md`, in-app Docs — TF query params on `/setups` and `/stats`; chart uses setup **entry TF** candles
+
+### Tests
+- `test_liquidity_sweep_analyzer.py` — dedupe + per-day PDH/PDL pivot tests
+
+---
+
+## [Unreleased] - 2026-07-01 (NY Liquidity scan accuracy)
+
+### Fixed
+- **Per-day PDH/PDL** — session pivots use the D1 bar before each scan day (not only “yesterday vs today”)
+- **Dedupe** — one setup per direction + structure time (prefers Win, then highest R:R)
+- **Scan replace** — Java scan deletes legacy empty-payload rows and prior rows for the same TF combo
+- **History filter** — `/setups` and UI filter by `entryTf`, `htf`, `ltf`
+
+---
+
 ## [Unreleased] - 2026-06-29 (NY Liquidity chart highlights only)
 
 ### Changed

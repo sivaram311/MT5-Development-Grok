@@ -310,9 +310,10 @@ import { PageHeaderComponent } from '../ui/page-header.component';
             <p>Detects: liquidity sweep → return to historical structure at similar price → H1/M15 RSI confluence → reversal with entry/SL/TP.</p>
             <p>Full guide: <a href="file:///E:/Source/grok_dev/frontend/docs/NY_LIQUIDITY_SWEEP_ANALYZER.md" target="_blank" class="text-emerald-400 underline">NY_LIQUIDITY_SWEEP_ANALYZER.md</a></p>
             <ul class="pl-4 list-disc space-y-1">
-              <li><strong>Scan history</strong> — UI button or <code>python run_ny_liquidity_sweep.py --backfill</code></li>
+              <li><strong>Scan history</strong> — UI button or <code>python run_ny_liquidity_sweep.py --backfill</code> (clears stale TF rows first)</li>
               <li><strong>Live</strong> — <code>python run_ny_liquidity_sweep.py --live</code> + SSE banner</li>
-              <li><strong>Chart</strong> — click any row for M5 context + sweep/structure/entry/SL/TP lines</li>
+              <li><strong>Chart</strong> — click any row; replays on setup <strong>entry TF</strong> (M1 or M15) with level lines</li>
+              <li><strong>TF filters</strong> — preset/custom HTF·LTF·Entry scopes history table <em>and</em> win-rate stats</li>
             </ul>
           </div>
         </details>

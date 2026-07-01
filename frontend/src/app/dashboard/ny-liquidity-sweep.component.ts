@@ -371,7 +371,7 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
     const savedPreset = localStorage.getItem('nyLiquidityTfPreset');
     if (savedPreset && this.tfPresets.some(p => p.id === savedPreset)) {
       this.selectedPresetId = savedPreset;
-      this.applyPreset(false);
+      this.applyPreset(false, false);
     }
     this.stream.connected$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(c => {
       this.streamConnected = c;
@@ -408,7 +408,11 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
   }
 
   loadStats(): void {
-    this.http.get<LiquidityStats>(`${environment.apiUrl}/market/xauusd/ny-liquidity-sweep/stats`).subscribe({
+    const params = new HttpParams()
+      .set('entryTf', this.scanEntryTf)
+      .set('htf', this.scanHtf)
+      .set('ltf', this.scanLtf);
+    this.http.get<LiquidityStats>(`${environment.apiUrl}/market/xauusd/ny-liquidity-sweep/stats`, { params }).subscribe({
       next: s => {
         this.stats = s;
         this.cdr.markForCheck();
@@ -463,7 +467,7 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
     });
   }
 
-  applyPreset(persist = true): void {
+  applyPreset(persist = true, reload = true): void {
     const preset = this.tfPresets.find(p => p.id === this.selectedPresetId);
     if (!preset) return;
     this.scanHtf = preset.htf;
@@ -471,6 +475,11 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
     this.scanEntryTf = preset.entry;
     if (persist) {
       localStorage.setItem('nyLiquidityTfPreset', preset.id);
+    }
+    if (reload) {
+      this.selectedSetup = null;
+      this.loadSetups();
+      this.loadStats();
     }
     this.cdr.markForCheck();
   }
@@ -485,6 +494,7 @@ export class NyLiquiditySweepComponent implements OnInit, AfterViewInit, OnDestr
     }
     this.selectedSetup = null;
     this.loadSetups();
+    this.loadStats();
     this.cdr.markForCheck();
   }
 

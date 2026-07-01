@@ -301,10 +301,15 @@ Historical setups grid stored in `grok_dev.liquidity_setups`.
 | `direction` | `Bullish` or `Bearish` |
 | `result` | `Win`, `Loss`, or `Open` |
 | `limit` | Max rows (default 500, max 1000) |
+| `entryTf` | Entry timeframe filter: `M1` or `M15` |
+| `htf` | Higher-TF RSI filter: `H1`, `H4`, or `M15` |
+| `ltf` | Lower-TF RSI filter: `M15` or `M1` |
 
 ### GET `/api/market/xauusd/ny-liquidity-sweep/stats`
 
-Performance summary: `totalSetups`, `wins`, `losses`, `openSetups`, `winRate`, `averageRr`, `byDayOfWeek`.
+Performance summary for setups matching optional TF filters: `totalSetups`, `wins`, `losses`, `openSetups`, `winRate`, `averageRr`, `byDayOfWeek`.
+
+**Query params:** same `entryTf`, `htf`, `ltf` as `/setups` (omit to aggregate all TF combos).
 
 ### GET `/api/market/xauusd/ny-liquidity-sweep/chart/{setupId}`
 
@@ -313,7 +318,8 @@ Chart payload for the Angular replay view:
 | Field | Description |
 |-------|-------------|
 | `setup` | Selected setup row (direction, levels, outcome, payload) |
-| `candles` | Up to **2000** M5 OHLC bars with `nyTime` |
+| `candles` | Up to **2000** (M15) or **3000** (M1) OHLC bars on the setup's **entry TF** with `nyTime` |
+| `entryTf` | `M1` or `M15` — timeframe used for chart candles |
 | `levels` | Horizontal lines: `sweep`, `structure`, `entry`, `sl`, `tp1`, `tp2` |
 | `sweepTime` | Broker time of the liquidity sweep bar (for chart marker) |
 | `structureTime` | Broker time of the structure-return bar (for chart marker) |
